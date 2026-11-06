@@ -1,0 +1,56 @@
+id: credem
+nome: Credem - Lista movimenti (CSV)
+banca: Credem
+tipo_conto: conto
+formato: csv
+separatore: ";"
+firma: ["Data contabile", "Data valuta", "Importo", "Causale ABI", "Causale", "Descrizione:"]
+numeri: italiano
+date: "%d/%m/%Y"
+
+metadati:
+  "Conto Corrente": numero
+  "Saldo al": data_saldo
+  "Saldo contabile": saldo_alla_data
+  "Data Inizio": periodo_da
+  "Data Fine": periodo_a
+
+colonne:
+  data_contabile: "Data contabile"
+  data_valuta: "Data valuta"
+  importo: "Importo"
+  importo_orig: "Importo orig."
+  divisa_orig: "Divisa orig."
+  descrizione: "Descrizione:"
+codice: ["Causale", "Causale ABI"]      # il primo valore riconosciuto decide
+
+tipi:
+  PDINT: pagamento_carta
+  PDPRE: addebito_sepa
+  PDMAV: pagamento_pa
+  OCIST: bonifico
+  OCRET: bonifico
+  DIIST: bonifico
+  DIBON: bonifico
+  COIST: commissione
+  COBON: commissione
+  COINT: commissione
+  COPR2: commissione
+  "43": pagamento_carta
+  "48": bonifico
+  "26": bonifico
+  "50": addebito_sepa
+  "16": commissione
+  "11": pagamento_pa
+  "*": altro
+
+estrazione:
+  pagamento_carta:
+    - '-(?P<data_op>\d{2}/\d{2}/\d{2})-(?P<ora>\d{2}:\d{2})\s+(?P<esercente>.*?)\s+-(?P<paese>[A-Z]{3})\s*$'
+  addebito_sepa:
+    - 'PAGAMENTO PREAUTORIZZATO\s+(?P<esercente>.+?)\s+MANDATO\b'
+  bonifico:
+    - 'A CREDITO\s+(?P<controparte>.+?)\s+(?:Rif\.|RIF[=.])'
+    - 'A DEBITO\s+(?:A FAVORE DI\s+)?(?P<controparte>.+?)\s+(?:Rif\.|RIF[=.])'
+formato_data_op: "%d/%m/%y"
+titolari_davanti_esercente: [pagamento_carta]

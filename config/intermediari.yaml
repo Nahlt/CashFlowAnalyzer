@@ -1,0 +1,33 @@
+# Intermediari di pagamento "trasparenti": nella descrizione compaiono come "PREFISSO *ESERCENTE".
+# L'esercente vero e' il testo dopo l'asterisco; quello va categorizzato.
+# Origine: elenco iniziale di Spendif.ai (core/payment_intermediaries.json), esteso.
+# L'app aggiunge da sola un prefisso quando lo vede seguito da almeno 2 esercenti diversi
+# (origine: appreso); puoi disattivare o aggiungere voci a mano (origine: utente).
+versione: 1
+apprendimento:
+  esercenti_diversi_minimi: 2
+  lunghezza_massima_prefisso: 30
+  lunghezza_massima_esercente: 25
+
+intermediari:
+  - {prefisso: PAYPAL, origine: seed}
+  - {prefisso: SUMUP, origine: seed}
+  - {prefisso: STRIPE, origine: seed}
+  - {prefisso: SQ, origine: seed, nota: Square}
+  - {prefisso: CKO, origine: seed, nota: Checkout.com}
+  - {prefisso: ZETTLE, origine: seed}
+  - {prefisso: ADYEN, origine: seed}
+  - {prefisso: KLARNA, origine: seed}
+  - {prefisso: 3CPAYMENT, origine: seed}
+  - {prefisso: NEXI, origine: aggiunto}
+  - {prefisso: SATISPAY, origine: aggiunto, attivo: false, nota: "ha un saldo proprio: non e' trasparente, va trattato come conto"}
+
+# Piattaforme: il testo dopo l'asterisco e' il servizio acquistato, ma la piattaforma resta l'esercente.
+# Es. "GOOGLE*YOUTUBEPREMIUM" -> esercente "Google", servizio "YouTube Premium".
+piattaforme:
+  - GOOGLE
+  - APPLE.COM/BILL
+  - AMAZON
+  - AMZN
+  - OPENAI
+  - ANTHROPIC

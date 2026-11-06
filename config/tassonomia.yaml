@@ -1,0 +1,122 @@
+# Tassonomia a due livelli (L1 -> elenco L2). La chiave di una voce e' la coppia categoria + sottocategoria:
+# la stessa sottocategoria puo' stare sotto piu' categorie (es. CASA · Varie e ACQUISTI · Varie).
+# solo_locale: le voci di queste categorie non vengono mai inviate a servizi esterni.
+# Versione 0.13.0: tassonomia di partenza aggiornata con quella usata nella pratica (esportata il 2026-11-06).
+versione: 1
+uscite:
+  CASA:
+  - Mutuo/Affitto
+  - Condominio
+  - Energia e gas
+  - Acqua
+  - Internet e telefonia
+  - Manutenzione e servizi
+  - Arredo ed elettrodomestici
+  - Assicurazione casa
+  - Seconda casa
+  - Tasse
+  - Lavori e migliorie
+  - Trasloco
+  - Piante e giardino
+  - Compravendita immobile
+  ALIMENTARI:
+  - Supermercato
+  - Negozi alimentari
+  - Mercati
+  - Vino e bevande
+  RISTORAZIONE:
+  - Ristoranti
+  - Bar e pasticcerie
+  - Delivery
+  TRASPORTI:
+  - Carburante e ricarica
+  - Pedaggi e Telepass
+  - Parcheggi
+  - Mezzi pubblici
+  - Taxi e car sharing
+  - 'Auto: noleggio/rata'
+  - 'Auto: manutenzione'
+  - 'Auto: assicurazione e bollo'
+  - 'Moto e scooter: manutenzione'
+  - 'Moto e scooter: assicurazione e bollo'
+  VIAGGI:
+  - Voli
+  - Treni lunga percorrenza
+  - Alloggi
+  - Noleggio auto
+  - Pacchetti/agenzie
+  - Lido
+  - Escursioni e attività
+  - Spese Varie
+  - Ristorante
+  SVAGO E CULTURA:
+  - Cinema
+  - Musei e mostre
+  - Spettacoli e concerti
+  - Sport e palestra
+  - Hobby
+  - Libri e media
+  - Abbonamenti digitali
+  - Aperitivi e serate
+  - Spese Barca
+  SALUTE:
+  - Farmacia
+  - Visite ed esami
+  - Dentista
+  - Ottica
+  PERSONA:
+  - Abbigliamento e calzature
+  - Cura personale
+  - Parrucchiere
+  ACQUISTI:
+  - Elettronica
+  - Regali e donazioni
+  - Online da dettagliare
+  - Varie
+  FAMIGLIA E ISTRUZIONE:
+  - Scuola e formazione
+  - Figli
+  - Animali
+  - Matrimonio
+  - Aiuti a familiari
+  - Rimborsi a familiari
+  FINANZA:
+  - Commissioni bancarie
+  - Interessi passivi
+  - Bollo
+  - Rate di prestiti
+  - Imposte su rendimenti
+  - Assicurazioni (altre)
+  - Assicurazione Vita
+  - Assicurazione Salute
+  - Satispay
+  TASSE E PA:
+  - Imposte
+  - Tributi locali
+  - PagoPA/MAV
+  - Multe
+  - Commercialista
+  CONTANTI:
+  - Prelievo da giustificare
+  CONTO COMUNE:
+  - Contributo versato
+  LAVORO:
+  - Bar
+  AMICI:
+  - Rimborsi ad amici
+entrate:
+  ENTRATE:
+  - Stipendio
+  - Interessi e cedole
+  - Regali ricevuti
+  - Cashback e premi
+  - Altre entrate
+  - Rimborsi
+  CONTO COMUNE:
+  - Contributo ricevuto
+risparmio:
+  RISPARMIO:
+  - Accantonamento
+  - Rientro dal risparmio
+solo_locale:
+- SALUTE

@@ -1,0 +1,50 @@
+id: credit_agricole
+nome: Credit Agricole Italia - Lista movimenti (CSV)
+banca: Credit Agricole
+tipo_conto: conto
+formato: csv
+separatore: ";"
+# file "Lista_Movimenti_CAI_AAAAMMGGhhmmss.csv"; gli importi hanno un apostrofo davanti ('-4,99)
+firma: ["Data Op.", "Data Val.", "Causale", "Descrizione", "Importo", "Divisa"]
+numeri: italiano
+date: "%d/%m/%Y"
+
+colonne:
+  data_contabile: "Data Op."
+  data_valuta: "Data Val."
+  importo: "Importo"
+  descrizione: "Descrizione"
+codice: ["Causale"]                 # la banca riempie la causale di spazi: vengono tolti
+
+tipi:
+  "PAGAMENTO TRAMITE POS": pagamento_carta
+  "PAGAMENTO UTENZE": addebito_sepa
+  "GIROCONTO/BONIFICO": bonifico
+  "DISPOSIZIONE DI PAGAMENTO": bonifico
+  "COMMISSIONI/SPESE": commissione
+  "INTERESSI/COMPETENZE": {uscita: commissione, entrata: interessi}
+  "PRELIEVO NOSTRO SPORTELLO AUTOM.": prelievo
+  "IMPOSTE E TASSE": imposte
+  # uno storno in entrata e' quasi sempre la restituzione di un pagamento con carta
+  "STORNO MOVIMENTI": {entrata: pagamento_carta, uscita: altro}
+  "*": altro
+
+estrazione:
+  pagamento_carta:
+    # POS CARTA CA DEBIT VISA N. ****1111 DEL 31/10/26 ORE 17:52 C/O Google YouTube Membe London GBR
+    - 'DEL (?P<data_op>\d{2}/\d{2}/\d{2}) ORE (?P<ora>\d{2}:\d{2})'
+    # vale l'ultima regola che riconosce: prima il nome intero, poi (se c'e') il paese finale separato
+    - 'C/O\s+(?P<esercente>.+?)\s*$'
+    - 'C/O\s+(?P<esercente>.+?)\s+(?P<paese>[A-Z]{3})\s*$'
+  addebito_sepa:
+    # formato da confermare con un estratto reale: si prova con le diciture piu' comuni
+    - '(?:CREDITORE|BENEFICIARIO|AZIENDA)[:.]?\s*(?P<esercente>.+?)(?:\s+(?:ID\.?\s*MANDATO|MANDATO|RIF|CODICE|COD\.|ADDEBITO)\b|\s*$)'
+    - 'C/O\s+(?P<esercente>.+?)(?:\s+(?:RIF|MANDATO)\b|\s*$)'
+    - 'ORD:\s*(?P<esercente>.+?)\s+(?:DT\.ORD|ID\.|RIF)'
+  bonifico:
+    # in entrata: ORD:TELEPASS S.P.A. DT.ORD:000000 DESCR.OPERAZIONE SCT:...
+    - 'ORD:\s*(?P<controparte>.+?)\s+DT\.ORD'
+    # in uscita (da confermare): BEN:/BENEF:/A FAVORE DI ...
+    - '(?:BEN(?:EF(?:ICIARIO)?)?[:.]|A FAVORE DI)\s*(?P<controparte>.+?)\s+(?:DT\.|IBAN|DESCR|RIF|BIC)'
+    - 'IBAN[:\s]*(?P<iban>[A-Z]{2}\d{2}[A-Z0-9]{11,30})'
+formato_data_op: "%d/%m/%y"

@@ -1,0 +1,50 @@
+id: paypal
+nome: PayPal - Report attivita' (CSV, italiano)
+banca: PayPal
+tipo_conto: conto
+formato: csv
+separatore: ","
+# Attivita' > Scarica report > "Tutte le transazioni" o "Influiscono sul saldo", formato CSV.
+# Piu' righe per la stessa operazione (pagamento, ricarica dalla banca o dalla carta, conversioni di valuta):
+# la lettura e' dedicata (spese/paypal.py). Le colonne non indicate qui (email, indirizzi, telefono) restano
+# solo nel livello grezzo del database cifrato.
+lettore: paypal
+firma: ["Data", "Orario", "Nome", "Tipo", "Stato", "Valuta", "Lordo", "Tariffa", "Netto", "Codice transazione", "Impatto sul saldo"]
+numeri: italiano
+date: "%d/%m/%Y"
+valuta_conto: EUR
+
+colonne:
+  data: Data
+  ora: Orario
+  nome: Nome
+  tipo: Tipo
+  stato: Stato
+  valuta: Valuta
+  lordo: Lordo
+  tariffa: Tariffa
+  netto: Netto
+  id: Codice transazione
+  rif: Codice transazione di riferimento
+  impatto: Impatto sul saldo
+  titolo: Titolo oggetto
+  oggetto: Oggetto
+
+impatto:
+  addebito: [Addebito]
+  accredito: [Accredito]
+  memo: [Memo]
+# operazioni che non sono avvenute
+stati_esclusi: [Negata, Annullata, Rifiutata, Scaduta, Non riuscita, Errore, Creata]
+
+# Ruolo di una riga secondo le parole del suo Tipo (senza distinguere maiuscole); vince il primo gruppo
+# nell'ordine: conversione, ignora, ricarica, prelievo, rimborso, esercente. Il resto vale come pagamento
+# da o verso una persona (come un bonifico).
+tipi:
+  conversione: ["Conversione di valuta"]
+  ignora: ["Autorizzazione", "Blocco", "Sblocco", "Annullamento autorizzazione"]
+  ricarica: ["Bonifico bancario sul conto PayPal", "Deposito con carta", "Ricarica", "Trasferimento dal conto bancario"]
+  prelievo: ["Trasferimento avviato dall'utente", "Prelievo", "Bonifico su conto bancario", "Trasferimento sul conto bancario"]
+  rimborso: ["Rimborso"]
+  esercente: ["Express Checkout", "preautorizzato", "sito web", "da cellulare", "abbonamento", "Pagamento con carta",
+              "Pagamento PayPal", "Pagamento in 3 rate", "Paga in 3 rate", "Acquisto"]

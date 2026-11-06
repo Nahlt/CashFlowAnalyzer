@@ -1,0 +1,51 @@
+id: ing_conto_csv
+nome: ING Conto Arancio - Lista movimenti (CSV, colonne uscite ed entrate)
+banca: ING
+tipo_conto: conto
+formato: csv
+separatore: ";"
+firma: ["DATA CONTABILE", "DATA VALUTA", "USCITE", "ENTRATE", "CAUSALE", "DESCRIZIONE OPERAZIONE"]
+numeri: italiano
+date: "%d/%m/%Y"
+
+# righe che riportano un saldo invece di un movimento (usate per la quadratura)
+righe_saldo:
+  "Saldo iniziale": saldo_iniziale
+  "Saldo finale": saldo_finale
+
+colonne:
+  data_contabile: "DATA CONTABILE"
+  data_valuta: "DATA VALUTA"
+  importo_uscite: "USCITE"
+  importo_entrate: "ENTRATE"
+  descrizione: "DESCRIZIONE OPERAZIONE"
+codice: ["CAUSALE"]
+
+# causali e regole di estrazione: le stesse dell'export Excel di ING (ing_conto.yaml)
+tipi:
+  "Pagamento Carta": pagamento_carta
+  "Prelievo Carta": prelievo
+  "Accredito Bonifico": bonifico
+  "Bonifico In Uscita": bonifico
+  "Giroconto": giroconto
+  "Accredito Stipendio/Pensione": stipendio
+  "Addebito Carta Di Credito": addebito_carta_credito
+  "*": altro
+
+estrazione:
+  pagamento_carta:
+    - 'del (?P<data_op>\d{2}/\d{2}/\d{4}) alle ore (?P<ora>\d{2}:\d{2})'
+    - 'Div=(?P<divisa_orig>[A-Z]{3})'
+    - 'presso\s+(?P<esercente>.+?)\s*$'
+  prelievo:
+    - 'del (?P<data_op>\d{2}/\d{2}/\d{4}) alle ore (?P<ora>\d{2}:\d{2})'
+  bonifico:
+    - 'A favore di\s+(?P<controparte>.+?)\s+IBAN beneficiario\s+(?P<iban>[A-Z]{2}\d{2}[A-Z0-9]+)'
+    - 'Codifica Ordinante\s+(?P<iban>[A-Z]{2}\d{2}[A-Z0-9]+)\s+Anagrafica Ordinante\s+(?P<controparte>.+?)(?:\s+Note:|\s*$)'
+  giroconto:
+    - 'A favore di\s+(?P<controparte>.+?)\s+IBAN beneficiario\s+(?P<iban>[A-Z]{2}\d{2}[A-Z0-9]+)'
+  stipendio:
+    - 'Codifica Ordinante\s+(?P<iban>[A-Z]{2}\d{2}[A-Z0-9]+)\s+Anagrafica Ordinante\s+(?P<controparte>.+?)(?:\s+Note:|\s*$)'
+  addebito_carta_credito:
+    - 'al (?P<ciclo>\d{8})'
+formato_data_op: "%d/%m/%Y"

@@ -1,0 +1,60 @@
+id: trade_republic
+nome: Trade Republic - Esportazione transazioni
+banca: Trade Republic
+tipo_conto: conto
+formato: csv
+separatore: ","
+firma: ["datetime", "date", "category", "type", "amount", "transaction_id", "mcc_code"]
+numeri: punto
+date: iso
+
+colonne:
+  data_operazione: {colonna: datetime, formato: iso_utc}
+  importo: amount
+  fee: fee
+  tax: tax
+  importo_orig: original_amount
+  divisa_orig: original_currency
+  cambio: fx_rate
+  descrizione: description
+  esercente: name
+  controparte_nome: counterparty_name
+  controparte_iban: counterparty_iban
+  mcc: mcc_code
+  isin: symbol
+  quantita: shares
+  prezzo: price
+  id: transaction_id
+codice: ["type"]
+
+tipi:
+  CARD_TRANSACTION: pagamento_carta
+  CARD_TRANSACTION_INTERNATIONAL: pagamento_carta
+  TRANSFER_INSTANT_OUTBOUND: bonifico
+  TRANSFER_OUTBOUND: bonifico
+  TRANSFER_INSTANT_INBOUND: bonifico
+  TRANSFER_INBOUND: bonifico
+  CUSTOMER_INBOUND: versamento
+  CUSTOMER_OUTBOUND_REQUEST: prelievo_verso_conto
+  TRANSFER_DIRECT_DEBIT_INBOUND: addebito_sepa
+  INTEREST_PAYMENT: interessi
+  DIVIDEND: dividendo
+  TAX_OPTIMIZATION: imposte
+  BENEFITS_SAVEBACK: cashback
+  BUY: acquisto_titoli
+  SELL: vendita_titoli
+  MIGRATION: movimento_titoli
+  "*": altro
+
+# 'name' e' l'esercente solo per le carte; per i titoli e' il nome del titolo
+esercente_solo_per: [pagamento_carta]
+nome_titolo_da: esercente
+esercente_ripiego_descrizione: '^(?!TR Card Transaction)'
+
+estrazione:
+  bonifico:
+    - 'transfer (?:for|from)\s+(?P<controparte>.+?)(?:\s+\((?P<iban>[A-Z]{2}\d{2}[A-Z0-9]+)\))?\s*$'
+  addebito_sepa:
+    - 'Sepa Direct Debit transfer to\s+(?P<esercente>.+?)\s*(?:\([^)]*\))?\s*$'
+# negli addebiti SEPA i campi controparte contengono il titolare (debitore), non il creditore
+ignora_controparte_colonne: [addebito_sepa]

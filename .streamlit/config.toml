@@ -1,0 +1,56 @@
+# Solo locale: nessuna porta verso la rete, nessuna telemetria.
+[server]
+address = "127.0.0.1"
+port = 8501
+headless = true
+maxUploadSize = 50
+enableXsrfProtection = true
+# La sessione di Streamlit resta in vita fino a 1 ora anche se il browser perde la connessione (scheda in secondo piano,
+# PC in sospensione). L'app tiene la sessione oltre, con il suo cookie: vedi spese/sessioni.py.
+disconnectedSessionTTL = 3600
+# serve il carattere Inter dalla cartella static/ (nessun carattere scaricato da internet)
+enableStaticServing = true
+
+[browser]
+gatherUsageStats = false
+serverAddress = "127.0.0.1"
+
+[client]
+toolbarMode = "minimal"
+
+# Stile "chiaro a schede": fondo grigio chiaro, blocchi in schede bianche, barra laterale bianca.
+[theme]
+base = "light"
+primaryColor = "#2a78d6"
+backgroundColor = "#f3f5f8"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#1c2430"
+linkColor = "#1f63b8"
+borderColor = "#e3e7ee"
+showWidgetBorder = true
+showSidebarBorder = true
+baseRadius = "10px"
+buttonRadius = "9px"
+font = "Inter, system-ui, sans-serif"
+headingFont = "Inter, system-ui, sans-serif"
+headingFontWeights = [700, 600, 600, 600, 600, 600]
+headingFontSizes = ["1.75rem", "1.15rem", "1rem", "0.95rem", "0.9rem", "0.85rem"]
+baseFontSize = 15
+metricValueFontSize = "1.6rem"
+metricValueFontWeight = 650
+dataframeHeaderBackgroundColor = "#f7f9fb"
+orangeColor = "#eb6834"
+orangeBackgroundColor = "#fff4ec"
+orangeTextColor = "#9a4512"
+blueBackgroundColor = "#e6f0fb"
+blueTextColor = "#1f4f8f"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-wght-normal.woff2"
+weight = "100 900"
+style = "normal"
+
+[theme.sidebar]
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#ffffff"

@@ -1,0 +1,39 @@
+# Soglie e parametri della logica (non esposti nell'interfaccia di base).
+versione: 1
+
+storico:                       # confidenza da categorie gia' confermate per la stessa chiave esercente
+  movimenti_minimi: 5          # sotto questa soglia la confidenza viene ridotta in proporzione
+  soglia_automatica: 0.90      # >= assegna in automatico
+  soglia_proposta: 0.50        # >= propone, con revisione
+  # confidenza = (1 - entropia normalizzata delle categorie) * min(1, movimenti / movimenti_minimi)
+
+propagazione:                  # dopo una correzione manuale, proponi la stessa categoria ai movimenti simili
+  somiglianza_minima: 0.35     # Jaccard sulle parole dell'esercente
+
+modello_locale:
+  contenimento_minimo: 1.0     # quota di parole del nome restituito che devono comparire nell'input
+  soglia_confidenza: 0.70      # sotto va in revisione (da tarare col benchmark della fase 0)
+  dimensione_batch: 20
+
+trasferimenti:
+  finestra_giorni: 5
+  livelli:                     # fiducia dell'abbinamento
+    alta: "entrambi i lati riconosciuti come trasferimento"
+    media: "un lato riconosciuto come trasferimento"
+    bassa: "nessun lato riconosciuto, al massimo 1 giorno di distanza"
+
+contenitori:                   # addebito carta di credito sul conto <-> righe di dettaglio della carta
+  finestra_giorni: 45
+  pausa_massima_giorni: 5      # tra righe consecutive del gruppo
+  righe_massime_combinazione: 10
+
+formati:
+  quota_minima_righe_lette: 0.10   # sotto questa quota il profilo e' considerato rotto
+
+copertura:
+  mesi_da_controllare: 4           # la lista di controllo segnala i buchi negli ultimi N mesi
+
+sessione:
+  # dopo questo tempo senza azioni il database si chiude e serve di nuovo la passphrase (10080 = 7 giorni).
+  # Ricaricare la pagina non chiude la sessione; la chiudono "Esci", questo limite e il riavvio del server.
+  minuti_inattivita: 10080

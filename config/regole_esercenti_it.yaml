@@ -1,0 +1,70 @@
+# Regole statiche sugli esercenti (passo deterministico, prima di MCC e marchi NSI).
+# Si applicano al nome esercente gia' estratto e ripulito, senza distinzione di maiuscole.
+# Vince la regola con il pattern piu' lungo che corrisponde (es. "amazon prime" batte "amazon").
+# Un importo positivo sullo stesso esercente e' un rimborso della stessa categoria.
+# Formato: pattern (regex Python), l2 (sottocategoria della tassonomia), forza, nota facoltativa.
+# forza: alta (default) = marchio preciso, vince anche sul codice MCC;
+#        bassa = parola generica (bar, ristorante, hotel...), cede al codice MCC se presente.
+# Ordine della catena: regole utente > regole forza alta > MCC decisivo > regole forza bassa > marchi NSI.
+versione: 1
+
+regole:
+  # --- Alimentari
+  - {pattern: '(supermerc|supermer\b|minimarket|discount alimentare)', l2: Supermercato, forza: bassa}
+  - {pattern: '\b(esselunga|carrefour|crf (exp|mkt|iper)|lidl|conad|\bcoop\b|eurospin|\baldi\b|penny|\bpam\b|iper\b|bennet|tigros|il gigante|\bu2\b|unes|naturasi|carrefour market|simply|in.?s mercato|md discount|famila|despar|eataly)', l2: Supermercato}
+  - {pattern: '(frutta e verdura|ortofrutt|macelleria|pescheria|panific|\bforno\b|salumeria|gastronomia|enoteca|caseific)', l2: Negozi alimentari, forza: bassa}
+  - {pattern: '(mercato comunale|mercato rionale)', l2: Mercati, forza: bassa}
+  # --- Ristorazione
+  - {pattern: '(\bmcdonald|burger king|\bkfc\b|old wild west|roadhouse|spontini|poke house|la piadineria)', l2: Ristoranti}
+  - {pattern: '(ristorante|trattoria|osteria|pizzeria|sushi|burger|birrificio|braceria)', l2: Ristoranti, forza: bassa}
+  - {pattern: '(\bbar\b|caffe|caffetteria|pasticceria|gelateria|starbucks|iginio massari|marchesi|cova\b)', l2: Bar e pasticcerie, forza: bassa}
+  - {pattern: '(glovo|deliveroo|just ?eat|uber ?eats)', l2: Delivery}
+  # --- Trasporti
+  - {pattern: '(\beni\b|\bq8\b|tamoil|esso\b|shell\b|\bip\b station|agip|repower|enel x way|ionity|be charge)', l2: Carburante e ricarica}
+  - {pattern: '(telepass|autostrad|pedaggi)', l2: Pedaggi e Telepass}
+  - {pattern: '(easypark|telepark|mycicero|saba\b|apcoa|indigo park)', l2: Parcheggi}
+  - {pattern: '(\bparcheggio|\bgarage\b|autosilo)', l2: Parcheggi, forza: bassa}
+  - {pattern: '(cless ticket atm|\batm milano|trenord|\batac\b|\bgtt\b|\btper\b|stib|mivb|\bratp\b)', l2: Mezzi pubblici}
+  - {pattern: '(\buber\b|free ?now|it ?taxi|share ?now|enjoy|getaround|zity|bikemi)', l2: Taxi e car sharing}
+  - {pattern: '(\btaxi\b)', l2: Taxi e car sharing, forza: bassa}
+  # --- Viaggi
+  - {pattern: '(trenitalia|\bitalo\b|frecciarossa|sncb|nmbs|\bsncf\b|deutsche bahn|\bdb bahn|eurostar|flixtrain)', l2: Treni lunga percorrenza}
+  - {pattern: '(ryanair|easyjet|ita airways|wizz ?air|volotea|vueling|lufthansa|klm|air france|brussels airlines)', l2: Voli}
+  - {pattern: '(booking\.com|airbnb)', l2: Alloggi}
+  - {pattern: '(hotel|albergo|\bb ?& ?b\b|ostello|hostel|agriturismo)', l2: Alloggi, forza: bassa}
+  - {pattern: '(hertz|avis|europcar|sixt|budget rent|locauto)', l2: Noleggio auto}
+  # --- Svago e cultura
+  - {pattern: '(multisala|cinema|\buci\b|the space|arcadia|anteo)', l2: Cinema}
+  - {pattern: '(museo|musee|museum|musea\b|pinacoteca|mostra|galleria d.arte|triennale)', l2: Musei e mostre, forza: bassa}
+  - {pattern: '(ticketone|ticketmaster|vivaticket|teatro|concerto|dice\.fm)', l2: Spettacoli e concerti, forza: bassa}
+  - {pattern: '(virgin active|mcfit|fitactive|decathlon|cisalfa)', l2: Sport e palestra}
+  - {pattern: '(virgin active caf)', l2: Bar e pasticcerie, nota: "il bar dentro la palestra"}
+  - {pattern: '(palestra|piscina|sportclub)', l2: Sport e palestra, forza: bassa}
+  - {pattern: '(netflix|spotify|disney|amazon prime|prime video|youtube ?premium|google ?one|apple\.com/bill|icloud|dazn|now tv|openai|chatgpt|anthropic|claude\.ai|claude sub|audible|kindle unlimited)', l2: Abbonamenti digitali}
+  - {pattern: '(feltrinelli|mondadori|giunti al punto|libreria|edicola|ibs\.it|wikimedia)', l2: Libri e media, nota: "wikimedia spostata sotto in Regali e donazioni se preferisci", forza: bassa}
+  # --- Persona
+  - {pattern: '(vinted|zara|h ?& ?m\b|uniqlo|\bovs\b|primark|decimo|calzedonia|intimissimi|benetton|foot ?locker|zalando)', l2: Abbigliamento e calzature}
+  - {pattern: '(acqua ?& ?sapone|acqua e sapone|tigota|\bdm\b drogerie|\bdm-fil|sephora|douglas|kiko)', l2: Cura personale}
+  - {pattern: '(parrucchier|barbiere|estetica|nails?\b|nail salon)', l2: Cura personale, forza: bassa}
+  # --- Acquisti
+  - {pattern: '(amazon|amzn|temu|shein|aliexpress|ebay)', l2: Online da dettagliare}
+  - {pattern: '(mediaworld|media markt|unieuro|euronics|expert\b|trony|apple store)', l2: Elettronica}
+  - {pattern: '(wikimedia|wikipedia|emergency|unicef|medici senza frontiere|msf\b|save the children|amnesty|airc)', l2: Regali e donazioni}
+  # --- Casa
+  - {pattern: '(octopus energy|polisenergia|\benel\b|a2a\b|iren\b|\bhera\b|edison|sorgenia|plenitude|acea energia)', l2: Energia e gas}
+  - {pattern: '(\biliad\b|\btim\b|vodafone|wind ?tre|fastweb|ho\. mobile|very mobile|kena|poste ?mobile)', l2: Internet e telefonia}
+  - {pattern: '(ikea|maison du monde|mondo convenienza|leroy ?merlin cucine)', l2: Arredo ed elettrodomestici}
+  - {pattern: '(bricocenter|brico\b|leroy ?merlin|\bobi\b|lavanderia|tintoria|ferramenta|ricambi casa)', l2: Manutenzione e servizi, forza: bassa}
+  # --- Famiglia
+  - {pattern: '(arcaplanet|isola dei tesori|veterinari|zooplus)', l2: Animali}
+  # --- Finanza e PA
+  - {pattern: '(imposta di bollo|bollo (e/c|estratto|dossier|titoli))', l2: Bollo}
+  - {pattern: '(canone (carta|conto)|comm\.? ?bonific|commissione|spese tenuta)', l2: Commissioni bancarie}
+  - {pattern: '(genertel|unipol|allianz|generali|prima assicurazioni|axa\b|zurich|linear)', l2: Assicurazioni (altre)}
+  - {pattern: '(pagopa|\bmav\b|\brav\b)', l2: PagoPA/MAV}
+  - {pattern: '(\bf24\b|agenzia entrate)', l2: Imposte}
+  # --- Salute (solo locale)
+  - {pattern: '(farmacia|parafarmacia|\bfarmacie)', l2: Farmacia}
+  - {pattern: '(dentist|odontoiatr|ortodon)', l2: Dentista}
+  - {pattern: '(ottica|optical|occhial)', l2: Ottica}
+  - {pattern: '(humanitas|ospedale|clinica|poliambulatorio|centro medico|laboratorio analisi|\basl\b|\bats\b|cdi\b|synlab|lifebrain)', l2: Visite ed esami}

@@ -1,0 +1,88 @@
+# Natura della spesa: un valore per ogni spesa, preso dalla sottocategoria e modificabile sul singolo movimento.
+# I valori qui sotto sono quelli di partenza; si cambiano in Regole e tassonomia > Natura della spesa.
+# Una sottocategoria non elencata resta "non definita" finche' non la imposti.
+versione: 1
+valori:
+  necessaria: "Necessaria"
+  svago: "Svago"
+  superflua: "Superflua"
+predefiniti:
+  necessaria:
+    - Mutuo/Affitto
+    - Condominio
+    - Energia e gas
+    - Acqua
+    - Internet e telefonia
+    - Manutenzione e servizi
+    - Arredo ed elettrodomestici
+    - Assicurazione casa
+    - Seconda casa
+    - Tasse
+    - Lavori e migliorie
+    - Trasloco
+    - Compravendita immobile
+    - Supermercato
+    - Negozi alimentari
+    - Mercati
+    - Carburante e ricarica
+    - Pedaggi e Telepass
+    - Parcheggi
+    - Mezzi pubblici
+    - Taxi e car sharing
+    - "Auto: noleggio/rata"
+    - "Auto: manutenzione"
+    - "Auto: assicurazione e bollo"
+    - "Moto e scooter: manutenzione"
+    - "Moto e scooter: assicurazione e bollo"
+    - Sport e palestra
+    - Abbonamenti digitali
+    - Farmacia
+    - Visite ed esami
+    - Dentista
+    - Ottica
+    - Abbigliamento e calzature
+    - Cura personale
+    - Scuola e formazione
+    - Figli
+    - Animali
+    - Aiuti a familiari
+    - Rimborsi a familiari
+    - Commissioni bancarie
+    - Interessi passivi
+    - Bollo
+    - Rate di prestiti
+    - Imposte su rendimenti
+    - Assicurazioni (altre)
+    - Assicurazione Vita
+    - Assicurazione Salute
+    - Commercialista
+    - Parrucchiere
+    - Imposte
+    - Tributi locali
+    - PagoPA/MAV
+    - Multe
+  svago:
+    - Ristoranti
+    - Bar e pasticcerie
+    - Delivery
+    - Voli
+    - Treni lunga percorrenza
+    - Alloggi
+    - Noleggio auto
+    - Pacchetti/agenzie
+    - Lido
+    - Escursioni e attività
+    - Spese Varie
+    - Vino e bevande
+    - Aperitivi e serate
+    - Piante e giardino
+    - Matrimonio
+    - Cinema
+    - Musei e mostre
+    - Spettacoli e concerti
+    - Hobby
+    - Libri e media
+    - Regali e donazioni
+    - Ristorante
+    - Spese Barca
+  superflua: []

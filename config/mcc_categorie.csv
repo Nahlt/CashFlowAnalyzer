@@ -1,0 +1,982 @@
+mcc,descrizione_en,l1,l2,generico
+0742,Veterinary Services,FAMIGLIA E ISTRUZIONE,Animali,no
+0763,Agricultural Co-operatives,,,si
+0780,"Horticultural Services, Landscaping Services",,,si
+1520,General Contractors-Residential and Commercial,,,si
+1711,"Air Conditioning Contractors – Sales and Installation, Heating Contractors – Sales, Service, Installation",,,si
+1731,Electrical Contractors,,,si
+1740,"Insulation – Contractors, Masonry, Stonework Contractors, Plastering Contractors, Stonework and Masonry Contractors, Tile Settings Contractors",,,si
+1750,Carpentry Contractors,,,si
+1761,"Roofing – Contractors, Sheet Metal Work – Contractors, Siding – Contractors",,,si
+1771,Contractors – Concrete Work,,,si
+1799,"Contractors – Special Trade, Not Elsewhere Classified",,,si
+2741,Miscellaneous Publishing and Printing,,,si
+2791,"Typesetting, Plate Making, & Related Services",,,si
+2842,"Specialty Cleaning, Polishing, and Sanitation Preparations",,,si
+3000,UNITED AIRLINES,VIAGGI,Voli,no
+3001,AMERICAN AIRLINES,VIAGGI,Voli,no
+3002,PAN AMERICAN,VIAGGI,Voli,no
+3003,Airlines,VIAGGI,Voli,no
+3004,TRANS WORLD AIRLINES,VIAGGI,Voli,no
+3005,BRITISH AIRWAYS,VIAGGI,Voli,no
+3006,JAPAN AIRLINES,VIAGGI,Voli,no
+3007,AIR FRANCE,VIAGGI,Voli,no
+3008,LUFTHANSA,VIAGGI,Voli,no
+3009,AIR CANADA,VIAGGI,Voli,no
+3010,KLM (ROYAL DUTCH AIRLINES),VIAGGI,Voli,no
+3011,AEORFLOT,VIAGGI,Voli,no
+3012,QANTAS,VIAGGI,Voli,no
+3013,ALITALIA,VIAGGI,Voli,no
+3014,SAUDIA ARABIAN AIRLINES,VIAGGI,Voli,no
+3015,SWISSAIR,VIAGGI,Voli,no
+3016,SAS,VIAGGI,Voli,no
+3017,SOUTH AFRICAN AIRWAYS,VIAGGI,Voli,no
+3018,VARIG (BRAZIL),VIAGGI,Voli,no
+3019,Airlines,VIAGGI,Voli,no
+3020,AIR-INDIA,VIAGGI,Voli,no
+3021,AIR ALGERIE,VIAGGI,Voli,no
+3022,PHILIPPINE AIRLINES,VIAGGI,Voli,no
+3023,MEXICANA,VIAGGI,Voli,no
+3024,PAKISTAN INTERNATIONAL,VIAGGI,Voli,no
+3025,AIR NEW ZEALAND,VIAGGI,Voli,no
+3026,Airlines,VIAGGI,Voli,no
+3027,UTA/INTERAIR,VIAGGI,Voli,no
+3028,AIR MALTA,VIAGGI,Voli,no
+3029,SABENA,VIAGGI,Voli,no
+3030,AEROLINEAS ARGENTINAS,VIAGGI,Voli,no
+3031,OLYMPIC AIRWAYS,VIAGGI,Voli,no
+3032,EL AL,VIAGGI,Voli,no
+3033,ANSETT AIRLINES,VIAGGI,Voli,no
+3034,AUSTRAINLIAN AIRLINES,VIAGGI,Voli,no
+3035,TAP (PORTUGAL),VIAGGI,Voli,no
+3036,VASP (BRAZIL),VIAGGI,Voli,no
+3037,EGYPTAIR,VIAGGI,Voli,no
+3038,KUWAIT AIRLINES,VIAGGI,Voli,no
+3039,AVIANCA,VIAGGI,Voli,no
+3040,GULF AIR (BAHRAIN),VIAGGI,Voli,no
+3041,BALKAN-BULGARIAN AIRLINES,VIAGGI,Voli,no
+3042,FINNAIR,VIAGGI,Voli,no
+3043,AER LINGUS,VIAGGI,Voli,no
+3044,AIR LANKA,VIAGGI,Voli,no
+3045,NIGERIA AIRWAYS,VIAGGI,Voli,no
+3046,CRUZEIRO DO SUL (BRAZIJ),VIAGGI,Voli,no
+3047,THY (TURKEY),VIAGGI,Voli,no
+3048,ROYAL AIR MAROC,VIAGGI,Voli,no
+3049,TUNIS AIR,VIAGGI,Voli,no
+3050,ICELANDAIR,VIAGGI,Voli,no
+3051,AUSTRIAN AIRLINES,VIAGGI,Voli,no
+3052,LANCHILE,VIAGGI,Voli,no
+3053,AVIACO (SPAIN),VIAGGI,Voli,no
+3054,LADECO (CHILE),VIAGGI,Voli,no
+3055,LAB (BOLIVIA),VIAGGI,Voli,no
+3056,QUEBECAIRE,VIAGGI,Voli,no
+3057,EASTWEST AIRLINES (AUSTRALIA),VIAGGI,Voli,no
+3058,DELTA,VIAGGI,Voli,no
+3059,Airlines,VIAGGI,Voli,no
+3060,NORTHWEST,VIAGGI,Voli,no
+3061,CONTINENTAL,VIAGGI,Voli,no
+3062,WESTERN,VIAGGI,Voli,no
+3063,US AIR,VIAGGI,Voli,no
+3064,Airlines,VIAGGI,Voli,no
+3065,AIRINTER,VIAGGI,Voli,no
+3066,SOUTHWEST,VIAGGI,Voli,no
+3067,Airlines,VIAGGI,Voli,no
+3068,Airlines,VIAGGI,Voli,no
+3069,SUN COUNTRY AIRLINES,VIAGGI,Voli,no
+3070,Airlines,VIAGGI,Voli,no
+3071,AIR BRITISH COLUBIA,VIAGGI,Voli,no
+3072,Airlines,VIAGGI,Voli,no
+3073,Airlines,VIAGGI,Voli,no
+3074,Airlines,VIAGGI,Voli,no
+3075,SINGAPORE AIRLINES,VIAGGI,Voli,no
+3076,AEROMEXICO,VIAGGI,Voli,no
+3077,THAI AIRWAYS,VIAGGI,Voli,no
+3078,CHINA AIRLINES,VIAGGI,Voli,no
+3079,Airlines,VIAGGI,Voli,no
+3080,Airlines,VIAGGI,Voli,no
+3081,NORDAIR,VIAGGI,Voli,no
+3082,KOREAN AIRLINES,VIAGGI,Voli,no
+3083,AIR AFRIGUE,VIAGGI,Voli,no
+3084,EVA AIRLINES,VIAGGI,Voli,no
+3085,"MIDWEST EXPRESS AIRLINES, INC.",VIAGGI,Voli,no
+3086,Airlines,VIAGGI,Voli,no
+3087,METRO AIRLINES,VIAGGI,Voli,no
+3088,CROATIA AIRLINES,VIAGGI,Voli,no
+3089,TRANSAERO,VIAGGI,Voli,no
+3090,Airlines,VIAGGI,Voli,no
+3091,Airlines,VIAGGI,Voli,no
+3092,Airlines,VIAGGI,Voli,no
+3093,Airlines,VIAGGI,Voli,no
+3094,ZAMBIA AIRWAYS,VIAGGI,Voli,no
+3095,Airlines,VIAGGI,Voli,no
+3096,AIR ZIMBABWE,VIAGGI,Voli,no
+3097,Airlines,VIAGGI,Voli,no
+3098,Airlines,VIAGGI,Voli,no
+3099,CATHAY PACIFIC,VIAGGI,Voli,no
+3100,MALAYSIAN AIRLINE SYSTEM,VIAGGI,Voli,no
+3101,Airlines,VIAGGI,Voli,no
+3102,IBERIA,VIAGGI,Voli,no
+3103,GARUDA (INDONESIA),VIAGGI,Voli,no
+3104,Airlines,VIAGGI,Voli,no
+3105,Airlines,VIAGGI,Voli,no
+3106,BRAATHENS S.A.F.E. (NORWAY),VIAGGI,Voli,no
+3107,Airlines,VIAGGI,Voli,no
+3108,Airlines,VIAGGI,Voli,no
+3109,Airlines,VIAGGI,Voli,no
+3110,WINGS AIRWAYS,VIAGGI,Voli,no
+3111,BRITISH MIDLAND,VIAGGI,Voli,no
+3112,WINDWARD ISLAND,VIAGGI,Voli,no
+3113,Airlines,VIAGGI,Voli,no
+3114,Airlines,VIAGGI,Voli,no
+3115,Airlines,VIAGGI,Voli,no
+3116,Airlines,VIAGGI,Voli,no
+3117,VIASA,VIAGGI,Voli,no
+3118,VALLEY AIRLINES,VIAGGI,Voli,no
+3119,Airlines,VIAGGI,Voli,no
+3120,Airlines,VIAGGI,Voli,no
+3121,Airlines,VIAGGI,Voli,no
+3122,Airlines,VIAGGI,Voli,no
+3123,Airlines,VIAGGI,Voli,no
+3124,Airlines,VIAGGI,Voli,no
+3125,TAN,VIAGGI,Voli,no
+3126,TALAIR,VIAGGI,Voli,no
+3127,TACA INTERNATIONAL,VIAGGI,Voli,no
+3128,Airlines,VIAGGI,Voli,no
+3129,SURINAM AIRWAYS,VIAGGI,Voli,no
+3130,SUN WORLD INTERNATIONAL,VIAGGI,Voli,no
+3131,Airlines,VIAGGI,Voli,no
+3132,Airlines,VIAGGI,Voli,no
+3133,SUNBELT AIRLINES,VIAGGI,Voli,no
+3134,Airlines,VIAGGI,Voli,no
+3135,SUDAN AIRWAYS,VIAGGI,Voli,no
+3136,Airlines,VIAGGI,Voli,no
+3137,SINGLETON,VIAGGI,Voli,no
+3138,SIMMONS AIRLINES,VIAGGI,Voli,no
+3139,Airlines,VIAGGI,Voli,no
+3140,Airlines,VIAGGI,Voli,no
+3141,Airlines,VIAGGI,Voli,no
+3142,Airlines,VIAGGI,Voli,no
+3143,SCENIC AIRLINES,VIAGGI,Voli,no
+3144,VIRGIN ATLANTIC,VIAGGI,Voli,no
+3145,SAN JUAN AIRLINES,VIAGGI,Voli,no
+3146,LUXAIR,VIAGGI,Voli,no
+3147,Airlines,VIAGGI,Voli,no
+3148,Airlines,VIAGGI,Voli,no
+3149,Airlines,VIAGGI,Voli,no
+3150,Airlines,VIAGGI,Voli,no
+3151,AIR ZAIRE,VIAGGI,Voli,no
+3152,Airlines,VIAGGI,Voli,no
+3153,Airlines,VIAGGI,Voli,no
+3154,PRINCEVILLE,VIAGGI,Voli,no
+3155,Airlines,VIAGGI,Voli,no
+3156,Airlines,VIAGGI,Voli,no
+3157,Airlines,VIAGGI,Voli,no
+3158,Airlines,VIAGGI,Voli,no
+3159,PBA,VIAGGI,Voli,no
+3160,Airlines,VIAGGI,Voli,no
+3161,ALL NIPPON AIRWAYS,VIAGGI,Voli,no
+3162,Airlines,VIAGGI,Voli,no
+3163,Airlines,VIAGGI,Voli,no
+3164,NORONTAIR,VIAGGI,Voli,no
+3165,NEW YORK HELICOPTER,VIAGGI,Voli,no
+3166,Airlines,VIAGGI,Voli,no
+3167,Airlines,VIAGGI,Voli,no
+3168,Airlines,VIAGGI,Voli,no
+3169,Airlines,VIAGGI,Voli,no
+3170,NOUNT COOK,VIAGGI,Voli,no
+3171,CANADIAN AIRLINES INTERNATIONAL,VIAGGI,Voli,no
+3172,NATIONAIR,VIAGGI,Voli,no
+3173,Airlines,VIAGGI,Voli,no
+3174,Airlines,VIAGGI,Voli,no
+3175,Airlines,VIAGGI,Voli,no
+3176,METROFLIGHT AIRLINES,VIAGGI,Voli,no
+3177,Airlines,VIAGGI,Voli,no
+3178,MESA AIR,VIAGGI,Voli,no
+3179,Airlines,VIAGGI,Voli,no
+3180,Airlines,VIAGGI,Voli,no
+3181,MALEV,VIAGGI,Voli,no
+3182,LOT (POLAND),VIAGGI,Voli,no
+3183,Airlines,VIAGGI,Voli,no
+3184,LIAT,VIAGGI,Voli,no
+3185,LAV (VENEZUELA),VIAGGI,Voli,no
+3186,LAP (PARAGUAY),VIAGGI,Voli,no
+3187,LACSA (COSTA RICA),VIAGGI,Voli,no
+3188,Airlines,VIAGGI,Voli,no
+3189,Airlines,VIAGGI,Voli,no
+3190,JUGOSLAV AIR,VIAGGI,Voli,no
+3191,ISLAND AIRLINES,VIAGGI,Voli,no
+3192,IRAN AIR,VIAGGI,Voli,no
+3193,INDIAN AIRLINES,VIAGGI,Voli,no
+3194,Airlines,VIAGGI,Voli,no
+3195,Airlines,VIAGGI,Voli,no
+3196,HAWAIIAN AIR,VIAGGI,Voli,no
+3197,HAVASU AIRLINES,VIAGGI,Voli,no
+3198,Airlines,VIAGGI,Voli,no
+3199,Airlines,VIAGGI,Voli,no
+3200,FUYANA AIRWAYS,VIAGGI,Voli,no
+3201,Airlines,VIAGGI,Voli,no
+3202,Airlines,VIAGGI,Voli,no
+3203,GOLDEN PACIFIC AIR,VIAGGI,Voli,no
+3204,FREEDOM AIR,VIAGGI,Voli,no
+3205,Airlines,VIAGGI,Voli,no
+3206,Airlines,VIAGGI,Voli,no
+3207,Airlines,VIAGGI,Voli,no
+3208,Airlines,VIAGGI,Voli,no
+3209,Airlines,VIAGGI,Voli,no
+3210,Airlines,VIAGGI,Voli,no
+3211,Airlines,VIAGGI,Voli,no
+3212,DOMINICANA,VIAGGI,Voli,no
+3213,Airlines,VIAGGI,Voli,no
+3214,Airlines,VIAGGI,Voli,no
+3215,DAN AIR SERVICES,VIAGGI,Voli,no
+3216,CUMBERLAND AIRLINES,VIAGGI,Voli,no
+3217,CSA,VIAGGI,Voli,no
+3218,CROWN AIR,VIAGGI,Voli,no
+3219,COPA,VIAGGI,Voli,no
+3220,COMPANIA FAUCETT,VIAGGI,Voli,no
+3221,TRANSPORTES AEROS MILITARES ECCUATORANOS,VIAGGI,Voli,no
+3222,COMMAND AIRWAYS,VIAGGI,Voli,no
+3223,COMAIR,VIAGGI,Voli,no
+3224,Airlines,VIAGGI,Voli,no
+3225,Airlines,VIAGGI,Voli,no
+3226,Airlines,VIAGGI,Voli,no
+3227,Airlines,VIAGGI,Voli,no
+3228,CAYMAN AIRWAYS,VIAGGI,Voli,no
+3229,SAETA SOCIAEDAD ECUATORIANOS DE TRANSPORTES AEREOS,VIAGGI,Voli,no
+3230,Airlines,VIAGGI,Voli,no
+3231,SASHA SERVICIO AERO DE HONDURAS,VIAGGI,Voli,no
+3232,Airlines,VIAGGI,Voli,no
+3233,CAPITOL AIR,VIAGGI,Voli,no
+3234,BWIA,VIAGGI,Voli,no
+3235,BROKWAY AIR,VIAGGI,Voli,no
+3236,Airlines,VIAGGI,Voli,no
+3237,Airlines,VIAGGI,Voli,no
+3238,BEMIDJI AIRLINES,VIAGGI,Voli,no
+3239,BAR HARBOR AIRLINES,VIAGGI,Voli,no
+3240,BAHAMASAIR,VIAGGI,Voli,no
+3241,AVIATECA (GUATEMALA),VIAGGI,Voli,no
+3242,AVENSA,VIAGGI,Voli,no
+3243,AUSTRIAN AIR SERVICE,VIAGGI,Voli,no
+3244,Airlines,VIAGGI,Voli,no
+3245,Airlines,VIAGGI,Voli,no
+3246,Airlines,VIAGGI,Voli,no
+3247,Airlines,VIAGGI,Voli,no
+3248,Airlines,VIAGGI,Voli,no
+3249,Airlines,VIAGGI,Voli,no
+3250,Airlines,VIAGGI,Voli,no
+3251,ALOHA AIRLINES,VIAGGI,Voli,no
+3252,ALM,VIAGGI,Voli,no
+3253,AMERICA WEST,VIAGGI,Voli,no
+3254,TRUMP AIRLINE,VIAGGI,Voli,no
+3255,Airlines,VIAGGI,Voli,no
+3256,ALASKA AIRLINES,VIAGGI,Voli,no
+3257,Airlines,VIAGGI,Voli,no
+3258,Airlines,VIAGGI,Voli,no
+3259,AMERICAN TRANS AIR,VIAGGI,Voli,no
+3260,Airlines,VIAGGI,Voli,no
+3261,AIR CHINA,VIAGGI,Voli,no
+3262,"RENO AIR, INC.",VIAGGI,Voli,no
+3263,Airlines,VIAGGI,Voli,no
+3264,Airlines,VIAGGI,Voli,no
+3265,Airlines,VIAGGI,Voli,no
+3266,AIR SEYCHELLES,VIAGGI,Voli,no
+3267,AIR PANAMA,VIAGGI,Voli,no
+3268,Airlines,VIAGGI,Voli,no
+3269,Airlines,VIAGGI,Voli,no
+3270,Airlines,VIAGGI,Voli,no
+3271,Airlines,VIAGGI,Voli,no
+3272,Airlines,VIAGGI,Voli,no
+3273,Airlines,VIAGGI,Voli,no
+3274,Airlines,VIAGGI,Voli,no
+3275,Airlines,VIAGGI,Voli,no
+3276,Airlines,VIAGGI,Voli,no
+3277,Airlines,VIAGGI,Voli,no
+3278,Airlines,VIAGGI,Voli,no
+3279,Airlines,VIAGGI,Voli,no
+3280,AIR JAMAICA,VIAGGI,Voli,no
+3281,Airlines,VIAGGI,Voli,no
+3282,AIR DJIBOUTI,VIAGGI,Voli,no
+3283,Airlines,VIAGGI,Voli,no
+3284,AERO VIRGIN ISLANDS,VIAGGI,Voli,no
+3285,AERO PERU,VIAGGI,Voli,no
+3286,AEROLINEAS NICARAGUENSIS,VIAGGI,Voli,no
+3287,AERO COACH AVAIATION,VIAGGI,Voli,no
+3288,Airlines,VIAGGI,Voli,no
+3289,Airlines,VIAGGI,Voli,no
+3290,Airlines,VIAGGI,Voli,no
+3291,ARIANA AFGHAN,VIAGGI,Voli,no
+3292,CYPRUS AIRWAYS,VIAGGI,Voli,no
+3293,ECUATORIANA,VIAGGI,Voli,no
+3294,ETHIOPIAN AIRLINES,VIAGGI,Voli,no
+3295,KENYA AIRLINES,VIAGGI,Voli,no
+3296,Airlines,VIAGGI,Voli,no
+3297,Airlines,VIAGGI,Voli,no
+3298,AIR MAURITIUS,VIAGGI,Voli,no
+3299,WIDERO’S FLYVESELSKAP,VIAGGI,Voli,no
+3351,AFFILIATED AUTO RENTAL,VIAGGI,Noleggio auto,no
+3352,AMERICAN INTL RENT-A-CAR,VIAGGI,Noleggio auto,no
+3353,BROOKS RENT-A-CAR,VIAGGI,Noleggio auto,no
+3354,ACTION AUTO RENTAL,VIAGGI,Noleggio auto,no
+3355,Car Rental,VIAGGI,Noleggio auto,no
+3356,Car Rental,VIAGGI,Noleggio auto,no
+3357,HERTZ RENT-A-CAR,VIAGGI,Noleggio auto,no
+3358,Car Rental,VIAGGI,Noleggio auto,no
+3359,PAYLESS CAR RENTAL,VIAGGI,Noleggio auto,no
+3360,SNAPPY CAR RENTAL,VIAGGI,Noleggio auto,no
+3361,AIRWAYS RENT-A-CAR,VIAGGI,Noleggio auto,no
+3362,ALTRA AUTO RENTAL,VIAGGI,Noleggio auto,no
+3363,Car Rental,VIAGGI,Noleggio auto,no
+3364,AGENCY RENT-A-CAR,VIAGGI,Noleggio auto,no
+3365,Car Rental,VIAGGI,Noleggio auto,no
+3366,BUDGET RENT-A-CAR,VIAGGI,Noleggio auto,no
+3367,Car Rental,VIAGGI,Noleggio auto,no
+3368,HOLIDAY RENT-A-WRECK,VIAGGI,Noleggio auto,no
+3369,Car Rental,VIAGGI,Noleggio auto,no
+3370,RENT-A-WRECK,VIAGGI,Noleggio auto,no
+3371,Car Rental,VIAGGI,Noleggio auto,no
+3372,Car Rental,VIAGGI,Noleggio auto,no
+3373,Car Rental,VIAGGI,Noleggio auto,no
+3374,Car Rental,VIAGGI,Noleggio auto,no
+3375,Car Rental,VIAGGI,Noleggio auto,no
+3376,AJAX RENT-A-CAR,VIAGGI,Noleggio auto,no
+3377,Car Rental,VIAGGI,Noleggio auto,no
+3378,Car Rental,VIAGGI,Noleggio auto,no
+3379,Car Rental,VIAGGI,Noleggio auto,no
+3380,Car Rental,VIAGGI,Noleggio auto,no
+3381,EUROP CAR,VIAGGI,Noleggio auto,no
+3382,Car Rental,VIAGGI,Noleggio auto,no
+3383,Car Rental,VIAGGI,Noleggio auto,no
+3384,Car Rental,VIAGGI,Noleggio auto,no
+3385,TROPICAL RENT-A-CAR,VIAGGI,Noleggio auto,no
+3386,SHOWCASE RENTAL CARS,VIAGGI,Noleggio auto,no
+3387,ALAMO RENT-A-CAR,VIAGGI,Noleggio auto,no
+3388,Car Rental,VIAGGI,Noleggio auto,no
+3389,AVIS RENT-A-CAR,VIAGGI,Noleggio auto,no
+3390,DOLLAR RENT-A-CAR,VIAGGI,Noleggio auto,no
+3391,EUROPE BY CAR,VIAGGI,Noleggio auto,no
+3392,Car Rental,VIAGGI,Noleggio auto,no
+3393,NATIONAL CAR RENTAL,VIAGGI,Noleggio auto,no
+3394,KEMWELL GROUP RENT-A-CAR,VIAGGI,Noleggio auto,no
+3395,THRIFTY RENT-A-CAR,VIAGGI,Noleggio auto,no
+3396,TILDEN TENT-A-CAR,VIAGGI,Noleggio auto,no
+3397,Car Rental,VIAGGI,Noleggio auto,no
+3398,ECONO-CAR RENT-A-CAR,VIAGGI,Noleggio auto,no
+3399,Car Rental,VIAGGI,Noleggio auto,no
+3400,AUTO HOST COST CAR RENTALS,VIAGGI,Noleggio auto,no
+3401,Car Rental,VIAGGI,Noleggio auto,no
+3402,Car Rental,VIAGGI,Noleggio auto,no
+3403,Car Rental,VIAGGI,Noleggio auto,no
+3404,Car Rental,VIAGGI,Noleggio auto,no
+3405,ENTERPRISE RENT-A-CAR,VIAGGI,Noleggio auto,no
+3406,Car Rental,VIAGGI,Noleggio auto,no
+3407,Car Rental,VIAGGI,Noleggio auto,no
+3408,Car Rental,VIAGGI,Noleggio auto,no
+3409,GENERAL RENT-A-CAR,VIAGGI,Noleggio auto,no
+3410,Car Rental,VIAGGI,Noleggio auto,no
+3411,Car Rental,VIAGGI,Noleggio auto,no
+3412,A-1 RENT-A-CAR,VIAGGI,Noleggio auto,no
+3413,Car Rental,VIAGGI,Noleggio auto,no
+3414,GODFREY NATL RENT-A-CAR,VIAGGI,Noleggio auto,no
+3415,Car Rental,VIAGGI,Noleggio auto,no
+3416,Car Rental,VIAGGI,Noleggio auto,no
+3417,Car Rental,VIAGGI,Noleggio auto,no
+3418,Car Rental,VIAGGI,Noleggio auto,no
+3419,ALPHA RENT-A-CAR,VIAGGI,Noleggio auto,no
+3420,ANSA INTL RENT-A-CAR,VIAGGI,Noleggio auto,no
+3421,ALLSTAE RENT-A-CAR,VIAGGI,Noleggio auto,no
+3422,Car Rental,VIAGGI,Noleggio auto,no
+3423,AVCAR RENT-A-CAR,VIAGGI,Noleggio auto,no
+3424,Car Rental,VIAGGI,Noleggio auto,no
+3425,AUTOMATE RENT-A-CAR,VIAGGI,Noleggio auto,no
+3426,Car Rental,VIAGGI,Noleggio auto,no
+3427,AVON RENT-A-CAR,VIAGGI,Noleggio auto,no
+3428,CAREY RENT-A-CAR,VIAGGI,Noleggio auto,no
+3429,INSURANCE RENT-A-CAR,VIAGGI,Noleggio auto,no
+3430,MAJOR RENT-A-CAR,VIAGGI,Noleggio auto,no
+3431,REPLACEMENT RENT-A-CAR,VIAGGI,Noleggio auto,no
+3432,RESERVE RENT-A-CAR,VIAGGI,Noleggio auto,no
+3433,UGLY DUCKLING RENT-A-CAR,VIAGGI,Noleggio auto,no
+3434,USA RENT-A-CAR,VIAGGI,Noleggio auto,no
+3435,VALUE RENT-A-CAR,VIAGGI,Noleggio auto,no
+3436,AUTOHANSA RENT-A-CAR,VIAGGI,Noleggio auto,no
+3437,CITE RENT-A-CAR,VIAGGI,Noleggio auto,no
+3438,INTERENT RENT-A-CAR,VIAGGI,Noleggio auto,no
+3439,MILLEVILLE RENT-A-CAR,VIAGGI,Noleggio auto,no
+3440,VIA ROUTE RENT-A-CAR,VIAGGI,Noleggio auto,no
+3441,Car Rental,VIAGGI,Noleggio auto,no
+3501,"HOLIDAY INNS, HOLIDAY INN EXPRESS",VIAGGI,Alloggi,no
+3502,BEST WESTERN HOTELS,VIAGGI,Alloggi,no
+3503,SHERATON HOTELS,VIAGGI,Alloggi,no
+3504,HILTON HOTELS,VIAGGI,Alloggi,no
+3505,FORTE HOTELS,VIAGGI,Alloggi,no
+3506,GOLDEN TULIP HOTELS,VIAGGI,Alloggi,no
+3507,FRIENDSHIP INNS,VIAGGI,Alloggi,no
+3508,"QUALITY INNS, QUALITY SUITES",VIAGGI,Alloggi,no
+3509,MARRIOTT HOTELS,VIAGGI,Alloggi,no
+3510,"DAYS INN, DAYSTOP",VIAGGI,Alloggi,no
+3511,ARABELLA HOTELS,VIAGGI,Alloggi,no
+3512,INTER-CONTINENTAL HOTELS,VIAGGI,Alloggi,no
+3513,WESTIN HOTELS,VIAGGI,Alloggi,no
+3514,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3515,RODEWAY INNS,VIAGGI,Alloggi,no
+3516,LA QUINTA MOTOR INNS,VIAGGI,Alloggi,no
+3517,AMERICANA HOTELS,VIAGGI,Alloggi,no
+3518,SOL HOTELS,VIAGGI,Alloggi,no
+3519,PULLMAN INTERNATIONAL HOTELS,VIAGGI,Alloggi,no
+3520,MERIDIEN HOTELS,VIAGGI,Alloggi,no
+3521,CREST HOTELS (see FORTE HOTELS),VIAGGI,Alloggi,no
+3522,TOKYO HOTEL,VIAGGI,Alloggi,no
+3523,PENNSULA HOTEL,VIAGGI,Alloggi,no
+3524,WELCOMGROUP HOTELS,VIAGGI,Alloggi,no
+3525,DUNFEY HOTELS,VIAGGI,Alloggi,no
+3526,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3527,DOWNTOWNER-PASSPORT HOTEL,VIAGGI,Alloggi,no
+3528,"RED LION HOTELS, RED LION INNS",VIAGGI,Alloggi,no
+3529,CP HOTELS,VIAGGI,Alloggi,no
+3530,"RENAISSANCE HOTELS, STOUFFER HOTELS",VIAGGI,Alloggi,no
+3531,ASTIR HOTELS,VIAGGI,Alloggi,no
+3532,SUN ROUTE HOTELS,VIAGGI,Alloggi,no
+3533,HOTEL IBIS,VIAGGI,Alloggi,no
+3534,SOUTHERN PACIFIC HOTELS,VIAGGI,Alloggi,no
+3535,HILTON INTERNATIONAL,VIAGGI,Alloggi,no
+3536,AMFAC HOTELS,VIAGGI,Alloggi,no
+3537,ANA HOTEL,VIAGGI,Alloggi,no
+3538,CONCORDE HOTELS,VIAGGI,Alloggi,no
+3539,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3540,IBEROTEL HOTELS,VIAGGI,Alloggi,no
+3541,HOTEL OKURA,VIAGGI,Alloggi,no
+3542,ROYAL HOTELS,VIAGGI,Alloggi,no
+3543,FOUR SEASONS HOTELS,VIAGGI,Alloggi,no
+3544,CIGA HOTELS,VIAGGI,Alloggi,no
+3545,SHANGRI-LA INTERNATIONAL,VIAGGI,Alloggi,no
+3546,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3547,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3548,HOTELES MELIA,VIAGGI,Alloggi,no
+3549,AUBERGE DES GOVERNEURS,VIAGGI,Alloggi,no
+3550,REGAL 8 INNS,VIAGGI,Alloggi,no
+3551,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3552,COAST HOTELS,VIAGGI,Alloggi,no
+3553,PARK INNS INTERNATIONAL,VIAGGI,Alloggi,no
+3554,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3555,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3556,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3557,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3558,JOLLY HOTELS,VIAGGI,Alloggi,no
+3559,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3560,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3561,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3562,COMFORT INNS,VIAGGI,Alloggi,no
+3563,JOURNEY’S END MOTLS,VIAGGI,Alloggi,no
+3564,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3565,RELAX INNS,VIAGGI,Alloggi,no
+3566,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3567,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3568,LADBROKE HOTELS,VIAGGI,Alloggi,no
+3569,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3570,FORUM HOTELS,VIAGGI,Alloggi,no
+3571,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3572,MIYAKO HOTELS,VIAGGI,Alloggi,no
+3573,SANDMAN HOTELS,VIAGGI,Alloggi,no
+3574,VENTURE INNS,VIAGGI,Alloggi,no
+3575,VAGABOND HOTELS,VIAGGI,Alloggi,no
+3576,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3577,MANDARIN ORIENTAL HOTEL,VIAGGI,Alloggi,no
+3578,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3579,HOTEL MERCURE,VIAGGI,Alloggi,no
+3580,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3581,DELTA HOTEL,VIAGGI,Alloggi,no
+3582,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3583,SAS HOTELS,VIAGGI,Alloggi,no
+3584,PRINCESS HOTELS INTERNATIONAL,VIAGGI,Alloggi,no
+3585,HUNGAR HOTELS,VIAGGI,Alloggi,no
+3586,SOKOS HOTELS,VIAGGI,Alloggi,no
+3587,DORAL HOTELS,VIAGGI,Alloggi,no
+3588,HELMSLEY HOTELS,VIAGGI,Alloggi,no
+3589,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3590,FAIRMONT HOTELS,VIAGGI,Alloggi,no
+3591,SONESTA HOTELS,VIAGGI,Alloggi,no
+3592,OMNI HOTELS,VIAGGI,Alloggi,no
+3593,CUNARD HOTELS,VIAGGI,Alloggi,no
+3594,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3595,HOSPITALITY INTERNATIONAL,VIAGGI,Alloggi,no
+3596,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3597,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3598,REGENT INTERNATIONAL HOTELS,VIAGGI,Alloggi,no
+3599,PANNONIA HOTELS,VIAGGI,Alloggi,no
+3600,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3601,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3602,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3603,NOAH’S HOTELS,VIAGGI,Alloggi,no
+3604,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3605,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3606,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3607,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3608,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3609,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3610,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3611,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3612,MOVENPICK HOTELS,VIAGGI,Alloggi,no
+3613,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3614,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3615,TRAVELODGE,VIAGGI,Alloggi,no
+3616,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3617,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3618,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3619,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3620,TELFORD INTERNATIONAL,VIAGGI,Alloggi,no
+3621,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3622,MERLIN HOTELS,VIAGGI,Alloggi,no
+3623,DORINT HOTELS,VIAGGI,Alloggi,no
+3624,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3625,HOTLE UNIVERSALE,VIAGGI,Alloggi,no
+3626,PRINCE HOTELS,VIAGGI,Alloggi,no
+3627,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3628,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3629,DAN HOTELS,VIAGGI,Alloggi,no
+3630,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3631,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3632,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3633,RANK HOTELS,VIAGGI,Alloggi,no
+3634,SWISSOTEL,VIAGGI,Alloggi,no
+3635,RESO HOTELS,VIAGGI,Alloggi,no
+3636,SAROVA HOTELS,VIAGGI,Alloggi,no
+3637,"RAMADA INNS, RAMADA LIMITED",VIAGGI,Alloggi,no
+3638,"HO JO INN, HOWARD JOHNSON",VIAGGI,Alloggi,no
+3639,MOUNT CHARLOTTE THISTLE,VIAGGI,Alloggi,no
+3640,HYATT HOTEL,VIAGGI,Alloggi,no
+3641,SOFITEL HOTELS,VIAGGI,Alloggi,no
+3642,NOVOTEL HOTELS,VIAGGI,Alloggi,no
+3643,STEIGENBERGER HOTELS,VIAGGI,Alloggi,no
+3644,ECONO LODGES,VIAGGI,Alloggi,no
+3645,QUEENS MOAT HOUSES,VIAGGI,Alloggi,no
+3646,SWALLOW HOTELS,VIAGGI,Alloggi,no
+3647,HUSA HOTELS,VIAGGI,Alloggi,no
+3648,DE VERE HOTELS,VIAGGI,Alloggi,no
+3649,RADISSON HOTELS,VIAGGI,Alloggi,no
+3650,RED ROOK INNS,VIAGGI,Alloggi,no
+3651,IMPERIAL LONDON HOTEL,VIAGGI,Alloggi,no
+3652,EMBASSY HOTELS,VIAGGI,Alloggi,no
+3653,PENTA HOTELS,VIAGGI,Alloggi,no
+3654,LOEWS HOTELS,VIAGGI,Alloggi,no
+3655,SCANDIC HOTELS,VIAGGI,Alloggi,no
+3656,SARA HOTELS,VIAGGI,Alloggi,no
+3657,OBEROI HOTELS,VIAGGI,Alloggi,no
+3658,OTANI HOTELS,VIAGGI,Alloggi,no
+3659,TAJ HOTELS INTERNATIONAL,VIAGGI,Alloggi,no
+3660,KNIGHTS INNS,VIAGGI,Alloggi,no
+3661,METROPOLE HOTELS,VIAGGI,Alloggi,no
+3662,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3663,HOTELES EL PRESIDENTS,VIAGGI,Alloggi,no
+3664,FLAG INN,VIAGGI,Alloggi,no
+3665,HAMPTON INNS,VIAGGI,Alloggi,no
+3666,STAKIS HOTELS,VIAGGI,Alloggi,no
+3667,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3668,MARITIM HOTELS,VIAGGI,Alloggi,no
+3669,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3670,ARCARD HOTELS,VIAGGI,Alloggi,no
+3671,ARCTIA HOTELS,VIAGGI,Alloggi,no
+3672,CAMPANIEL HOTELS,VIAGGI,Alloggi,no
+3673,IBUSZ HOTELS,VIAGGI,Alloggi,no
+3674,RANTASIPI HOTELS,VIAGGI,Alloggi,no
+3675,INTERHOTEL CEDOK,VIAGGI,Alloggi,no
+3676,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3677,CLIMAT DE FRANCE HOTELS,VIAGGI,Alloggi,no
+3678,CUMULUS HOTELS,VIAGGI,Alloggi,no
+3679,DANUBIUS HOTEL,VIAGGI,Alloggi,no
+3680,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3681,ADAMS MARK HOTELS,VIAGGI,Alloggi,no
+3682,ALLSTAR INNS,VIAGGI,Alloggi,no
+3683,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3684,BUDGET HOST INNS,VIAGGI,Alloggi,no
+3685,BUDGETEL HOTELS,VIAGGI,Alloggi,no
+3686,SUISSE CHALETS,VIAGGI,Alloggi,no
+3687,CLARION HOTELS,VIAGGI,Alloggi,no
+3688,COMPRI HOTELS,VIAGGI,Alloggi,no
+3689,CONSORT HOTELS,VIAGGI,Alloggi,no
+3690,COURTYARD BY MARRIOTT,VIAGGI,Alloggi,no
+3691,DILLION INNS,VIAGGI,Alloggi,no
+3692,DOUBLETREE HOTELS,VIAGGI,Alloggi,no
+3693,DRURY INNS,VIAGGI,Alloggi,no
+3694,ECONOMY INNS OF AMERICA,VIAGGI,Alloggi,no
+3695,EMBASSY SUITES,VIAGGI,Alloggi,no
+3696,EXEL INNS,VIAGGI,Alloggi,no
+3697,FARFIELD HOTELS,VIAGGI,Alloggi,no
+3698,HARLEY HOTELS,VIAGGI,Alloggi,no
+3699,MIDWAY MOTOR LODGE,VIAGGI,Alloggi,no
+3700,MOTEL 6,VIAGGI,Alloggi,no
+3701,GUEST QUARTERS (Formally PICKETT SUITE HOTELS),VIAGGI,Alloggi,no
+3702,THE REGISTRY HOTELS,VIAGGI,Alloggi,no
+3703,RESIDENCE INNS,VIAGGI,Alloggi,no
+3704,ROYCE HOTELS,VIAGGI,Alloggi,no
+3705,SANDMAN INNS,VIAGGI,Alloggi,no
+3706,SHILO INNS,VIAGGI,Alloggi,no
+3707,SHONEY’S INNS,VIAGGI,Alloggi,no
+3708,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3709,SUPER8 MOTELS,VIAGGI,Alloggi,no
+3710,THE RITZ CARLTON HOTELS,VIAGGI,Alloggi,no
+3711,FLAG INNS (AUSRALIA),VIAGGI,Alloggi,no
+3712,GOLDEN CHAIN HOTEL,VIAGGI,Alloggi,no
+3713,QUALITY PACIFIC HOTEL,VIAGGI,Alloggi,no
+3714,FOUR SEASONS HOTEL (AUSTRALIA),VIAGGI,Alloggi,no
+3715,FARIFIELD INN,VIAGGI,Alloggi,no
+3716,CARLTON HOTELS,VIAGGI,Alloggi,no
+3717,CITY LODGE HOTELS,VIAGGI,Alloggi,no
+3718,KAROS HOTELS,VIAGGI,Alloggi,no
+3719,PROTEA HOTELS,VIAGGI,Alloggi,no
+3720,SOUTHERN SUN HOTELS,VIAGGI,Alloggi,no
+3721,HILTON CONRAD,VIAGGI,Alloggi,no
+3722,WYNDHAM HOTEL AND RESORTS,VIAGGI,Alloggi,no
+3723,RICA HOTELS,VIAGGI,Alloggi,no
+3724,INER NOR HOTELS,VIAGGI,Alloggi,no
+3725,SEAINES PLANATION,VIAGGI,Alloggi,no
+3726,RIO SUITES,VIAGGI,Alloggi,no
+3727,BROADMOOR HOTEL,VIAGGI,Alloggi,no
+3728,BALLY’S HOTEL AND CASINO,VIAGGI,Alloggi,no
+3729,JOHN ASCUAGA’S NUGGET,VIAGGI,Alloggi,no
+3730,MGM GRAND HOTEL,VIAGGI,Alloggi,no
+3731,HARRAH’S HOTELS AND CASINOS,VIAGGI,Alloggi,no
+3732,OPRYLAND HOTEL,VIAGGI,Alloggi,no
+3733,BOCA RATON RESORT,VIAGGI,Alloggi,no
+3734,HARVEY/BRISTOL HOTELS,VIAGGI,Alloggi,no
+3735,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3736,COLORADO BELLE/EDGEWATER RESORT,VIAGGI,Alloggi,no
+3737,RIVIERA HOTEL AND CASINO,VIAGGI,Alloggi,no
+3738,TROPICANA RESORT AND CASINO,VIAGGI,Alloggi,no
+3739,WOODSIDE HOTELS AND RESORTS,VIAGGI,Alloggi,no
+3740,TOWNPLACE SUITES,VIAGGI,Alloggi,no
+3741,MILLENIUM BROADWAY HOTEL,VIAGGI,Alloggi,no
+3742,CLUB MED,VIAGGI,Alloggi,no
+3743,BILTMORE HOTEL AND SUITES,VIAGGI,Alloggi,no
+3744,CAREFREE RESORTS,VIAGGI,Alloggi,no
+3745,ST. REGIS HOTEL,VIAGGI,Alloggi,no
+3746,THE ELIOT HOTEL,VIAGGI,Alloggi,no
+3747,CLUBCORP/CLUB RESORTS,VIAGGI,Alloggi,no
+3748,WELESLEY INNS,VIAGGI,Alloggi,no
+3749,THE BEVERLY HILLS HOTEL,VIAGGI,Alloggi,no
+3750,CROWNE PLAZA HOTELS,VIAGGI,Alloggi,no
+3751,HOMEWOOD SUITES,VIAGGI,Alloggi,no
+3752,PEABODY HOTELS,VIAGGI,Alloggi,no
+3753,GREENBRIAH RESORTS,VIAGGI,Alloggi,no
+3754,AMELIA ISLAND PLANATION,VIAGGI,Alloggi,no
+3755,THE HOMESTEAD,VIAGGI,Alloggi,no
+3756,SOUTH SEAS RESORTS,VIAGGI,Alloggi,no
+3757,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3758,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3759,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3760,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3761,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3762,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3763,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3764,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3765,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3766,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3767,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3768,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3769,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3770,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3771,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3772,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3773,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3774,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3775,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3776,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3777,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3778,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3779,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3780,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3781,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3782,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3783,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3784,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3785,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3786,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3787,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3788,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3789,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3790,Hotels/Motels/Inns/Resorts,VIAGGI,Alloggi,no
+3816,Home2Suites,VIAGGI,Alloggi,no
+3835,* MASTERS ECONOMY INNS,VIAGGI,Alloggi,no
+4011,Railroads,TRASPORTI,Mezzi pubblici,si
+4111,"Local/Suburban Commuter Passenger Transportation – Railroads, Feries, Local Water Transportation.",TRASPORTI,Mezzi pubblici,no
+4112,Passenger Railways,VIAGGI,Treni lunga percorrenza,no
+4119,Ambulance Services,,,si
+4121,Taxicabs and Limousines,TRASPORTI,Taxi e car sharing,no
+4131,"Bus Lines, Including Charters, Tour Buses",TRASPORTI,Mezzi pubblici,no
+4214,"Motor Freight Carriers, Moving and Storage Companies, Trucking – Local/Long Distance, Delivery Services – Local",,,si
+4215,"Courier Services – Air or Ground, Freight forwarders",,,si
+4225,"Public warehousing, Storage",,,si
+4411,Cruise and Steamship Lines,VIAGGI,Pacchetti/agenzie,no
+4457,Boat Rentals and Leases,SVAGO E CULTURA,Hobby,no
+4468,"Marinas, Marine Service, and Supplies",SVAGO E CULTURA,Hobby,no
+4511,"Airlines, Air Carriers ( not listed elsewhere)",VIAGGI,Voli,no
+4582,"Airports, Airport Terminals, Flying Fields",VIAGGI,Voli,no
+4722,Travel Agencies and Tour Operations,VIAGGI,Pacchetti/agenzie,no
+4723,Package Tour Operators (For use in Germany only),,,si
+4784,Toll and Bridge Fees,TRASPORTI,Pedaggi e Telepass,no
+4789,"Transportation Services, Not elsewhere classified)",TRASPORTI,Mezzi pubblici,si
+4812,Telecommunications Equipment including telephone sales,ACQUISTI,Elettronica,no
+4814,"Fax services, Telecommunication Services",CASA,Internet e telefonia,no
+4815,VisaPhone,,,si
+4816,Computer Network Services,SVAGO E CULTURA,Abbonamenti digitali,si
+4821,Telegraph services,,,si
+4829,Money Orders – Wire Transfer,,,si
+4899,Cable and other pay television (previously Cable Services),SVAGO E CULTURA,Abbonamenti digitali,no
+4900,"Electric, Gas, Sanitary and Water Utilities",CASA,Energia e gas,no
+5013,Motor vehicle supplies and new parts,,,si
+5021,Office and Commercial Furniture,,,si
+5039,"Construction Materials, Not Elsewhere Classified",,,si
+5044,"Office, Photographic, Photocopy, and Microfilm Equipment",,,si
+5045,"Computers, Computer Peripheral Equipment, Software",,,si
+5046,"Commercial Equipment, Not Elsewhere Classified",,,si
+5047,"Medical, Dental Ophthalmic, Hospital Equipment and Supplies",,,si
+5051,Metal Service Centers and Offices,,,si
+5065,Electrical Parts and Equipment,,,si
+5072,Hardware Equipment and Supplies,,,si
+5074,Plumbing and Heating Equipment and Supplies,,,si
+5085,"Industrial Supplies, Not Elsewhere Classified",,,si
+5094,"Precious Stones and Metals, Watches and Jewelry",,,si
+5099,"Durable Goods, Not Elsewhere Classified",,,si
+5111,"Stationery, Office Supplies, Printing, and Writing Paper",,,si
+5122,"Drugs, Drug Proprietors, and Druggist’s Sundries",,,si
+5131,"Piece Goods, Notions, and Other Dry Goods",,,si
+5137,Men’s Women’s and Children’s Uniforms and Commercial Clothing,,,si
+5139,Commercial Footwear,,,si
+5169,"Chemicals and Allied Products, Not Elsewhere Classified",,,si
+5172,Petroleum and Petroleum Products,,,si
+5192,"Books, Periodicals, and Newspapers",,,si
+5193,"Florists’ Supplies, Nursery Stock and Flowers",,,si
+5198,"Paints, Varnishes, and Supplies",,,si
+5199,"Non-durable Goods, Not Elsewhere Classified",,,si
+5200,Home Supply Warehouse Stores,CASA,Manutenzione e servizi,no
+5211,Lumber and Building Materials Stores,CASA,Manutenzione e servizi,no
+5231,"Glass, Paint, and Wallpaper Stores",CASA,Manutenzione e servizi,no
+5251,Hardware Stores,CASA,Manutenzione e servizi,no
+5261,Nurseries – Lawn and Garden Supply Store,CASA,Manutenzione e servizi,no
+5271,Mobile Home Dealers,,,si
+5300,Wholesale Clubs,ALIMENTARI,Supermercato,no
+5309,Duty Free Store,ACQUISTI,Varie,si
+5310,Discount Stores,ACQUISTI,Varie,si
+5311,Department Stores,ACQUISTI,Varie,si
+5331,Variety Stores,ACQUISTI,Varie,si
+5399,Misc. General Merchandise,ACQUISTI,Varie,si
+5411,"Grocery Stores, Supermarkets",ALIMENTARI,Supermercato,no
+5422,Meat Provisioners – Freezer and Locker,ALIMENTARI,Negozi alimentari,no
+5441,"Candy, Nut, and Confectionery Stores",ALIMENTARI,Negozi alimentari,no
+5451,Dairy Products Stores,ALIMENTARI,Negozi alimentari,no
+5462,Bakeries,ALIMENTARI,Negozi alimentari,no
+5499,Misc. Food Stores – Convenience Stores and Specialty Markets,ALIMENTARI,Negozi alimentari,no
+5511,"Car and Truck Dealers (New and Used) Sales, Service, Repairs, Parts, and Leasing",TRASPORTI,Auto: noleggio/rata,si
+5521,Automobile and Truck Dealers (Used Only),TRASPORTI,Auto: noleggio/rata,si
+5531,Automobile Supply Stores,TRASPORTI,Auto: manutenzione,no
+5532,Automotive Tire Stores,TRASPORTI,Auto: manutenzione,no
+5533,"Automotive Parts, Accessories Stores",TRASPORTI,Auto: manutenzione,no
+5541,Service Stations ( with or without ancillary services),TRASPORTI,Carburante e ricarica,no
+5542,Automated Fuel Dispensers,TRASPORTI,Carburante e ricarica,no
+5551,Boat Dealers,,,si
+5561,"Recreational and Utility Trailers, Camp Dealers",,,si
+5571,Motorcycle Dealers,TRASPORTI,Auto: manutenzione,no
+5592,Motor Home Dealers,,,si
+5598,Snowmobile Dealers,SVAGO E CULTURA,Hobby,no
+5599,Miscellaneous Auto Dealers ,TRASPORTI,Auto: manutenzione,si
+5611,Men’s and Boy’s Clothing and Accessories Stores,PERSONA,Abbigliamento e calzature,no
+5621,Women’s Ready-to-Wear Stores,PERSONA,Abbigliamento e calzature,no
+5631,Women’s Accessory and Specialty Shops,PERSONA,Abbigliamento e calzature,no
+5641,Children’s and Infant’s Wear Stores,PERSONA,Abbigliamento e calzature,no
+5651,Family Clothing Stores,PERSONA,Abbigliamento e calzature,no
+5655,"Sports Apparel, Riding Apparel Stores",PERSONA,Abbigliamento e calzature,no
+5661,Shoe Stores,PERSONA,Abbigliamento e calzature,no
+5681,Furriers and Fur Shops,PERSONA,Abbigliamento e calzature,no
+5691,Men’s and Women’s Clothing Stores,PERSONA,Abbigliamento e calzature,no
+5697,"Tailors, Seamstress, Mending, and Alterations",PERSONA,Abbigliamento e calzature,no
+5698,Wig and Toupee Stores,PERSONA,Abbigliamento e calzature,no
+5699,Miscellaneous Apparel and Accessory Shops,PERSONA,Abbigliamento e calzature,no
+5712,"Furniture, Home Furnishings, and Equipment Stores, ExceptAppliances",CASA,Arredo ed elettrodomestici,no
+5713,Floor Covering Stores,CASA,Arredo ed elettrodomestici,no
+5714,"Drapery, Window Covering and Upholstery Stores",CASA,Arredo ed elettrodomestici,no
+5718,"Fireplace, Fireplace Screens, and Accessories Stores",CASA,Arredo ed elettrodomestici,no
+5719,Miscellaneous Home Furnishing Specialty Stores,CASA,Arredo ed elettrodomestici,no
+5722,Household Appliance Stores,CASA,Arredo ed elettrodomestici,no
+5732,Electronic Sales,ACQUISTI,Elettronica,no
+5733,"Music Stores, Musical Instruments, Piano Sheet Music",SVAGO E CULTURA,Hobby,no
+5734,Computer Software Stores,ACQUISTI,Elettronica,si
+5735,Record Shops,SVAGO E CULTURA,Libri e media,no
+5811,Caterers,RISTORAZIONE,Ristoranti,no
+5812,Eating places and Restaurants,RISTORAZIONE,Ristoranti,no
+5813,"Drinking Places (Alcoholic Beverages), Bars, Taverns, Cocktail lounges, Nightclubs and Discotheques",RISTORAZIONE,Bar e pasticcerie,no
+5814,Fast Food Restaurants,RISTORAZIONE,Ristoranti,no
+5815,"Digital Goods: Media, Books, Movies, Music",SVAGO E CULTURA,Libri e media,no
+5816,Digital Goods: Games,SVAGO E CULTURA,Hobby,no
+5817,Digital Goods: Applications (Excludes Games),SVAGO E CULTURA,Abbonamenti digitali,no
+5818,Digital Goods: Large Digital Goods Merchant,SVAGO E CULTURA,Abbonamenti digitali,si
+5832,"Antique Shops – Sales, Repairs, and Restoration Services",,,si
+5912,Drug Stores and Pharmacies,SALUTE,Farmacia,no
+5921,"Package Stores – Beer, Wine, and Liquor",ALIMENTARI,Negozi alimentari,no
+5931,Used Merchandise and Secondhand Stores,ACQUISTI,Varie,si
+5932,Antique Shops,ACQUISTI,Varie,si
+5933,Pawn Shops and Salvage Yards,,,si
+5935,Wrecking and Salvage Yards,,,si
+5937,Antique Reproductions,ACQUISTI,Varie,si
+5940,Bicycle Shops – Sales and Service,SVAGO E CULTURA,Sport e palestra,no
+5941,Sporting Goods Stores,SVAGO E CULTURA,Sport e palestra,no
+5942,Book Stores,SVAGO E CULTURA,Libri e media,no
+5943,"Stationery Stores, Office and School Supply Stores",FAMIGLIA E ISTRUZIONE,Scuola e formazione,no
+5944,"Watch, Clock, Jewelry, and Silverware Stores",ACQUISTI,Varie,no
+5945,"Hobby, Toy, and Game Shops",SVAGO E CULTURA,Hobby,no
+5946,Camera and Photographic Supply Stores,ACQUISTI,Elettronica,no
+5947,"Card Shops, Gift, Novelty, and Souvenir Shops",ACQUISTI,Regali e donazioni,no
+5948,Leather Goods Stores,PERSONA,Abbigliamento e calzature,no
+5949,"Sewing, Needle, Fabric, and Price Goods Stores",SVAGO E CULTURA,Hobby,no
+5950,Glassware/Crystal Stores,CASA,Arredo ed elettrodomestici,no
+5960,Direct Marketing- Insurance Service,FINANZA,Assicurazioni (altre),no
+5961,"Mail Order Houses Including Catalog Order Stores, Book/Record Clubs (No longer permitted for U.S. original presentments)",ACQUISTI,Online da dettagliare,si
+5962,Direct Marketing – Travel Related Arrangements Services,ACQUISTI,Online da dettagliare,si
+5963,Door-to-Door Sales,ACQUISTI,Online da dettagliare,si
+5964,Direct Marketing – Catalog Merchant,ACQUISTI,Online da dettagliare,si
+5965,Direct Marketing – Catalog and Catalog and Retail Merchant,ACQUISTI,Online da dettagliare,si
+5966,Direct Marketing- Outbound Telemarketing Merchant,ACQUISTI,Online da dettagliare,si
+5967,Direct Marketing – Inbound Teleservices Merchant,ACQUISTI,Online da dettagliare,si
+5968,Direct Marketing – Continuity/Subscription Merchant,ACQUISTI,Online da dettagliare,si
+5969,Direct Marketing – Not Elsewhere Classified,ACQUISTI,Online da dettagliare,si
+5970,Artist’s Supply and Craft Shops,SVAGO E CULTURA,Hobby,no
+5971,Art Dealers and Galleries,SVAGO E CULTURA,Hobby,no
+5972,Stamp and Coin Stores – Philatelic and Numismatic Supplies,SVAGO E CULTURA,Hobby,no
+5973,Religious Goods Stores,,,si
+5975,"Hearing Aids – Sales, Service, and Supply Stores",SALUTE,Visite ed esami,no
+5976,Orthopedic Goods Prosthetic Devices,SALUTE,Visite ed esami,no
+5977,Cosmetic Stores,PERSONA,Cura personale,no
+5978,"Typewriter Stores – Sales, Rental, Service",,,si
+5983,"Fuel – Fuel Oil, Wood, Coal, Liquefied Petroleum",CASA,Energia e gas,no
+5992,Florists,ACQUISTI,Regali e donazioni,no
+5993,Cigar Stores and Stands,ACQUISTI,Varie,no
+5994,News Dealers and Newsstands,SVAGO E CULTURA,Libri e media,no
+5995,"Pet Shops, Pet Foods, and Supplies Stores",FAMIGLIA E ISTRUZIONE,Animali,no
+5996,"Swimming Pools – Sales, Service, and Supplies",CASA,Manutenzione e servizi,no
+5997,Electric Razor Stores – Sales and Service,,,si
+5998,Tent and Awning Shops,,,si
+5999,Miscellaneous and Specialty Retail Stores,ACQUISTI,Varie,si
+6010,Financial Institutions – Manual Cash Disbursements,CONTANTI,Prelievo da giustificare,no
+6011,Financial Institutions – Manual Cash Disbursements,CONTANTI,Prelievo da giustificare,no
+6012,Financial Institutions – Merchandise and Services,FINANZA,Commissioni bancarie,si
+6051,"Non-Financial Institutions – Foreign Currency, Money Orders (not wire transfer) and Travelers Cheques",,,si
+6211,Security Brokers/Dealers,RISPARMIO,Accantonamento,si
+6300,"Insurance Sales, Underwriting, and Premiums",FINANZA,Assicurazioni (altre),no
+6381,"Insurance Premiums, (no longer valid for first presentment work)",,,si
+6399,"Insurance, Not Elsewhere Classified ( no longer valid forfirst presentment work)",,,si
+6513,Real Estate Agents and Managers - Rentals,CASA,Mutuo/Affitto,si
+7011,"Lodging – Hotels, Motels, Resorts, Central Reservation Services (not elsewhere classified)",VIAGGI,Alloggi,no
+7012,Timeshares,VIAGGI,Alloggi,no
+7032,Sporting and Recreational Camps,VIAGGI,Alloggi,no
+7033,Trailer Parks and Camp Grounds,VIAGGI,Alloggi,no
+7210,"Laundry, Cleaning, and Garment Services",CASA,Manutenzione e servizi,no
+7211,Laundry – Family and Commercial,CASA,Manutenzione e servizi,no
+7216,Dry Cleaners,CASA,Manutenzione e servizi,no
+7217,Carpet and Upholstery Cleaning,CASA,Manutenzione e servizi,no
+7221,Photographic Studios,SVAGO E CULTURA,Hobby,no
+7230,Barber and Beauty Shops,PERSONA,Cura personale,no
+7251,"Shop Repair Shops and Shoe Shine Parlors, and Hat Cleaning Shops",PERSONA,Abbigliamento e calzature,no
+7261,Funeral Service and Crematories,,,si
+7273,Dating and Escort Services,,,si
+7276,Tax Preparation Service,TASSE E PA,Imposte,no
+7277,"Counseling Service – Debt, Marriage, Personal",SALUTE,Visite ed esami,no
+7278,"Buying/Shopping Services, Clubs",,,si
+7296,"Clothing Rental – Costumes, Formal Wear, Uniforms",PERSONA,Abbigliamento e calzature,no
+7297,Massage Parlors,PERSONA,Cura personale,no
+7298,Health and Beauty Shops,PERSONA,Cura personale,no
+7299,Miscellaneous Personal Services ( not elsewhere classifies),ACQUISTI,Varie,si
+7311,Advertising Services,,,si
+7321,Consumer Credit Reporting Agencies,,,si
+7332,Blueprinting and Photocopying Services,,,si
+7333,"Commercial Photography, Art and Graphics",,,si
+7338,"Quick Copy, Reproduction and Blueprinting Services",ACQUISTI,Varie,si
+7339,Stenographic and Secretarial Support Services,,,si
+7342,Exterminating and Disinfecting Services,CASA,Manutenzione e servizi,no
+7349,"Cleaning and Maintenance, Janitorial Services",CASA,Manutenzione e servizi,no
+7361,"Employment Agencies, Temporary Help Services",,,si
+7372,"Computer Programming, Integrated Systems Design and Data Processing Services",SVAGO E CULTURA,Abbonamenti digitali,si
+7375,Information Retrieval Services,SVAGO E CULTURA,Abbonamenti digitali,no
+7379,"Computer Maintenance and Repair Services, Not Elsewhere Classified",ACQUISTI,Elettronica,no
+7392,"Management, Consulting, and Public Relations Services",,,si
+7393,Protective and Security Services – Including Armored Carsand Guard Dogs,,,si
+7394,"Equipment Rental and Leasing Services, Tool Rental, Furniture Rental, and Appliance Rental",,,si
+7395,"Photofinishing Laboratories, Photo Developing",,,si
+7399,"Business Services, Not Elsewhere Classified",ACQUISTI,Varie,si
+7511,Truck Stop,,,si
+7512,Car Rental Companies ( Not Listed Below),TRASPORTI,Taxi e car sharing,no
+7513,Truck and Utility Trailer Rentals,VIAGGI,Noleggio auto,no
+7519,Motor Home and Recreational Vehicle Rentals,VIAGGI,Noleggio auto,no
+7523,Automobile Parking Lots and Garages,TRASPORTI,Parcheggi,no
+7531,Automotive Body Repair Shops,TRASPORTI,Auto: manutenzione,no
+7534,Tire Re-treading and Repair Shops,TRASPORTI,Auto: manutenzione,no
+7535,Paint Shops – Automotive,TRASPORTI,Auto: manutenzione,no
+7538,Automotive Service Shops,TRASPORTI,Auto: manutenzione,no
+7542,Car Washes,TRASPORTI,Auto: manutenzione,no
+7549,Towing Services,TRASPORTI,Auto: manutenzione,no
+7622,Radio Repair Shops,ACQUISTI,Elettronica,no
+7623,Air Conditioning and Refrigeration Repair Shops,CASA,Manutenzione e servizi,no
+7629,Electrical And Small Appliance Repair Shops,,,si
+7631,"Watch, Clock, and Jewelry Repair",ACQUISTI,Varie,no
+7641,"Furniture, Furniture Repair, and Furniture Refinishing",CASA,Manutenzione e servizi,no
+7692,Welding Repair,CASA,Manutenzione e servizi,si
+7699,Repair Shops and Related Services –Miscellaneous,CASA,Manutenzione e servizi,si
+7800,Government-Owned Lotteries,SVAGO E CULTURA,Hobby,no
+7801,Government-Licensed On-Line Casinos (On-Line Gambling),SVAGO E CULTURA,Hobby,no
+7802,Government-Licensed Horse/Dog Racing,SVAGO E CULTURA,Hobby,no
+7829,Motion Pictures and Video Tape Production and Distribution,,,si
+7832,Motion Picture Theaters,SVAGO E CULTURA,Cinema,no
+7841,Video Tape Rental Stores,SVAGO E CULTURA,Abbonamenti digitali,no
+7911,"Dance Halls, Studios and Schools",SVAGO E CULTURA,Spettacoli e concerti,no
+7922,"Theatrical Producers (Except Motion Pictures), Ticket Agencies",SVAGO E CULTURA,Spettacoli e concerti,no
+7929,"Bands, Orchestras, and Miscellaneous Entertainers (Not Elsewhere Classified)",SVAGO E CULTURA,Spettacoli e concerti,no
+7932,Billiard and Pool Establishments,SVAGO E CULTURA,Hobby,no
+7933,Bowling Alleys,SVAGO E CULTURA,Hobby,no
+7941,"Commercial Sports, Athletic Fields, Professional Sport Clubs, and Sport Promoters",SVAGO E CULTURA,Sport e palestra,no
+7991,Tourist Attractions and Exhibits,SVAGO E CULTURA,Musei e mostre,no
+7992,Golf Courses – Public,SVAGO E CULTURA,Sport e palestra,no
+7993,Video Amusement Game Supplies,SVAGO E CULTURA,Hobby,no
+7994,Video Game Arcades/Establishments,SVAGO E CULTURA,Hobby,no
+7995,"Betting (including Lottery Tickets, Casino Gaming Chips, Off-track Betting and Wagers at Race Tracks)",SVAGO E CULTURA,Hobby,no
+7996,"Amusement Parks, Carnivals, Circuses, Fortune Tellers",SVAGO E CULTURA,Hobby,no
+7997,"Membership Clubs (Sports, Recreation, Athletic), Country Clubs, and Private Golf Courses",SVAGO E CULTURA,Sport e palestra,no
+7998,"Aquariums, Sea-aquariums, Dolphinariums",SVAGO E CULTURA,Musei e mostre,no
+7999,Recreation Services (Not Elsewhere Classified),SVAGO E CULTURA,Hobby,si
+8011,Doctors and Physicians (Not Elsewhere Classified),SALUTE,Visite ed esami,no
+8021,Dentists and Orthodontists,SALUTE,Dentista,no
+8031,Osteopaths,SALUTE,Visite ed esami,no
+8041,Chiropractors,SALUTE,Visite ed esami,no
+8042,Optometrists and Ophthalmologists,SALUTE,Ottica,no
+8043,"Opticians, Opticians Goods and Eyeglasses",SALUTE,Ottica,no
+8044,"Opticians, Optical Goods, and Eyeglasses (no longer validfor first presentments)",SALUTE,Visite ed esami,no
+8049,Podiatrists and Chiropodists,SALUTE,Visite ed esami,no
+8050,Nursing and Personal Care Facilities,SALUTE,Visite ed esami,no
+8062,Hospitals,SALUTE,Visite ed esami,no
+8071,Medical and Dental Laboratories,SALUTE,Visite ed esami,no
+8099,Medical Services and Health Practitioners (Not Elsewhere Classified),SALUTE,Visite ed esami,no
+8111,Legal Services and Attorneys,ACQUISTI,Varie,si
+8211,Elementary and Secondary Schools,FAMIGLIA E ISTRUZIONE,Scuola e formazione,no
+8220,"Colleges, Junior Colleges, Universities, and ProfessionalSchools",FAMIGLIA E ISTRUZIONE,Scuola e formazione,no
+8241,Correspondence Schools,FAMIGLIA E ISTRUZIONE,Scuola e formazione,no
+8244,Business and Secretarial Schools,FAMIGLIA E ISTRUZIONE,Scuola e formazione,no
+8249,Vocational Schools and Trade Schools,FAMIGLIA E ISTRUZIONE,Scuola e formazione,no
+8299,Schools and Educational Services ( Not Elsewhere Classified),FAMIGLIA E ISTRUZIONE,Scuola e formazione,no
+8351,Child Care Services,FAMIGLIA E ISTRUZIONE,Figli,no
+8398,Charitable and Social Service Organizations,ACQUISTI,Regali e donazioni,no
+8641,"Civic, Fraternal, and Social Associations",ACQUISTI,Regali e donazioni,no
+8651,Political Organizations,,,si
+8661,Religious Organizations,ACQUISTI,Regali e donazioni,no
+8675,Automobile Associations,TRASPORTI,Auto: manutenzione,si
+8699,Membership Organizations ( Not Elsewhere Classified),SVAGO E CULTURA,Hobby,si
+8734,Testing Laboratories ( non-medical),,,si
+8911,Architectural – Engineering and Surveying Services,ACQUISTI,Varie,si
+8931,"Accounting, Auditing, and Bookkeeping Services",ACQUISTI,Varie,si
+8999,Professional Services ( Not Elsewhere Defined),ACQUISTI,Varie,si
+9211,"Court Costs, including Alimony and Child Support",TASSE E PA,Multe,no
+9222,Fines,TASSE E PA,Multe,no
+9223,Bail and Bond Payments,,,si
+9311,Tax Payments,TASSE E PA,Imposte,no
+9399,Government Services ( Not Elsewhere Classified),TASSE E PA,Tributi locali,si
+9402,Postal Services – Government Only,ACQUISTI,Varie,no
+9405,Intra – Government Transactions,,,si
+9700,Automated Referral Service ( For Visa Only),,,si
+9701,Visa Credential Service ( For Visa Only),,,si
+9702,GCAS Emergency Services ( For Visa Only),,,si
+9950,Intra – Company Purchases ( For Visa Only),,,si

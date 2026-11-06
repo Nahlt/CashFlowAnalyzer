@@ -1,0 +1,43 @@
+id: paypal_en
+nome: PayPal - Activity report (CSV, English)
+banca: PayPal
+tipo_conto: conto
+formato: csv
+separatore: ","
+# Stesso report di paypal.yaml con l'interfaccia di PayPal in inglese.
+lettore: paypal
+firma: ["Date", "Time", "Name", "Type", "Status", "Currency", "Gross", "Fee", "Net", "Transaction ID", "Balance Impact"]
+numeri: inglese
+date: "%d/%m/%Y"
+valuta_conto: EUR
+
+colonne:
+  data: Date
+  ora: Time
+  nome: Name
+  tipo: Type
+  stato: Status
+  valuta: Currency
+  lordo: Gross
+  tariffa: Fee
+  netto: Net
+  id: Transaction ID
+  rif: Reference Txn ID
+  impatto: Balance Impact
+  titolo: Item Title
+  oggetto: Subject
+
+impatto:
+  addebito: [Debit]
+  accredito: [Credit]
+  memo: [Memo]
+stati_esclusi: [Denied, Voided, Canceled, Cancelled, Expired, Error, Created, Failed]
+
+tipi:
+  conversione: ["Currency Conversion"]
+  ignora: ["Authorization", "Hold", "Void of Authorization"]
+  ricarica: ["Bank Deposit to PP Account", "Card Deposit", "Add Funds"]
+  prelievo: ["User Initiated Withdrawal", "Withdrawal", "Transfer to Bank"]
+  rimborso: ["Refund"]
+  esercente: ["Express Checkout", "PreApproved", "Pre-approved", "Website Payment", "Mobile Payment", "Subscription Payment",
+              "Billing Agreement", "Debit Card Purchase", "Pay in 3", "Pay Later"]

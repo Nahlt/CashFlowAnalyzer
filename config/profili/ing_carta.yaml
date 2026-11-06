@@ -1,0 +1,20 @@
+id: ing_carta
+nome: ING - Movimenti carta di credito
+banca: ING
+tipo_conto: carta
+formato: csv
+separatore: "\t"
+firma: ["DATA OPERAZIONE", "DATA REGISTRAZIONE", "DESCRIZIONE OPERAZIONE", "IMPORTO IN EURO"]
+numeri: italiano
+date: "%d/%m/%Y"
+
+colonne:
+  data_operazione: "DATA OPERAZIONE"
+  data_registrazione: "DATA REGISTRAZIONE"
+  importo: "IMPORTO IN EURO"
+  descrizione: "DESCRIZIONE OPERAZIONE"
+tipo_fisso: pagamento_carta
+
+estrazione:
+  pagamento_carta:
+    - '^\s*Operazione presso\s+(?P<esercente>.+?)\s*$'

@@ -1,0 +1,51 @@
+id: ing_conto
+nome: ING Conto Arancio - Lista movimenti (Excel)
+banca: ING
+tipo_conto: conto
+formato: xlsx
+firma: ["DATA CONTABILE", "DATA VALUTA", "CAUSALE", "DESCRIZIONE OPERAZIONE", "IMPORTO IN EURO"]
+numeri: excel
+date: excel
+
+metadati:
+  "Intestazione": titolare
+  "N. di conto": numero
+  "Codice IBAN": iban
+  "Saldo iniziale": saldo_iniziale
+  "Saldo finale": saldo_finale
+periodo: 'dal (?P<da>\d{2}/\d{2}/\d{4}) al (?P<a>\d{2}/\d{2}/\d{4})'
+
+colonne:
+  data_contabile: "DATA CONTABILE"
+  data_valuta: "DATA VALUTA"
+  importo: "IMPORTO IN EURO"
+  descrizione: "DESCRIZIONE OPERAZIONE"
+codice: ["CAUSALE"]
+
+tipi:
+  "Pagamento Carta": pagamento_carta
+  "Prelievo Carta": prelievo
+  "Accredito Bonifico": bonifico
+  "Bonifico In Uscita": bonifico
+  "Giroconto": giroconto
+  "Accredito Stipendio/Pensione": stipendio
+  "Addebito Carta Di Credito": addebito_carta_credito
+  "*": altro
+
+estrazione:
+  pagamento_carta:
+    - 'del (?P<data_op>\d{2}/\d{2}/\d{4}) alle ore (?P<ora>\d{2}:\d{2})'
+    - 'Div=(?P<divisa_orig>[A-Z]{3})'
+    - 'presso\s+(?P<esercente>.+?)\s*$'
+  prelievo:
+    - 'del (?P<data_op>\d{2}/\d{2}/\d{4}) alle ore (?P<ora>\d{2}:\d{2})'
+  bonifico:
+    - 'A favore di\s+(?P<controparte>.+?)\s+IBAN beneficiario\s+(?P<iban>[A-Z]{2}\d{2}[A-Z0-9]+)'
+    - 'Codifica Ordinante\s+(?P<iban>[A-Z]{2}\d{2}[A-Z0-9]+)\s+Anagrafica Ordinante\s+(?P<controparte>.+?)(?:\s+Note:|\s*$)'
+  giroconto:
+    - 'A favore di\s+(?P<controparte>.+?)\s+IBAN beneficiario\s+(?P<iban>[A-Z]{2}\d{2}[A-Z0-9]+)'
+  stipendio:
+    - 'Codifica Ordinante\s+(?P<iban>[A-Z]{2}\d{2}[A-Z0-9]+)\s+Anagrafica Ordinante\s+(?P<controparte>.+?)(?:\s+Note:|\s*$)'
+  addebito_carta_credito:
+    - 'al (?P<ciclo>\d{8})'
+formato_data_op: "%d/%m/%Y"

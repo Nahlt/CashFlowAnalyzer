@@ -1,0 +1,90 @@
+# Sinonimi dei nomi di colonna, per proporre la mappatura quando arriva una banca nuova.
+# Servono solo come bozza: il profilo va sempre confermato a mano.
+# Origine: tabelle multilingua di Spendif.ai (core/classifier.py), adattate.
+versione: 1
+
+descrizione:   # in ordine di priorita'
+  - causale
+  - dettagli operazione
+  - descrizione operazione
+  - descrizione
+  - dettagli
+  - tipo operazione
+  - tipologia
+  - note
+  - memo
+  - description
+  - narrative
+  - details
+  - libellé
+  - buchungstext
+  - verwendungszweck
+  - concepto
+
+data_operazione:
+  - data operazione
+  - data movimento
+  - data transazione
+  - data addebito
+  - transaction date
+  - posting date
+  - booking date
+  - date opération
+  - buchungsdatum
+  - fecha operación
+
+data_valuta:
+  - data valuta
+  - data contabile
+  - data regolamento
+  - valuta
+  - value date
+  - settlement date
+  - date de valeur
+  - wertstellung
+  - fecha valor
+
+colonna_uscite:   # importi positivi che rappresentano uscite
+  - uscita
+  - uscite
+  - addebito
+  - addebiti
+  - pagamento
+  - importo addebitato
+  - dare
+  - debit
+  - withdrawal
+  - outflow
+  - débit
+  - soll
+  - lastschrift
+  - cargo
+
+colonna_entrate:   # importi positivi che rappresentano entrate
+  - entrata
+  - entrate
+  - accredito
+  - accrediti
+  - importo accreditato
+  - avere
+  - credit
+  - deposit
+  - inflow
+  - crédit
+  - haben
+  - gutschrift
+  - abono
+
+importo_con_segno:   # nome neutro: il segno va dedotto dai dati
+  - importo
+  - importo in euro
+  - amount
+  - valore
+  - totale
+  - montant
+  - betrag
+  - importe
+
+# Regola per le carte: se la colonna importo e' neutra e oltre il 60% dei valori e' positivo,
+# su un file di carta di credito le spese sono probabilmente positive (segno da invertire).
+soglia_segno_carta: 0.60

@@ -1,0 +1,13 @@
+# ambiente Python e cache
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+# dati personali: database cifrato, backup, log ed estratti conto non vanno mai nel repository
+*.db
+*.db-journal
+*.log
+*.pid
+*.xlsx
+*.CSV

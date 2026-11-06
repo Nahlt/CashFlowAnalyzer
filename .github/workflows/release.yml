@@ -1,0 +1,55 @@
+# Crea una release su GitHub quando si pubblica un tag di versione, per esempio v0.13.1.
+# Controlla che il tag corrisponda a spese/__init__.py, esegue i test e allega il pacchetto
+# per Linux (.tar.gz e .zip) con le note prese dalla sezione della versione in CHANGELOG.md.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versione del tag e dell'app
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          APP=$(python3 -c 'import re; print(re.search(r"VERSIONE = \"(.+?)\"", open("spese/__init__.py").read()).group(1))')
+          if [ "$V" != "$APP" ]; then
+            echo "Il tag $GITHUB_REF_NAME non corrisponde alla versione dell'app ($APP)" >&2
+            exit 1
+          fi
+          echo "V=$V" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test
+        run: |
+          python -m pip install --quiet -r requirements-dev.txt
+          python -m pytest -q -p no:cacheprovider tests
+
+      - name: Pacchetto e note
+        run: |
+          mkdir dist
+          git archive --format=tar.gz --prefix="CashFlowAnalyzer-$V/" -o "dist/CashFlowAnalyzer-$V-linux.tar.gz" HEAD
+          git archive --format=zip    --prefix="CashFlowAnalyzer-$V/" -o "dist/CashFlowAnalyzer-$V-linux.zip"    HEAD
+          (cd dist && sha256sum * > SHA256SUMS.txt)
+          awk -v v="## $V " 'index($0, v) == 1 {on = 1; next} on && /^## / {exit} on' CHANGELOG.md > note.md
+          [ -s note.md ] || echo "Vedi CHANGELOG.md" > note.md
+
+      - name: Pubblica la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --title "CashFlow Analyzer $V" --notes-file note.md
+          fi

@@ -1,0 +1,40 @@
+# Tipi di movimento standard -> natura e categoria predefinite.
+# I profili delle banche traducono i loro codici in questi tipi.
+# natura: entrata | uscita | risparmio | trasferimento | contenitore | escluso | da_definire
+#   - uscita con importo positivo = rimborso della stessa categoria
+#   - trasferimento: decide l'abbinamento tra conti (vedi requisiti)
+# l2: categoria assegnata direttamente; catena: true = passa dalla catena di categorizzazione
+# revisione: true = va comunque in coda di revisione (es. contanti da giustificare)
+# varianti: regole sul testo della descrizione che cambiano la categoria
+versione: 1
+
+tipi:
+  pagamento_carta:        {natura: uscita, catena: true}
+  addebito_sepa:          {natura: uscita, catena: true}
+  prelievo:               {natura: uscita, l2: Prelievo da giustificare, revisione: true}
+  commissione:            {natura: uscita, l2: Commissioni bancarie}
+  pagamento_pa:           {natura: uscita, l2: PagoPA/MAV}
+  imposte:
+    natura: uscita
+    l2: Imposte su rendimenti
+    varianti:
+      - {se_descrizione: '(?i)stamp duty|imposta di bollo|\bbollo\b', l2: Bollo}
+  stipendio:              {natura: entrata, l2: Stipendio}
+  interessi:              {natura: entrata, l2: Interessi e cedole}
+  dividendo:              {natura: entrata, l2: Interessi e cedole}
+  cashback:               {natura: entrata, l2: Cashback e premi}
+  acquisto_titoli:        {natura: risparmio, l2: Accantonamento}
+  vendita_titoli:         {natura: risparmio, l2: Rientro dal risparmio}
+  movimento_titoli:       {natura: escluso}
+  bonifico:               {natura: trasferimento}
+  giroconto:              {natura: trasferimento, giroconto: true}
+  versamento:             {natura: trasferimento, proprio: true}     # dal proprio conto di riferimento
+  prelievo_verso_conto:   {natura: trasferimento, proprio: true}     # verso il proprio conto di riferimento
+  addebito_carta_credito: {natura: contenitore}
+  ricarica:               {natura: trasferimento_interno}      # PayPal: soldi presi dalla banca o dalla carta
+  altro:                  {natura: da_definire}
+
+# Componenti secondarie del movimento (Trade Republic: fee e tax)
+componenti:
+  commissione: Commissioni bancarie
+  imposta: Imposte su rendimenti
