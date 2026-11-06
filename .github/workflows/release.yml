@@ -1,11 +1,11 @@
-# Crea una release su GitHub quando si pubblica un tag di versione, per esempio v0.13.1.
+# Crea una release su GitHub quando si pubblica un tag di versione, per esempio v0.13.1 (anche V0.13.1).
 # Controlla che il tag corrisponda a spese/__init__.py, esegue i test e allega il pacchetto
 # per Linux (.tar.gz e .zip) con le note prese dalla sezione della versione in CHANGELOG.md.
 name: Release
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*", "V*"]
 
 permissions:
   contents: write
@@ -18,7 +18,7 @@ jobs:
 
       - name: Versione del tag e dell'app
         run: |
-          V="${GITHUB_REF_NAME#v}"
+          V="${GITHUB_REF_NAME#[vV]}"
           APP=$(python3 -c 'import re; print(re.search(r"VERSIONE = \"(.+?)\"", open("spese/__init__.py").read()).group(1))')
           if [ "$V" != "$APP" ]; then
             echo "Il tag $GITHUB_REF_NAME non corrisponde alla versione dell'app ($APP)" >&2
