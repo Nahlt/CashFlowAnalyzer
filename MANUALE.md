@@ -1,5 +1,7 @@
 # CashFlow Analyzer 0.13.1 – Manuale
 
+Di Nahlt, con licenza GNU GPL v3.
+
 App locale per analizzare entrate e uscite della famiglia a partire dagli estratti delle banche
 (Credem, Credit Agricole, ING conto in Excel o CSV e carta di credito, Trade Republic, PayPal). Gira tutta sul tuo computer, nel browser,
 su `127.0.0.1`. Il database e' cifrato. All'esterno escono solo nomi di esercenti, e solo dopo la tua approvazione;

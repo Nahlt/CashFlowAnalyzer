@@ -3,7 +3,7 @@ import os
 
 import streamlit as st
 
-from spese import VERSIONE, sessioni
+from spese import AUTORE, VERSIONE, sessioni
 from spese import configurazione as cfg
 from spese.db import CIFRATO, PassphraseErrata, apri
 from spese.percorsi import file_database
@@ -259,6 +259,6 @@ with st.sidebar:
         if st.button("Esci e chiudi il database", icon=":material/logout:", key="esci"):
             chiudi_sessione("uscita")
             st.rerun()
-        st.html('<div class="versione">CashFlow Analyzer %s</div>' % VERSIONE)
+        st.html('<div class="versione">CashFlow Analyzer %s · © 2026 %s</div>' % (VERSIONE, AUTORE))
 
 corrente.run()

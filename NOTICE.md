@@ -1,5 +1,8 @@
 # Origine dei dati e licenze
 
+CashFlow Analyzer – Copyright (C) 2026 Nahlt. Le parti scritte per questo progetto sono distribuite con licenza
+GNU GPL v3; le componenti riprese da altri progetti mantengono la licenza indicata qui sotto.
+
 | Componente | Origine | Licenza |
 | --- | --- | --- |
 | `sorgenti/mcc_codes.csv` | [greggles/mcc-codes](https://github.com/greggles/mcc-codes) | Pubblico dominio (Unlicense) |

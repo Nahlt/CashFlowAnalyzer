@@ -1,5 +1,7 @@
 # CashFlow Analyzer
 
+Di [Nahlt](https://github.com/Nahlt).
+
 App locale per analizzare le entrate e le uscite di una famiglia a partire dagli estratti conto esportati dalle
 banche. Gira tutta sul proprio computer, nel browser su `127.0.0.1`, con il database cifrato (SQLCipher).
 
@@ -70,6 +72,8 @@ Il manuale completo, con il primo utilizzo e tutte le funzioni, e' in [MANUALE.m
    `SHA256SUMS.txt`. Per installare: si scompatta il pacchetto e si lancia `./install.sh`.
 
 ## Licenza
+
+Copyright (C) 2026 Nahlt.
 
 Il codice del progetto e' distribuito con licenza GNU GPL v3 (`LICENSE`). Alcuni dati di configurazione
 derivano da altri progetti e restano sotto la propria licenza, in particolare PolyForm Noncommercial 1.0.0

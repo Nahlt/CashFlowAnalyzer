@@ -13,6 +13,8 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
   registro (`.github/workflows/release.yml`). Se il tag non corrisponde alla versione dell'app, la release
   non parte.
 - Il `README.md` spiega come pubblicare una nuova versione.
+- **Autore**: Nahlt e' indicato come autore e titolare del copyright in `README.md`, `NOTICE.md`, nel manuale e
+  in fondo alla barra laterale, accanto alla versione.
 
 **Correzioni**
 - *SVAGO E CULTURA · Spese Barca*: la natura della spesa di partenza (`config/attributi.yaml`) usava ancora il
