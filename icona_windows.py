@@ -1,17 +1,35 @@
 """Icona di CashFlow Analyzer nell'area di notifica di Windows (pystray).
 
-La avvia avvia.py con pythonw.exe dell'ambiente .venv. Menu: apri nel browser (anche con un clic
-sull'icona), riavvia o avvia il server, ferma (server e icona). Ogni 5 secondi controlla se il server
-risponde e aggiorna stato e suggerimento; si chiude da sola se avvia.py --ferma lo chiede.
+La avvia avvia.py con il pythonw.exe del Python installato (non il lanciatore di .venv, che con Windows
+Terminal apriva una scheda del terminale): le librerie dell'ambiente .venv le aggiunge questo file.
+Menu: apri nel browser (anche con un clic sull'icona), riavvia o avvia il server, ferma (server e icona).
+Ogni 5 secondi controlla se il server risponde e aggiorna stato e suggerimento; si chiude da sola se
+avvia.py --ferma lo chiede.
 """
+import ctypes
 import os
+import site
 import sys
 import threading
+from pathlib import Path
 
-import pystray
-from PIL import Image
+_LIBRERIE = Path(__file__).resolve().parent / ".venv" / "Lib" / "site-packages"
+if _LIBRERIE.is_dir() and str(_LIBRERIE) not in sys.path:
+    _prima = list(sys.path)
+    site.addsitedir(str(_LIBRERIE))                       # anche i file .pth delle librerie
+    sys.path[:] = [p for p in sys.path if p not in _prima] + _prima      # le librerie di .venv per prime
 
-import avvia
+# un programma con finestre (pythonw) non ha console; se per qualche motivo ne ha una, la lascia, cosi' la
+# finestra del terminale si chiude da sola
+_CONSOLE = ctypes.windll.kernel32.GetConsoleWindow()
+if _CONSOLE:
+    ctypes.windll.kernel32.FreeConsole()
+print("Icona: %s, console all'avvio: %s" % (sys.executable, "si', staccata" if _CONSOLE else "no"), flush=True)
+
+import pystray  # noqa: E402
+from PIL import Image  # noqa: E402
+
+import avvia  # noqa: E402
 
 NOME = "CashFlow Analyzer"
 

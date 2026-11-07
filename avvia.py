@@ -36,6 +36,27 @@ STOP_ICONA = DATI / "icona.stop"          # su Windows chiede all'icona di chiud
 PY_SISTEMA = os.environ.get("SPESE_PYTHON_ICONA", "/usr/bin/python3")
 
 
+def python_installato(finestra=True):
+    """Windows: il pythonw.exe (o python.exe) del Python installato, non il lanciatore di .venv.
+
+    I file .venv\\Scripts\\python*.exe sono piccoli lanciatori che avviano a loro volta il Python vero; con
+    Windows Terminal come terminale predefinito (Windows 11) il passaggio dal lanciatore apriva per l'icona
+    una scheda del terminale. Il Python installato e' indicato da "home" in .venv\\pyvenv.cfg; le librerie di
+    .venv le aggiunge icona_windows.py. None se non si trova."""
+    nome = "pythonw.exe" if finestra else "python.exe"
+    try:
+        for riga in (APP / ".venv" / "pyvenv.cfg").read_text(encoding="utf-8").splitlines():
+            chiave, _, valore = riga.partition("=")
+            if chiave.strip().lower() == "home":
+                p = Path(valore.strip()) / nome
+                if p.exists():
+                    return p
+    except OSError:
+        pass
+    base = Path(getattr(sys, "_base_executable", "") or sys.executable).with_name(nome)
+    return base if base.exists() and ".venv" not in base.parts else None
+
+
 def _python_venv(finestra=False):
     """Python dell'ambiente .venv. Su Windows pythonw.exe non apre la finestra del terminale."""
     if WINDOWS:
@@ -191,7 +212,9 @@ def avvia_icona():
             return
         STOP_ICONA.unlink(missing_ok=True)
         with open(DATI / "icona.log", "w", encoding="utf-8") as log:
-            _in_background([_python_venv(finestra=True), APP / "icona_windows.py"], log)
+            # pythonw.exe del Python installato, senza console; -s: senza le librerie personali dell'utente
+            py = python_installato() or _python_venv(finestra=True)
+            _in_background([py, "-s", APP / "icona_windows.py"], log)
         return                                            # il file pid lo scrive l'icona stessa
     if vivo(PID_ICONA, "tray.py"):
         return

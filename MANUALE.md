@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.14.1 – Manuale
+# CashFlow Analyzer 0.14.2 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 

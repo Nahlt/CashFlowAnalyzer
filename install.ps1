@@ -169,8 +169,16 @@ $programmi = [Environment]::GetFolderPath("Programs")
 $lnk = Join-Path $programmi "CashFlow Analyzer.lnk"
 $shell = New-Object -ComObject WScript.Shell
 $c = $shell.CreateShortcut($lnk)
-$c.TargetPath = Join-Path $APP ".venv\Scripts\pythonw.exe"
-$c.Arguments = '"' + (Join-Path $APP "avvia.py") + '"'
+# Il collegamento usa il pythonw.exe del Python installato ("home" in .venv\pyvenv.cfg), non il lanciatore
+# .venv\Scripts\pythonw.exe: con Windows Terminal come terminale predefinito il lanciatore apriva una scheda
+# del terminale. avvia.py usa solo la libreria standard; -s esclude le librerie personali dell'utente.
+$pyw = $null
+foreach ($riga in Get-Content (Join-Path $APP ".venv\pyvenv.cfg")) {
+    if ($riga -match '^\s*home\s*=\s*(.+?)\s*$') { $pyw = Join-Path $Matches[1] "pythonw.exe" }
+}
+if (-not $pyw -or -not (Test-Path -LiteralPath $pyw)) { $pyw = Join-Path $APP ".venv\Scripts\pythonw.exe" }
+$c.TargetPath = $pyw
+$c.Arguments = '-s "' + (Join-Path $APP "avvia.py") + '"'
 $c.WorkingDirectory = $APP
 $c.IconLocation = (Join-Path $APP "assets\icona.ico") + ",0"
 $c.Description = "Analisi locale di entrate e uscite"

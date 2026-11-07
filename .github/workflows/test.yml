@@ -117,13 +117,25 @@ jobs:
           $prova = @(FinestrePython)
           if ($prova.Count) { Write-Output "::notice::Il controllo vede le finestre (prova: $($prova -join ' | '))" } else { Write-Output "::warning::Il controllo non vede finestre in questa sessione: verifica solo sul PC" }
           Start-Sleep 12
-          # avvio come dal collegamento del menu Start
-          Start-Process -FilePath .venv\Scripts\pythonw.exe -ArgumentList "avvia.py" -WorkingDirectory $PWD
+          # avvio esattamente come il collegamento del menu Start (programma e argomenti letti dal file .lnk)
+          $lnk = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath("Programs")) "CashFlow Analyzer.lnk"))
+          Write-Output "Collegamento: $($lnk.TargetPath) $($lnk.Arguments)"
+          if ($lnk.TargetPath -match '\\\.venv\\') { Write-Output "::error::Il collegamento usa il lanciatore di .venv"; exit 1 }
+          Start-Process -FilePath $lnk.TargetPath -ArgumentList $lnk.Arguments -WorkingDirectory $lnk.WorkingDirectory
           Start-Sleep 25
           $aperte = @(FinestrePython)
           if ($aperte.Count) { Write-Output "::error::Finestre aperte all'avvio: $($aperte -join ' | ')"; cmd /c avvia.cmd --ferma; exit 1 }
-          Get-Content "$env:SPESE_DATI\icona.log" -ErrorAction SilentlyContinue
+          $log = Get-Content "$env:SPESE_DATI\icona.log" -ErrorAction SilentlyContinue
+          $log
           if (-not (Test-Path "$env:SPESE_DATI\icona.pid")) { Write-Output "::warning::Icona non avviata (sessione senza desktop?)" }
+          else {
+            # l'icona deve girare con il pythonw.exe del Python installato, senza console
+            $pid_icona = [int]((Get-Content "$env:SPESE_DATI\icona.pid") -split ' ')[0]
+            $p = Get-CimInstance Win32_Process -Filter "ProcessId = $pid_icona"
+            Write-Output "::notice::Icona: $($p.ExecutablePath) | $($log -join ' ')"
+            if ($p.ExecutablePath -notmatch 'pythonw\.exe$' -or $p.ExecutablePath -match '\\\.venv\\') { Write-Output "::error::Icona avviata con $($p.ExecutablePath)"; exit 1 }
+            if (-not ($log -match "console all'avvio: no")) { Write-Output "::error::L'icona aveva una console"; exit 1 }
+          }
           cmd /c avvia.cmd --ferma
           Start-Sleep 2
           if (Test-Path "$env:SPESE_DATI\icona.pid") { Write-Output "::error::Icona non chiusa"; exit 1 }

@@ -5,6 +5,29 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.14.2 – 7 novembre 2026 · Windows: icona senza finestra del terminale
+
+**Correzioni**
+- **Windows 11**: con Windows Terminal come terminale predefinito, all'avvio restava aperta una scheda del
+  terminale con il percorso di `.venv\Scripts\pythonw.exe`; chiudendola si chiudeva l'icona (server e pagina
+  continuavano a funzionare). La 0.14.1 aveva sistemato il server, non l'icona.
+  - La scheda nasceva dal passaggio per `.venv\Scripts\pythonw.exe`, un piccolo lanciatore che avvia a sua
+    volta il Python vero.
+  - Ora l'icona parte direttamente con il `pythonw.exe` del Python installato (indicato in `.venv\pyvenv.cfg`),
+    che non ha console, e aggiunge da se' le librerie di `.venv`. Se avesse comunque una console, la stacca.
+  - Anche il collegamento del menu Start usa il `pythonw.exe` del Python installato.
+  - Nel log dell'icona (`icona.log`) c'e' la riga con il Python usato e se aveva una console all'avvio.
+- **Test su GitHub**: avviano l'app con lo stesso programma e gli stessi argomenti del collegamento del menu
+  Start, e controllano che l'icona giri con il Python installato e senza console.
+
+**Aggiornando**
+- Windows: ferma l'app (Ferma dall'icona o `avvia.cmd --ferma`), estrai la nuova versione sopra la cartella e
+  **rilancia `install.cmd`**, che aggiorna il collegamento del menu Start (pochi secondi: le dipendenze ci sono
+  gia').
+- Linux: nessun cambiamento.
+
+---
+
 ## 0.14.1 – 7 novembre 2026 · Windows: avvio senza finestre
 
 **Correzioni**
