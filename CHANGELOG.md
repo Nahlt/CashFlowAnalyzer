@@ -5,6 +5,37 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.15.0 – 7 novembre 2026 · installazione di Ollama dall'app
+
+**Novita'**
+- **Ollama non raggiungibile: messaggio chiaro e installazione dall'app**, su Linux e Windows. Al posto
+  dell'errore tecnico ("HTTPConnectionPool… WinError 10061…", ora tra i dettagli) l'app dice cosa manca:
+  - Ollama non installato su questo PC: chiede se installarlo insieme ai modelli scritti nella casella
+    (conferma con la spunta, poi **Installa Ollama**);
+  - Ollama installato ma fermo: **Avvia Ollama e controlla i modelli**;
+  - indirizzo di un altro computer: indica cosa controllare, senza proporre installazioni.
+- **Come installa**:
+  - **Linux**: script ufficiale di ollama.com, come servizio di sistema. La password di amministratore la chiede
+    una finestra di sistema (pkexec); senza desktop l'app mostra il comando da lanciare nel terminale.
+  - **Windows**: per il solo utente, senza permessi di amministratore, con winget. Se winget manca o non riesce,
+    usa l'installatore della release ufficiale su GitHub, eseguito solo se l'impronta SHA-256 corrisponde a
+    quella pubblicata e la firma digitale e' valida e di Ollama.
+  - Poi avvia Ollama e scarica i modelli indicati. Imposta `OLLAMA_NO_CLOUD=1`: su Linux sul servizio, su
+    Windows tra le variabili dell'utente.
+- L'installazione gira in background: si puo' cambiare pagina, l'avanzamento e i dettagli restano visibili.
+  Lo stesso avviso c'e' anche in **Classificazione automatica**.
+- **Privacy**: dalla rete escono solo le richieste del programma Ollama e i nomi dei modelli; parte solo dopo
+  la conferma esplicita.
+- **Test su GitHub**: nuova azione *Ollama* che installa davvero Ollama e un modello piccolo su Linux, su
+  Windows con winget e su Windows con l'installatore di GitHub. Parte quando cambia il codice
+  dell'installazione.
+
+**Aggiornando**
+- Windows: ferma l'app, estrai la nuova versione sopra la cartella e avvia dal menu Start.
+- Linux: estrai sopra la cartella e riavvia l'app. Non serve reinstallare.
+
+---
+
 ## 0.14.2 – 7 novembre 2026 · Windows: icona senza finestra del terminale
 
 **Correzioni**

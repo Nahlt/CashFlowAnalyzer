@@ -1815,3 +1815,61 @@ def test_avviatore_riconosce_i_suoi_processi(monkeypatch, tmp_path):
     assert avvia.vivo(f, atteso) is None
     f.write_text("non un numero")
     assert avvia.vivo(f, atteso) is None
+
+
+def test_installazione_ollama_parti_pure(monkeypatch):
+    from spese import installa_ollama as io
+    assert io.indirizzo_locale("http://127.0.0.1:11434") and io.indirizzo_locale("http://localhost:11434")
+    assert not io.indirizzo_locale("http://192.168.1.20:11434")
+    somme = "%s  OllamaSetup.exe\n%s  ollama-linux-amd64.tar.zst\n" % ("a" * 64, "b" * 64)
+    assert io.impronta_pubblicata(somme, "OllamaSetup.exe") == "a" * 64
+    assert io.impronta_pubblicata(somme, "manca.exe") is None
+    if not io.WINDOWS:
+        monkeypatch.setattr(io.os, "geteuid", lambda: 1000)
+        monkeypatch.delenv("DISPLAY", raising=False)
+        monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+        monkeypatch.setattr(io.shutil, "which", lambda nome: None)
+        with pytest.raises(io.NonPossibile) as e:                  # niente desktop ne' sudo: comando da terminale
+            io.comando_amministratore()
+        assert e.value.comando == io.COMANDO_LINUX
+        monkeypatch.setattr(io.shutil, "which", lambda nome: "/usr/bin/" + nome)
+        monkeypatch.setenv("DISPLAY", ":0")
+        assert io.comando_amministratore() == ["pkexec"]
+
+
+def test_installazione_ollama_lavoro(monkeypatch):
+    """Ollama gia' installato ma fermo: il lavoro lo avvia, aspetta che risponda e scarica i modelli; un errore
+    arriva come messaggio, senza eccezioni."""
+    import time
+    from spese import installa_ollama as io
+    stato = {"attivo": False, "avviato": 0, "scaricati": []}
+    monkeypatch.setattr(io, "installato", lambda: True)
+    monkeypatch.setattr(io, "risponde", lambda url, timeout=2: stato["attivo"])
+    monkeypatch.setattr(io, "avvia", lambda lav: stato.update(attivo=True, avviato=stato["avviato"] + 1))
+    monkeypatch.setattr(io.time, "sleep", lambda s: None)
+    monkeypatch.setattr(io, "_no_cloud_windows", lambda: None)
+    orologio = iter(range(0, 10 ** 6, 5))
+    monkeypatch.setattr(io.time, "monotonic", lambda: next(orologio))
+    monkeypatch.setattr(llm, "scarica_modello_url", lambda url, nome, avanzamento=None: stato["scaricati"].append(nome))
+    io.chiudi_lavoro()
+    lav = io.avvia_lavoro("http://127.0.0.1:11434", ["qwen2.5:3b", "llama3.2:3b"], installa=False)
+    for _ in range(200):
+        if lav.finito:
+            break
+        time.sleep(0.01)
+    assert lav.finito and not lav.errore, io.riepilogo(lav)
+    assert stato["avviato"] == 1 and stato["scaricati"] == ["qwen2.5:3b", "llama3.2:3b"]
+    assert io.avvia_lavoro("http://127.0.0.1:11434", ["x"]) is not lav or lav.finito
+    io.chiudi_lavoro()
+    assert io.lavoro() is None
+
+    def rotto(url, nome, avanzamento=None):
+        raise RuntimeError("pull model manifest: file does not exist")
+    monkeypatch.setattr(llm, "scarica_modello_url", rotto)
+    lav = io.avvia_lavoro("http://127.0.0.1:11434", ["inesistente:1b"], installa=False)
+    for _ in range(200):
+        if lav.finito:
+            break
+        time.sleep(0.01)
+    assert lav.errore and "file does not exist" in lav.errore
+    io.chiudi_lavoro()

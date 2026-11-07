@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.14.2 – Manuale
+# CashFlow Analyzer 0.15.0 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -185,7 +185,21 @@ file, puoi eliminarlo insieme. Poi ricarica il file giusto.
 ## Modello locale (facoltativo)
 
 Senza modello locale l'app funziona lo stesso: restano le regole, i codici MCC, i marchi, lo storico
-e le tue conferme. Per installarlo su Linux:
+e le tue conferme.
+
+**Installazione dall'app (Linux e Windows).** In **Impostazioni > Modello locale** premi "Salva e verifica". Se
+Ollama non risponde, l'app spiega cosa manca e, se l'indirizzo e' questo PC:
+- Ollama non installato: chiede se installarlo insieme ai modelli scritti nella casella. Spunti la conferma e
+  premi **Installa Ollama**. Su Linux usa lo script ufficiale di ollama.com come servizio di sistema e chiede la
+  password di amministratore con una finestra di sistema; su Windows lo installa solo per il tuo utente con
+  winget o con l'installatore ufficiale della release su GitHub (solo se impronta e firma digitale sono di
+  Ollama). Poi scarica i modelli. Imposta anche `OLLAMA_NO_CLOUD=1`.
+- Ollama installato ma fermo: **Avvia Ollama e controlla i modelli**.
+
+L'installazione continua in background anche se cambi pagina; l'avanzamento e i dettagli restano nella pagina.
+Se non riesce, l'app mostra cosa fare a mano. Lo stesso avviso compare in **Classificazione automatica**.
+
+**Installazione a mano** su Linux:
 
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh

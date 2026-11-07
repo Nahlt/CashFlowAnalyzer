@@ -11,7 +11,7 @@ from .. import llm, servizi, sessioni
 from ..iban import controlla as controlla_iban
 from ..db import backup, cambia_passphrase, leggi_impostazione, scrivi_impostazione
 from ..percorsi import cartella_dati
-from .comune import chiave_tabella, conn, esegui_ricalcolo, scarica_modello_locale, testo
+from .comune import chiave_tabella, conn, esegui_ricalcolo, ollama_non_raggiungibile, scarica_modello_locale, testo
 from .pagine_dati import TIPI_CONTO
 
 
@@ -251,7 +251,7 @@ def impostazioni():
     if st.session_state.get("verifica_ollama"):
         ok, info = llm.ollama_disponibile(c)
         if not ok:
-            st.warning("Ollama non raggiungibile: %s" % info)
+            ollama_non_raggiungibile(c, info, "imp")
         else:
             mancanti = [m for m in llm.modelli_locali(c) if not llm.installato(m, info)]
             st.success("Ollama raggiungibile. Modelli installati: %s" % (", ".join(info) or "nessuno"))

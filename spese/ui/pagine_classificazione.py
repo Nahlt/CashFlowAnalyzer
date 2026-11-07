@@ -6,7 +6,7 @@ from .. import configurazione as cfg
 from .. import attributi as attr
 from .. import llm, servizi
 from ..db import leggi_impostazione, scrivi_impostazione, transazione
-from .comune import chiave_tabella, conn, esegui_ricalcolo, scarica_modello_locale, testo
+from .comune import chiave_tabella, conn, esegui_ricalcolo, ollama_non_raggiungibile, scarica_modello_locale, testo
 
 MODI = {"locale": "Prima il modello locale, poi Claude solo per le voci incerte",
         "claude": "Direttamente Claude"}
@@ -191,10 +191,8 @@ def _selezione_revisione(c, n_tutti, aperte=()):
 
 def _sezione_locale(c, voci, etichetta):
     ok, info = llm.ollama_disponibile(c)
-    oc = llm.ollama_config(c)
     if not ok:
-        st.info("Ollama non risponde su %s. Installalo e avvialo per usare il modello locale (vedi MANUALE.md)."
-                % oc["url"], icon=":material/memory:")
+        ollama_non_raggiungibile(c, info, "cls")
         return
     sigla = abs(hash(etichetta)) % 10 ** 6
     modello = _scegli_modello_locale(c, "mod_locale_%d" % sigla)

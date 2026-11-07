@@ -1,0 +1,63 @@
+# Installazione di Ollama dall'app (spese/installa_ollama.py) su Linux e Windows, con download di un modello
+# piccolo. Scarica qualche GB: parte solo quando cambia il codice dell'installazione, o a mano.
+name: Ollama
+
+on:
+  push:
+    paths:
+      - "spese/installa_ollama.py"
+      - ".github/workflows/ollama.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Dipendenze dell'app
+        run: python -m pip install --quiet -r requirements.txt
+      - name: Installazione di Ollama e del modello (come amministratore con sudo)
+        run: python -m spese.installa_ollama qwen2.5:0.5b
+      - name: Verifica
+        run: |
+          curl -fsS http://127.0.0.1:11434/api/tags | tee tags.json
+          grep -q '"qwen2.5:0.5b"' tags.json
+          systemctl show ollama -p Environment | tee env.txt
+          grep -q "OLLAMA_NO_CLOUD=1" env.txt
+          python -c "from spese import installa_ollama as io; assert io.installato(); print(io.eseguibile())"
+
+  windows:
+    runs-on: windows-2025
+    strategy:
+      fail-fast: false
+      matrix:
+        via: [winget, github]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Dipendenze dell'app
+        shell: pwsh
+        run: python -m pip install --quiet -r requirements.txt
+      - name: Installazione di Ollama e del modello
+        shell: pwsh
+        run: |
+          if ("${{ matrix.via }}" -eq "github") { $env:SPESE_OLLAMA_SENZA_WINGET = "1" }
+          python -m spese.installa_ollama qwen2.5:0.5b
+          exit $LASTEXITCODE
+      - name: Verifica
+        shell: pwsh
+        run: |
+          $tags = Invoke-RestMethod http://127.0.0.1:11434/api/tags
+          $tags.models.name
+          if (-not ($tags.models.name -contains "qwen2.5:0.5b")) { Write-Output "::error::Modello non installato"; exit 1 }
+          $v = (Get-ItemProperty HKCU:\Environment).OLLAMA_NO_CLOUD
+          if ($v -ne "1") { Write-Output "::error::OLLAMA_NO_CLOUD non impostata"; exit 1 }
+          python -c "from spese import installa_ollama as io; assert io.installato(); print(io.eseguibile())"

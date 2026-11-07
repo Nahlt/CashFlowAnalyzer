@@ -197,3 +197,74 @@ def scarica_modello_locale(c, nome, chiave):
         st.session_state["modello_installato"] = nome
         st.rerun()
     return False
+
+
+@st.fragment(run_every=2)
+def _avanzamento_ollama():
+    """Avanzamento dell'installazione di Ollama in background: si aggiorna da solo ogni 2 secondi."""
+    from .. import installa_ollama as io
+    lav = io.lavoro()
+    if lav is None:
+        return
+    if not lav.finito:
+        st.progress(lav.percentuale or 0.0, text=lav.testo)
+        st.caption("Puoi cambiare pagina: l'installazione continua e la ritrovi qui.")
+    elif lav.errore:
+        st.error(lav.errore, icon=":material/error:")
+        if lav.comando:
+            st.code(lav.comando, language="bash")
+        if st.button("Chiudi", key="ollama_chiudi_errore"):
+            io.chiudi_lavoro()
+            st.rerun()
+    else:
+        st.success("Ollama e' installato e attivo; modelli pronti: %s." % ", ".join(lav.modelli))
+        if st.button("Continua", key="ollama_continua", type="primary"):
+            io.chiudi_lavoro()
+            st.session_state["verifica_ollama"] = True
+            st.rerun()
+    with st.expander("Dettagli dell'installazione"):
+        st.code("\n".join(list(lav.righe)[-60:]) or "…", language="text")
+
+
+def ollama_non_raggiungibile(c, dettaglio, chiave):
+    """Ollama non risponde: messaggio chiaro e, se l'indirizzo e' questo PC, proposta di installarlo (o avviarlo)
+    insieme ai modelli indicati in Impostazioni."""
+    from .. import installa_ollama as io
+    from .. import llm
+    if io.lavoro() is not None:
+        _avanzamento_ollama()
+        return
+    url = llm.ollama_config(c)["url"]
+    modelli = llm.modelli_locali(c)
+    elenco = ", ".join(modelli)
+    if not io.indirizzo_locale(url):
+        st.warning("Ollama non risponde all'indirizzo %s. Controlla che quel computer sia acceso e che Ollama sia "
+                   "avviato, oppure indica l'indirizzo di questo PC (http://127.0.0.1:11434)." % url,
+                   icon=":material/memory:")
+    elif io.installato():
+        st.warning("Ollama e' installato su questo PC ma non e' avviato.", icon=":material/memory:")
+        if st.button("Avvia Ollama e controlla i modelli (%s)" % elenco, key="ollama_avvia_%s" % chiave):
+            io.avvia_lavoro(url, modelli, installa=False)
+            st.rerun()
+    else:
+        sistema = "Windows" if io.WINDOWS else "Linux"
+        st.warning("Ollama non e' installato su questo PC: serve per classificare gli esercenti con il modello "
+                   "locale, senza mandare nulla fuori dal computer. Vuoi installarlo adesso, insieme ai modelli "
+                   "indicati (%s)?" % elenco, icon=":material/memory:")
+        if io.WINDOWS:
+            come = ("Su Windows si installa solo per il tuo utente, senza permessi di amministratore: con winget, "
+                    "oppure con l'installatore ufficiale della release su GitHub, usato solo se impronta e firma "
+                    "digitale sono quelle di Ollama.")
+        else:
+            come = ("Su Linux si usa lo script ufficiale di ollama.com, che installa Ollama come servizio di "
+                    "sistema: serve la password di amministratore, chiesta da una finestra di sistema.")
+        st.caption("Cosa succede: si scarica il programma Ollama dalle fonti ufficiali (circa 1,5 GB) e poi i "
+                   "modelli indicati (qualche GB); dalla rete escono solo il nome dei modelli, nessun tuo dato. %s "
+                   "I modelli cloud di Ollama restano esclusi (OLLAMA_NO_CLOUD=1). Ci vogliono alcuni minuti." % come)
+        ok = st.checkbox("Si', installa Ollama e i modelli su questo PC (%s)" % sistema, key="ollama_ok_%s" % chiave)
+        if st.button("Installa Ollama", key="ollama_installa_%s" % chiave, type="primary", disabled=not ok):
+            io.avvia_lavoro(url, modelli, installa=True)
+            st.rerun()
+    if dettaglio:
+        with st.expander("Dettagli tecnici"):
+            st.code(str(dettaglio), language="text")

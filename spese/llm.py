@@ -304,12 +304,18 @@ def installato(nome, installati):
 def scarica_modello(conn, nome, avanzamento=None):
     """Scarica e installa un modello in Ollama (dalla libreria di Ollama: esce solo il nome del modello).
     avanzamento(stato, completati, totale) viene chiamato man mano."""
+    return scarica_modello_url(ollama_config(conn)["url"], nome, avanzamento)
+
+
+def scarica_modello_url(url, nome, avanzamento=None):
+    """Come scarica_modello, con l'indirizzo di Ollama gia' letto (serve all'installazione in background,
+    che non usa il database)."""
     import requests
     errore = errore_nome_modello(nome, locale=True)
     if errore:
         raise ValueError(errore)
-    c = ollama_config(conn)
-    with requests.post(c["url"] + "/api/pull", json={"model": nome, "stream": True}, stream=True, timeout=(5, 600)) as r:
+    with requests.post(url.rstrip("/") + "/api/pull", json={"model": nome, "stream": True}, stream=True,
+                       timeout=(5, 600)) as r:
         r.raise_for_status()
         for riga in r.iter_lines():
             if not riga:
