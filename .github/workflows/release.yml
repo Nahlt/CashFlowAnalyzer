@@ -1,6 +1,6 @@
-# Crea una release su GitHub quando si pubblica un tag di versione, per esempio v0.13.1 (anche V0.13.1).
-# Controlla che il tag corrisponda a spese/__init__.py, esegue i test e allega il pacchetto
-# per Linux (.tar.gz e .zip) con le note prese dalla sezione della versione in CHANGELOG.md.
+# Crea una release su GitHub quando si pubblica un tag di versione, per esempio v0.14.0 (anche V0.14.0).
+# Controlla che il tag corrisponda a spese/__init__.py, esegue i test su Linux e Windows (test.yml) e allega
+# il pacchetto (.zip e .tar.gz, uguale per Linux e Windows) con le note prese da CHANGELOG.md.
 name: Release
 
 on:
@@ -11,35 +11,40 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  versione:
     runs-on: ubuntu-24.04
+    outputs:
+      v: ${{ steps.v.outputs.v }}
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v5
       - name: Versione del tag e dell'app
+        id: v
         run: |
           V="${GITHUB_REF_NAME#[vV]}"
           APP=$(python3 -c 'import re; print(re.search(r"VERSIONE = \"(.+?)\"", open("spese/__init__.py").read()).group(1))')
           if [ "$V" != "$APP" ]; then
-            echo "Il tag $GITHUB_REF_NAME non corrisponde alla versione dell'app ($APP)" >&2
+            echo "::error::Il tag $GITHUB_REF_NAME non corrisponde alla versione dell'app ($APP)"
             exit 1
           fi
-          echo "V=$V" >> "$GITHUB_ENV"
+          echo "v=$V" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+  test:
+    needs: versione
+    uses: ./.github/workflows/test.yml
 
-      - name: Test
-        run: |
-          python -m pip install --quiet -r requirements-dev.txt
-          python -m pytest -q -p no:cacheprovider tests
+  release:
+    needs: [versione, test]
+    runs-on: ubuntu-24.04
+    env:
+      V: ${{ needs.versione.outputs.v }}
+    steps:
+      - uses: actions/checkout@v5
 
       - name: Pacchetto e note
         run: |
           mkdir dist
-          git archive --format=tar.gz --prefix="CashFlowAnalyzer-$V/" -o "dist/CashFlowAnalyzer-$V-linux.tar.gz" HEAD
-          git archive --format=zip    --prefix="CashFlowAnalyzer-$V/" -o "dist/CashFlowAnalyzer-$V-linux.zip"    HEAD
+          git archive --format=zip    --prefix="CashFlowAnalyzer-$V/" -o "dist/CashFlowAnalyzer-$V.zip"    HEAD
+          git archive --format=tar.gz --prefix="CashFlowAnalyzer-$V/" -o "dist/CashFlowAnalyzer-$V.tar.gz" HEAD
           (cd dist && sha256sum * > SHA256SUMS.txt)
           awk -v v="## $V " 'index($0, v) == 1 {on = 1; next} on && /^## / {exit} on' CHANGELOG.md > note.md
           [ -s note.md ] || echo "Vedi CHANGELOG.md" > note.md

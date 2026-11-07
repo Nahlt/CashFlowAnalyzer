@@ -1,4 +1,4 @@
-"""CashFlow Analyzer - avvio: streamlit run app.py (vedi avvia.sh)."""
+"""CashFlow Analyzer - avvio: streamlit run app.py (vedi avvia.py)."""
 import os
 
 import streamlit as st
@@ -114,7 +114,7 @@ def accesso():
     _cookie(None)
     nuovo = not file_database().exists()
     if not CIFRATO:
-        st.error("Modulo di cifratura non installato (sqlcipher3). Rilancia install.sh.")
+        st.error("Modulo di cifratura non installato (sqlcipher3). Rilancia l'installazione (install.sh su Linux, install.cmd su Windows).")
         st.stop()
     with st.form("accesso"):
         if nuovo:

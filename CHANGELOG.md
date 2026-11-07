@@ -5,6 +5,39 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.14.0 – 7 novembre 2026 · CashFlow Analyzer anche su Windows
+
+**Novita'**
+- **Windows 10 e 11**: l'app si installa e si usa come su Linux.
+  - `install.cmd` (doppio clic) cerca Python da 3.11 a 3.14, escluso quello del Microsoft Store. Se manca chiede
+    conferma e installa Python 3.13 solo per l'utente, senza permessi di amministratore: con winget, oppure,
+    se winget non c'e' o non riesce, con l'installatore ufficiale di python.org, eseguito solo se la sua
+    impronta SHA-256 corrisponde a quella scritta nello script.
+  - Poi crea l'ambiente `.venv`, installa le dipendenze e aggiunge **CashFlow Analyzer** al menu Start.
+  - Icona nell'area di notifica con lo stesso menu di Linux (apri, riavvia o avvia, ferma) e notifiche.
+  - Dati in `%LOCALAPPDATA%\CashFlowAnalyzer`; chiave di Claude nella Gestione credenziali di Windows.
+  - Database cifrato con `sqlcipher3-wheels`, la variante di SQLCipher con i pacchetti per Windows.
+  - `disinstalla.cmd` toglie ambiente, collegamento e chiave; i dati restano, salvo `-AncheDati`.
+- **Avviatore unico** `avvia.py` per i due sistemi: avvio, riavvio, arresto e apertura del browser.
+  `avvia.sh` (Linux) e `avvia.cmd` (Windows) lo richiamano con le stesse opzioni di prima.
+- **Linux, `install.sh`**: se mancano Python 3.11 o successivo o il modulo `venv`, riconosce la distribuzione
+  (Mint, Ubuntu, Debian, Fedora, Arch, openSUSE), mostra il comando per installarli e lo esegue dopo conferma.
+  Con `--si` risponde si' alle domande.
+- **Test su GitHub**: a ogni push l'azione *Test* installa e prova l'app su Linux e su Windows (anche
+  l'installazione di Python, sia con winget sia da python.org), con test automatici, avvio, riavvio e arresto.
+  La release parte solo se questi test passano, e il pacchetto (`.zip` e `.tar.gz`) e' unico per i due sistemi.
+
+**Correzioni**
+- Portachiavi: il controllo della sessione D-Bus valeva su ogni sistema e su Windows avrebbe escluso la
+  Gestione credenziali. Ora vale solo su Linux.
+
+**Aggiornando**
+- Linux: rilancia `./install.sh`. Database, dati e voce del menu restano gli stessi; l'icona dell'area di
+  notifica e' quella di prima.
+- Windows: prima installazione con `install.cmd`.
+
+---
+
 ## 0.13.1 – 6 novembre 2026 · release automatiche su GitHub, dati di prova ripuliti
 
 **Novita'**

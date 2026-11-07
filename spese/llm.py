@@ -442,10 +442,12 @@ def rimetti_in_coda(conn, chiavi):
 
 
 def _portachiavi(funzione, *args, timeout=4):
-    """Chiamata al portachiavi di sistema con timeout: senza sessione grafica keyring puo' bloccarsi."""
+    """Chiamata al portachiavi di sistema con timeout: senza sessione grafica keyring puo' bloccarsi.
+    Linux: portachiavi del desktop (Secret Service, via D-Bus). Windows: Gestione credenziali."""
     import os
+    import sys
     import threading
-    if not os.environ.get("DBUS_SESSION_BUS_ADDRESS"):
+    if sys.platform.startswith("linux") and not os.environ.get("DBUS_SESSION_BUS_ADDRESS"):
         raise RuntimeError("portachiavi di sistema non disponibile in questa sessione")
     esito = {}
 

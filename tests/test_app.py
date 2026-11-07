@@ -1761,3 +1761,57 @@ def test_stesso_pagamento_paypal_non_proposto_due_volte(caricato):
     cand = candidati_paypal(conn, ["D-1", "D-2"])
     proposte = [k for k, v in cand.items() if v and v[0].get("proposta")]
     assert proposte == ["D-1"]
+
+
+def test_cartella_dati_per_sistema(monkeypatch, tmp_path):
+    """Senza SPESE_DATI: Windows usa %LOCALAPPDATA%\\CashFlowAnalyzer, Linux ~/.local/share/spese-app."""
+    import os
+    import sys
+    from spese import percorsi
+    monkeypatch.delenv("SPESE_DATI", raising=False)
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "Local"))
+    assert percorsi.cartella_predefinita() == os.path.join(str(tmp_path / "Local"), "CashFlowAnalyzer")
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "share"))
+    assert percorsi.cartella_predefinita() == os.path.join(str(tmp_path / "share"), "spese-app")
+
+
+def test_portachiavi_su_windows_senza_dbus(monkeypatch):
+    """Il controllo della sessione D-Bus vale solo su Linux: su Windows la chiave va nella Gestione credenziali."""
+    import sys
+    import keyring
+    monkeypatch.delenv("DBUS_SESSION_BUS_ADDRESS", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(keyring, "get_password", lambda servizio, utente: "chiave-%s-%s" % (servizio, utente))
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert llm.chiave_api() == "chiave-spese-app-anthropic"
+    monkeypatch.setattr(sys, "platform", "linux")
+    assert llm.chiave_api() is None                 # Linux senza sessione grafica: portachiavi non usato
+
+
+def test_avviatore_riconosce_i_suoi_processi(monkeypatch, tmp_path):
+    """Il file pid vale solo se il processo e' vivo ed e' quello giusto: un numero riassegnato dopo un riavvio
+    del PC non va considerato (ne' fermato)."""
+    import importlib
+    import os
+    import sys
+    from pathlib import Path
+    monkeypatch.setenv("SPESE_DATI", str(tmp_path / "dati"))
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import avvia
+    avvia = importlib.reload(avvia)
+    assert avvia.DATI == tmp_path / "dati"
+    f = tmp_path / "dati" / "prova.pid"
+    avvia.scrivi_pid(f, os.getpid())
+    atteso = "pytest"                                     # la riga di comando di questo processo (Linux)
+    assert avvia.vivo(f, atteso) == os.getpid()
+    if sys.platform != "win32":
+        assert avvia.vivo(f, "streamlit") is None         # vivo, ma non e' il server
+    else:
+        f.write_text("%d 12345\n" % os.getpid())          # stesso numero, ora di creazione diversa
+        assert avvia.vivo(f, atteso) is None
+    f.write_text("999999999\n")
+    assert avvia.vivo(f, atteso) is None
+    f.write_text("non un numero")
+    assert avvia.vivo(f, atteso) is None

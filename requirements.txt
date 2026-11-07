@@ -1,10 +1,15 @@
-# Versioni fissate, provate con Python 3.12 e 3.13 (Linux Mint 22 ha Python 3.12)
+# Versioni fissate, provate con Python 3.12 e 3.13 (Linux Mint 22 ha Python 3.12; su Windows si installa il 3.13)
 streamlit==1.66.1
 streamlit-echarts==0.7.0
 pandas==3.1.0
 PyYAML==6.0.3
 openpyxl==3.1.5
 requests==2.34.2
-sqlcipher3-binary==0.6.0
+# database cifrato (SQLCipher): su Linux il pacchetto usato finora, su Windows la variante con i pacchetti per Windows
+sqlcipher3-binary==0.6.0; sys_platform == "linux"
+sqlcipher3-wheels==0.5.7; sys_platform == "win32"
+# icona nell'area di notifica di Windows (su Linux si usa GTK di sistema, vedi tray.py)
+pystray==0.19.5; sys_platform == "win32"
+pillow==13.0.0; sys_platform == "win32"
 keyring==25.7.0
 anthropic==2.4.0

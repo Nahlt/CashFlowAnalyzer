@@ -3,7 +3,7 @@
 Di [Nahlt](https://github.com/Nahlt).
 
 App locale per analizzare le entrate e le uscite di una famiglia a partire dagli estratti conto esportati dalle
-banche. Gira tutta sul proprio computer, nel browser su `127.0.0.1`, con il database cifrato (SQLCipher).
+banche, per Linux e Windows. Gira tutta sul proprio computer, nel browser su `127.0.0.1`, con il database cifrato (SQLCipher).
 
 I dati restano sul PC. Verso l'esterno possono uscire solo, e solo se lo scegli:
 - i **nomi degli esercenti** da classificare, verso Claude, dopo un'anteprima e una conferma esplicita: mai
@@ -24,20 +24,29 @@ I dati restano sul PC. Verso l'esterno possono uscire solo, e solo se lo scegli:
 
 ## Requisiti
 
-- Linux (provato su Linux Mint 22), Python 3.11 o successivo con `venv`
+- Linux (provato su Linux Mint 22) oppure Windows 10 o 11 a 64 bit
+- Python 3.11 o successivo: se manca, l'installazione propone di installarlo (su Windows con winget o
+  dall'installatore ufficiale di python.org, solo per l'utente e senza permessi di amministratore)
 - Facoltativi: [Ollama](https://ollama.com) per il modello locale, una chiave API di Anthropic per Claude
 
 ## Installazione e avvio
 
+Scarica `CashFlowAnalyzer-X.Y.Z.zip` (o `.tar.gz`) dall'ultima [release](https://github.com/Nahlt/CashFlowAnalyzer/releases)
+e scompattalo, oppure clona il repository.
+
+**Linux**
+
 ```bash
-git clone https://github.com/Nahlt/CashFlowAnalyzer.git
-cd CashFlowAnalyzer
-./install.sh          # crea .venv, installa le dipendenze, aggiunge la voce al menu
+cd CashFlowAnalyzer-X.Y.Z
+./install.sh          # controlla Python, crea .venv, installa le dipendenze, aggiunge la voce al menu
 ./avvia.sh            # avvia il server e apre il browser su http://127.0.0.1:8501
 ```
 
+**Windows**: doppio clic su `install.cmd`, poi avvio dal menu Start (**CashFlow Analyzer**) o con `avvia.cmd`.
+
 Al primo avvio si sceglie la passphrase che cifra il database: non e' recuperabile. I dati stanno in
-`~/.local/share/spese-app` (o nella cartella indicata da `SPESE_DATI`).
+`~/.local/share/spese-app` su Linux e in `%LOCALAPPDATA%\CashFlowAnalyzer` su Windows (o nella cartella
+indicata da `SPESE_DATI`).
 
 Il manuale completo, con il primo utilizzo e tutte le funzioni, e' in [MANUALE.md](MANUALE.md).
 
@@ -46,6 +55,8 @@ Il manuale completo, con il primo utilizzo e tutte le funzioni, e' in [MANUALE.m
 | Percorso | Contenuto |
 | --- | --- |
 | `app.py` | Accesso, menu, barra laterale |
+| `avvia.py` | Avviatore per Linux e Windows: server, icona nell'area di notifica, browser |
+| `install.sh`, `install.cmd`, `install.ps1` | Installazione su Linux e Windows, con il controllo di Python |
 | `spese/` | Lettura dei formati, import, catena di categorizzazione, ricalcolo e abbinamenti, privacy, modelli, portafoglio, prezzi di mercato |
 | `spese/ui/` | Pagine dell'interfaccia (Streamlit) e grafici (ECharts) |
 | `config/` | Profili dei formati bancari, tassonomia, tipi di movimento, regole, impostazioni |
@@ -59,17 +70,19 @@ Il manuale completo, con il primo utilizzo e tutte le funzioni, e' in [MANUALE.m
 .venv/bin/python -m pytest -q tests
 ```
 
+L'azione *Test* di GitHub ripete test, installazione, avvio e arresto su Linux e Windows a ogni push.
+
 ## Pubblicare una versione
 
 1. Aggiorna `VERSIONE` in `spese/__init__.py` e aggiungi la sezione `## X.Y.Z – ...` in `CHANGELOG.md`.
 2. Unisci le modifiche in `main`, poi crea e pubblica il tag:
    ```bash
-   git tag v0.13.1
-   git push origin v0.13.1
+   git tag v0.14.0
+   git push origin v0.14.0
    ```
-   In alternativa, su GitHub: *Releases* > *Draft a new release* > nuovo tag `v0.13.1` > *Publish*.
-3. L'azione *Release* esegue i test e allega alla release `CashFlowAnalyzer-X.Y.Z-linux.tar.gz`, lo `.zip` e
-   `SHA256SUMS.txt`. Per installare: si scompatta il pacchetto e si lancia `./install.sh`.
+   In alternativa, su GitHub: *Releases* > *Draft a new release* > nuovo tag `v0.14.0` > *Publish*.
+3. L'azione *Release* esegue i test su Linux e Windows e allega alla release `CashFlowAnalyzer-X.Y.Z.zip`, il
+   `.tar.gz` (stesso contenuto, per Linux e Windows) e `SHA256SUMS.txt`.
 
 ## Licenza
 

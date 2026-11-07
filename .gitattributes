@@ -1,3 +1,8 @@
+# Script di Windows con fine riga CRLF, script di Linux con LF: cosi' restano corretti anche nei pacchetti
+*.cmd  -text
+*.ps1  -text
+*.sh   text eol=lf
+
 # Esclusi dai pacchetti della release (git archive)
 /.github         export-ignore
 /.gitattributes  export-ignore

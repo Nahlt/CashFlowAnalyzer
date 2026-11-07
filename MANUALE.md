@@ -1,33 +1,62 @@
-# CashFlow Analyzer 0.13.1 – Manuale
+# CashFlow Analyzer 0.14.0 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
 App locale per analizzare entrate e uscite della famiglia a partire dagli estratti delle banche
-(Credem, Credit Agricole, ING conto in Excel o CSV e carta di credito, Trade Republic, PayPal). Gira tutta sul tuo computer, nel browser,
+(Credem, Credit Agricole, ING conto in Excel o CSV e carta di credito, Trade Republic, PayPal). Funziona su Linux e
+Windows e gira tutta sul tuo computer, nel browser,
 su `127.0.0.1`. Il database e' cifrato. All'esterno escono solo nomi di esercenti, e solo dopo la tua approvazione;
 se accendi i prezzi di mercato del portafoglio, anche i codici ISIN e i simboli di borsa dei tuoi titoli.
 
-## Installazione su Linux Mint 22
+## Installazione
+
+Scarica il pacchetto della release (`CashFlowAnalyzer-X.Y.Z.zip` o `.tar.gz`, uguale per Linux e Windows) da
+https://github.com/Nahlt/CashFlowAnalyzer/releases e scompattalo nella cartella in cui vuoi tenere il programma.
+
+### Linux (provato su Linux Mint 22)
 
 ```bash
-sudo apt install python3-venv        # solo se install.sh lo chiede
-cd spese-app
+cd CashFlowAnalyzer-X.Y.Z
 ./install.sh
 ```
 
-`install.sh` crea un ambiente Python isolato in `.venv`, installa le dipendenze di `requirements.txt`
-(versioni fissate) e aggiunge **CashFlow Analyzer** al menu, sotto Ufficio.
-Non tocca il Python di sistema.
+`install.sh` controlla che ci siano Python 3.11 o successivo e il modulo `venv`. Se mancano riconosce la
+distribuzione (Mint, Ubuntu, Debian, Fedora, Arch, openSUSE), mostra il comando per installarli (per esempio
+`sudo apt install -y python3-venv python3.12-venv`) e lo esegue solo se confermi; chiede la password di
+amministratore. Poi crea un ambiente Python isolato in `.venv`, installa le dipendenze di `requirements.txt`
+(versioni fissate) e aggiunge **CashFlow Analyzer** al menu, sotto Ufficio. Non tocca il Python di sistema.
+Con `./install.sh --si` risponde si' alle domande.
+
+### Windows 10 e 11
+
+Doppio clic su **`install.cmd`** nella cartella scompattata. Non servono permessi di amministratore.
+
+1. Cerca Python da 3.11 a 3.14. Il Python del Microsoft Store non viene usato, perche' devia le scritture nella
+   cartella AppData verso una copia privata.
+2. Se manca chiede conferma e installa **Python 3.13 solo per il tuo utente**:
+   - con **winget**, il gestore di pacchetti di Microsoft incluso in Windows 11 e nei Windows 10 aggiornati; su
+     un PC appena configurato prova prima a registrarlo;
+   - se winget non c'e' o non riesce, scarica l'installatore ufficiale da python.org e lo esegue solo se la sua
+     impronta SHA-256 corrisponde a quella scritta in `install.ps1`.
+3. Crea l'ambiente `.venv`, installa le dipendenze e aggiunge **CashFlow Analyzer** al menu Start.
+
+Se Windows avvisa che il file viene da internet, scegli *Ulteriori informazioni* > *Esegui comunque*: lo script
+poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` (risponde si' alle domande),
+`install.cmd -SoloDownload` (installa Python da python.org anche se c'e' winget).
 
 ## Avvio
 
-- Dal menu: **CashFlow Analyzer**, oppure `./avvia.sh`. Il browser si apre su http://127.0.0.1:8501.
+- Dal menu (Linux) o dal menu Start (Windows): **CashFlow Analyzer**. Da terminale: `./avvia.sh` su Linux,
+  `avvia.cmd` su Windows, con le stesse opzioni. Il browser si apre su http://127.0.0.1:8501.
 - Nell'area di notifica compare l'icona dell'app (tre barre su fondo blu). Il suo menu mostra lo stato del
   server e permette di **aprire** l'app nel browser, **riavviare** il server (o avviarlo, se e' fermo) e
   **fermare** tutto (server e icona). Dopo un riavvio le schede aperte chiedono di nuovo la passphrase.
-- Da terminale: `./avvia.sh --riavvia`, `./avvia.sh --ferma` (server e icona), `./avvia.sh --senza-icona`.
+- Da terminale: `--riavvia`, `--ferma` (server e icona), `--senza-icona`, per esempio `./avvia.sh --ferma` o
+  `avvia.cmd --ferma`.
 - Chiudere il browser non ferma il server.
-- L'icona usa le librerie grafiche di sistema, gia' presenti su Linux Mint, e l'area di notifica classica;
+- Su Windows l'icona sta nell'area di notifica accanto all'orologio (a volte nella freccia delle icone
+  nascoste); un clic apre l'app nel browser. I messaggi stanno in `%LOCALAPPDATA%\CashFlowAnalyzer\icona.log`.
+- Su Linux l'icona usa le librerie grafiche di sistema, gia' presenti su Linux Mint, e l'area di notifica classica;
   se il desktop non la offre passa da sola a XApp o AppIndicator. Se non compare:
   `sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-xapp-1.0`. Si puo' forzare il tipo di icona con
   `SPESE_ICONA=xapp ./avvia.sh` (oppure `gtk`, `appindicator`); i messaggi stanno in
@@ -156,14 +185,18 @@ file, puoi eliminarlo insieme. Poi ricarica il file giusto.
 ## Modello locale (facoltativo)
 
 Senza modello locale l'app funziona lo stesso: restano le regole, i codici MCC, i marchi, lo storico
-e le tue conferme. Per installarlo:
+e le tue conferme. Per installarlo su Linux:
 
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
 ollama pull qwen2.5:3b
 ```
 
-Per escludere i modelli cloud di Ollama, aggiungi la variabile al servizio:
+Su Windows: installatore da https://ollama.com/download (oppure `winget install -e --id Ollama.Ollama`), poi
+`ollama pull qwen2.5:3b` dal prompt dei comandi. Per escludere i modelli cloud: `setx OLLAMA_NO_CLOUD 1` e
+riavvia Ollama dall'icona nell'area di notifica.
+
+Per escludere i modelli cloud di Ollama su Linux, aggiungi la variabile al servizio:
 
 ```bash
 sudo systemctl edit ollama.service
@@ -185,7 +218,7 @@ In **Impostazioni > Claude** scrivi i modelli che vuoi usare, separati da punto 
 `claude-haiku-5-5; claude-sonnet-5-5; claude-opus-5-5`; si puo' aggiungere ad esempio `claude-fable-5-1`); al
 salvataggio l'app controlla con Claude che i nomi esistano. Il modello si sceglie a ogni invio. Inserisci poi la
 chiave API: viene salvata nel portachiavi di sistema
-(GNOME Keyring), non nel database ne' in file di testo. In alternativa puoi avviare l'app con la
+(su Linux GNOME Keyring, su Windows la Gestione credenziali), non nel database ne' in file di testo. In alternativa puoi avviare l'app con la
 variabile `ANTHROPIC_API_KEY`.
 
 Cosa viene inviato: solo la chiave esercente (es. `CRF EXP GAR# MILANO`, con le cifre sostituite da `#`)
@@ -287,35 +320,39 @@ ordina la tabella.
 
 | Cosa | Dove |
 | --- | --- |
-| Database cifrato | `~/.local/share/spese-app/spese.db` (cartella con permessi 700) |
+| Database cifrato | Linux: `~/.local/share/spese-app/spese.db` (cartella con permessi 700). Windows: `%LOCALAPPDATA%\CashFlowAnalyzer\spese.db` (nel tuo profilo utente, non sincronizzata con OneDrive) |
 | Backup cifrati | stessa cartella, `backup_AAAAMMGG_HHMMSS.db`, stessa passphrase |
-| Log del server | `~/.local/share/spese-app/server.log` (solo messaggi del server) |
-| Chiave API di Claude | portachiavi di sistema |
+| Log del server | stessa cartella, `server.log` (solo messaggi del server) |
+| Chiave API di Claude | portachiavi di sistema (Linux) o Gestione credenziali (Windows) |
 | Export CSV del gold | dove lo salvi tu: **e' in chiaro**, conservalo con cura |
 
-Per usare un'altra cartella: `SPESE_DATI=/percorso ./avvia.sh`.
+Per usare un'altra cartella: `SPESE_DATI=/percorso ./avvia.sh` su Linux, `set SPESE_DATI=D:\percorso` e poi
+`avvia.cmd` su Windows.
 Le righe originali di ogni file restano nel database cifrato (livello grezzo), quindi dopo l'import
 puoi cancellare le copie scaricate dalla banca.
 
 ## Aggiornamento
 
-Sostituisci i file del programma mantenendo la cartella `.venv`, poi rilancia `./install.sh`: installa le
-dipendenze nuove (dalla 0.5.0 `streamlit-echarts` al posto di `plotly`).
+Sostituisci i file del programma mantenendo la cartella `.venv`, poi rilancia `./install.sh` (Linux) o
+`install.cmd` (Windows): installa le dipendenze nuove.
 I dati non stanno nella cartella del programma, quindi non si perdono.
 Prima di aggiornare conviene creare un backup da **Impostazioni**.
 
-Se sposti la cartella del programma (es. su un altro disco), `./avvia.sh` funziona anche dalla nuova
-posizione; rilancia `./install.sh` una volta per aggiornare la voce del menu, che punta ancora al vecchio
+Se sposti la cartella del programma (es. su un altro disco), l'avvio da terminale funziona anche dalla nuova
+posizione; rilancia l'installazione una volta per aggiornare la voce del menu, che punta ancora al vecchio
 percorso.
 
 ## Disinstallazione
 
 ```bash
-./disinstalla.sh               # toglie ambiente Python, icona del menu e chiave di Claude; i dati restano
+./disinstalla.sh               # Linux: toglie ambiente Python, icona del menu e chiave di Claude; i dati restano
 ./disinstalla.sh --anche-dati  # cancella anche database, backup e log (chiede di scrivere CANCELLA)
 ```
 
-Senza `--anche-dati` il database cifrato resta in `~/.local/share/spese-app`: reinstallando lo ritrovi
+Su Windows: doppio clic su `disinstalla.cmd` (i dati restano) oppure `disinstalla.cmd -AncheDati`. Python
+installato per l'app non viene tolto: se non serve ad altro si disinstalla da *Impostazioni* > *App*.
+
+Senza l'opzione per i dati il database cifrato resta nella sua cartella: reinstallando lo ritrovi
 con la stessa passphrase. Gli export CSV salvati altrove non vengono toccati. Alla fine puoi cancellare
 la cartella del programma. Ollama, se l'hai installato, si toglie a parte.
 
@@ -324,6 +361,9 @@ la cartella del programma. Ollama, se l'hai installato, si toglie a parte.
 | Percorso | Contenuto |
 | --- | --- |
 | `app.py` | Accesso con passphrase e menu delle pagine |
+| `avvia.py` | Avviatore per Linux e Windows (`avvia.sh`, `avvia.cmd` e il menu lo richiamano) |
+| `install.sh`, `install.cmd` + `install.ps1` | Installazione su Linux e su Windows (con il controllo di Python) |
+| `tray.py`, `icona_windows.py` | Icona nell'area di notifica su Linux (GTK) e su Windows |
 | `spese/` | Lettura dei formati, import, catena di categorizzazione, ricalcolo, privacy, modelli |
 | `spese/ui/` | Pagine dell'interfaccia e grafici (ECharts) |
 | `config/profili/` | Un file YAML per formato bancario: firma, colonne (anche uscite ed entrate separate), codici, righe di saldo, formati di numeri e date |
@@ -342,9 +382,11 @@ conferme), storico, somiglianza con esercenti gia' noti, proposta da confermare.
 ## Test
 
 ```bash
-.venv/bin/pip install -r requirements-dev.txt
-.venv/bin/python -m pytest -q tests
+.venv/bin/pip install -r requirements-dev.txt          # Windows: .venv\Scripts\pip install -r requirements-dev.txt
+.venv/bin/python -m pytest -q tests                    # Windows: .venv\Scripts\python -m pytest -q tests
 ```
+
+Su GitHub gli stessi test, l'installazione e l'avvio vengono provati su Linux e Windows a ogni modifica.
 
 ## Strumenti da riga di comando
 

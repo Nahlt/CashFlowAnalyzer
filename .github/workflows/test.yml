@@ -1,0 +1,110 @@
+# Test su Linux e Windows: installazione con gli script dell'app, test automatici, avvio e arresto del server.
+# Su Windows l'installazione di Python si prova in due modi: con winget e scaricando da python.org (impronta
+# SHA-256 verificata). Parte a ogni push e pull request, e prima di ogni release (release.yml).
+name: Test
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    env:
+      SPESE_DATI: ${{ github.workspace }}/../dati
+      SPESE_PORTA: "8599"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Installazione (install.sh)
+        run: ./install.sh --si
+
+      - name: Test automatici
+        run: |
+          .venv/bin/python -m pip install --quiet -r requirements-dev.txt pytest-github-actions-annotate-failures
+          .venv/bin/python -m pytest -q -p no:cacheprovider tests
+
+      - name: Avvio, riavvio e arresto (avvia.sh)
+        run: |
+          ./avvia.sh --senza-icona
+          curl -fsS "http://127.0.0.1:$SPESE_PORTA/_stcore/health"
+          ./avvia.sh --riavvia
+          curl -fsS "http://127.0.0.1:$SPESE_PORTA/_stcore/health"
+          ./avvia.sh --ferma
+          ! curl -fsS -m 3 "http://127.0.0.1:$SPESE_PORTA/_stcore/health"
+
+  windows:
+    runs-on: windows-2025
+    strategy:
+      fail-fast: false
+      matrix:
+        python: [winget, python.org]
+    env:
+      SPESE_DATI: ${{ github.workspace }}\..\dati
+      SPESE_PORTA: "8599"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Installazione di Python e dell'app (install.cmd)
+        shell: cmd
+        run: |
+          if "${{ matrix.python }}"=="winget" (
+            call install.cmd -Si -ProvaInstallazione
+          ) else (
+            call install.cmd -Si -ProvaInstallazione -SoloDownload
+          )
+
+      - name: Python installato per l'utente e collegamento nel menu Start
+        shell: pwsh
+        run: |
+          $py = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python" -Filter python.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $py) { Write-Output "::error::Python non installato nella cartella dell'utente"; exit 1 }
+          & $py.FullName --version
+          & .venv\Scripts\python.exe -c "import sys; print('.venv:', sys.version, sys.base_prefix)"
+          $lnk = Join-Path ([Environment]::GetFolderPath("Programs")) "CashFlow Analyzer.lnk"
+          if (-not (Test-Path $lnk)) { Write-Output "::error::Collegamento nel menu Start mancante"; exit 1 }
+          $c = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
+          Write-Output "Collegamento: $($c.TargetPath) $($c.Arguments)"
+
+      - name: Test automatici
+        shell: pwsh
+        run: |
+          & .venv\Scripts\python.exe -m pip install --quiet -r requirements-dev.txt pytest-github-actions-annotate-failures
+          & .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider tests
+          exit $LASTEXITCODE
+
+      - name: Avvio, riavvio e arresto (avvia.cmd)
+        shell: pwsh
+        run: |
+          function Salute { try { (Invoke-WebRequest "http://127.0.0.1:$env:SPESE_PORTA/_stcore/health" -UseBasicParsing -TimeoutSec 3).Content } catch { $null } }
+          cmd /c avvia.cmd --senza-icona
+          if ((Salute) -ne "ok") { Get-Content "$env:SPESE_DATI\server.log" -ErrorAction SilentlyContinue; Write-Output "::error::Server non avviato"; exit 1 }
+          Get-Content "$env:SPESE_DATI\server.pid"
+          cmd /c avvia.cmd --riavvia
+          if ((Salute) -ne "ok") { Write-Output "::error::Server non riavviato"; exit 1 }
+          cmd /c avvia.cmd --ferma
+          Start-Sleep 2
+          if ((Salute) -eq "ok") { Write-Output "::error::Server non fermato"; exit 1 }
+          if (Test-Path "$env:SPESE_DATI\server.pid") { Write-Output "::error::File pid rimasto"; exit 1 }
+
+      - name: Icona nell'area di notifica (avvio completo)
+        shell: pwsh
+        run: |
+          Start-Process -FilePath .venv\Scripts\pythonw.exe -ArgumentList "avvia.py" -WorkingDirectory $PWD
+          Start-Sleep 25
+          Get-Content "$env:SPESE_DATI\icona.log" -ErrorAction SilentlyContinue
+          if (-not (Test-Path "$env:SPESE_DATI\icona.pid")) { Write-Output "::warning::Icona non avviata (sessione senza desktop?)" }
+          cmd /c avvia.cmd --ferma
+          Start-Sleep 2
+          if (Test-Path "$env:SPESE_DATI\icona.pid") { Write-Output "::error::Icona non chiusa"; exit 1 }
+
+      - name: Disinstallazione (disinstalla.cmd)
+        shell: cmd
+        run: |
+          call disinstalla.cmd -Si
+          if exist .venv (echo ::error::.venv non tolto & exit /b 1)
