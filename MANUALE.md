@@ -1,9 +1,9 @@
-# CashFlow Analyzer 0.15.0 – Manuale
+# CashFlow Analyzer 0.16.0 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
 App locale per analizzare entrate e uscite della famiglia a partire dagli estratti delle banche
-(Credem, Credit Agricole, ING conto in Excel o CSV e carta di credito, Trade Republic, PayPal). Funziona su Linux e
+(Credem, Credit Agricole, Fineco, ING conto in Excel o CSV e carta di credito, Trade Republic, PayPal). Funziona su Linux e
 Windows e gira tutta sul tuo computer, nel browser,
 su `127.0.0.1`. Il database e' cifrato. All'esterno escono solo nomi di esercenti, e solo dopo la tua approvazione;
 se accendi i prezzi di mercato del portafoglio, anche i codici ISIN e i simboli di borsa dei tuoi titoli.
@@ -76,7 +76,7 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
 
 1. **Impostazioni**: inserisci i nomi dei titolari (es. "Mario Rossi"). Vengono tolti dalle descrizioni,
    bloccano l'invio a Claude di qualunque voce li contenga e servono a riconoscere i bonifici tra conti tuoi.
-   L'intestatario scritto negli estratti ING viene aggiunto da solo; se aggiungi un nome dopo l'import,
+   L'intestatario scritto negli estratti ING e Fineco viene aggiunto da solo; se aggiungi un nome dopo l'import,
    l'app lo toglie anche dai movimenti gia' importati.
    Nello stesso riquadro indica i **familiari** che versano sul conto comune senza essere titolari dei conti
    caricati (es. la tua compagna): i loro bonifici sul conto comune diventano contributi e i loro nomi sono
@@ -196,7 +196,9 @@ Ollama non risponde, l'app spiega cosa manca e, se l'indirizzo e' questo PC:
   Ollama). Poi scarica i modelli. Imposta anche `OLLAMA_NO_CLOUD=1`.
 - Ollama installato ma fermo: **Avvia Ollama e controlla i modelli**.
 
-L'installazione continua in background anche se cambi pagina; l'avanzamento e i dettagli restano nella pagina.
+L'installazione continua in background anche se cambi pagina. Nella pagina resta un riquadro con lo spinner e la
+fase in corso (con la percentuale quando e' nota, per esempio nel download dei modelli) e, sotto, i dettagli
+dell'installazione, aperti finche' il lavoro e' in corso o finisce con un errore.
 Se non riesce, l'app mostra cosa fare a mano. Lo stesso avviso compare in **Classificazione automatica**.
 
 **Installazione a mano** su Linux:
@@ -243,6 +245,23 @@ proposta, in una sottocategoria della salute (dal modello locale, da un marchio 
 carta): si classificano con il modello locale o a mano in **Revisione**. Il blocco segue la categoria della
 salute anche se la rinomini in **Regole e tassonomia**.
 Ogni richiesta resta nel registro degli invii.
+
+## Fineco
+
+Dall'area clienti Fineco esporta in **Excel** la lista movimenti del conto corrente per il periodo che ti serve
+(file `Fineco_movements_AAAAMMGG.xlsx`). Si importano bonifici (istantanei e SEPA, in entrata e in uscita), canone,
+interessi e imposte di bollo; un'altra voce resta da classificare in **Revisione**.
+
+- Si importano solo i movimenti **contabilizzati**: quelli ancora da contabilizzare compaiono tra le righe
+  scartate e si importano con l'estratto successivo.
+- Fineco spezza la descrizione completa con spazi anche in mezzo a parole, date e IBAN ("TRADE REPUBL IC").
+  L'app legge comunque beneficiario, ordinante e IBAN: l'IBAN si riunisce e si tiene solo se la cifra di
+  controllo torna; un nome spezzato si ricompone quando i pezzi formano una parola dei nomi di titolari e
+  familiari, cosi' i bonifici a tuo nome si riconoscono.
+- L'estratto ha solo il saldo finale: vale come saldo alla fine del periodo, e la quadratura si verifica
+  dall'import successivo.
+- Interessi passivi vanno in *FINANZA · Interessi passivi*, canone in *Commissioni bancarie*, imposte di bollo
+  (conto e dossier titoli) in *Bollo*.
 
 ## PayPal
 

@@ -1,5 +1,6 @@
 """Funzioni condivise dalle pagine."""
 from datetime import date
+import time
 
 import streamlit as st
 
@@ -206,9 +207,23 @@ def _avanzamento_ollama():
     lav = io.lavoro()
     if lav is None:
         return
+    # Spinner con la fase in corso al posto di una barra: con winget non si sa a che punto e' l'installazione.
+    # I dettagli restano aperti finche' il lavoro e' in corso o finisce con un errore.
     if not lav.finito:
-        st.progress(lav.percentuale or 0.0, text=lav.testo)
-        st.caption("Puoi cambiare pagina: l'installazione continua e la ritrovi qui.")
+        etichetta, stato = lav.testo, "running"
+        if lav.percentuale is not None and lav.percentuale < 1 and "%" not in etichetta:
+            etichetta += " · %d%%" % int(lav.percentuale * 100)
+    elif lav.errore:
+        etichetta, stato = "Installazione non riuscita", "error"
+    else:
+        etichetta, stato = "Ollama installato e attivo", "complete"
+    # senza "with": all'uscita dal blocco Streamlit segnerebbe come concluso un lavoro ancora in corso
+    riquadro = st.status(etichetta, state=stato, expanded=not lav.finito or bool(lav.errore))
+    riquadro.code("\n".join(list(lav.righe)[-60:]) or "…", language="text")
+    if not lav.finito:
+        minuti, secondi = divmod(int(time.time() - lav.inizio), 60)
+        st.caption("In corso da %s. Puoi cambiare pagina: l'installazione continua e la ritrovi qui."
+                   % ("%d min %d s" % (minuti, secondi) if minuti else "%d s" % secondi))
     elif lav.errore:
         st.error(lav.errore, icon=":material/error:")
         if lav.comando:
@@ -222,8 +237,6 @@ def _avanzamento_ollama():
             io.chiudi_lavoro()
             st.session_state["verifica_ollama"] = True
             st.rerun()
-    with st.expander("Dettagli dell'installazione"):
-        st.code("\n".join(list(lav.righe)[-60:]) or "…", language="text")
 
 
 def ollama_non_raggiungibile(c, dettaglio, chiave):

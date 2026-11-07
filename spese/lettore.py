@@ -8,6 +8,7 @@ from pathlib import Path
 
 from . import configurazione as cfg
 from .chiavi import chiave, separa_intermediario, togli_nomi
+from .iban import verifica as verifica_iban
 from .numeri import FormatoNonValido, a_centesimi, a_data, testo_decimal
 
 RIGHE_TESTA = 60
@@ -114,6 +115,44 @@ def _tipo(profilo, valori_codice):
     return tipi.get("*", "altro"), next((v for v in valori_codice if v), "")
 
 
+def cerca_senza_spazi(rx, testo):
+    """Applica la regola al testo senza spazi e riporta i gruppi trovati al testo originale.
+
+    Per le banche che spezzano la descrizione a lunghezza fissa inserendo spazi anche dentro parole e codici
+    (Fineco): le etichette ("Beneficiario:", "IBAN:") si riconoscono anche se spezzate. Restituisce
+    {gruppo: testo originale con gli spazi ridotti a uno} oppure None."""
+    pos = [i for i, ch in enumerate(testo) if not ch.isspace()]
+    compatto = "".join(testo[i] for i in pos)
+    x = rx.search(compatto)
+    if not x:
+        return None
+    out = {}
+    for nome in x.groupdict():
+        a, b = x.span(nome)
+        if a < 0 or a == b:
+            continue
+        out[nome] = re.sub(r"\s+", " ", testo[pos[a]:pos[b - 1] + 1])
+    return out
+
+
+def _ricomponi_nome(nome, parole):
+    """'MARIO RO SSI' -> 'MARIO ROSSI': riunisce i pezzi consecutivi (fino a tre) che insieme formano una parola
+    dei nomi noti (titolari e familiari) e da soli no. Serve a riconoscere i bonifici a tuo nome."""
+    note = {p.upper() for p in parole if p}
+    pezzi, out, i = nome.split(), [], 0
+    while i < len(pezzi):
+        for k in (3, 2):
+            unito = "".join(pezzi[i:i + k])
+            if i + k <= len(pezzi) and unito.upper() in note and pezzi[i].upper() not in note:
+                out.append(unito)
+                i += k
+                break
+        else:
+            out.append(pezzi[i])
+            i += 1
+    return " ".join(out)
+
+
 def leggi(percorso, titolari=(), dati: bytes = None) -> FileLetto:
     righe, formato, dati = leggi_grezzo(Path(percorso), dati)
     profilo, h = riconosci(righe)
@@ -121,6 +160,10 @@ def leggi(percorso, titolari=(), dati: bytes = None) -> FileLetto:
     idx = {n: i for i, n in enumerate(intest) if n}
     fl = FileLetto(profilo, righe, h, intest, _metadati(profilo, righe[:h]),
                    hash_file=hashlib.sha256(dati).hexdigest())
+    if profilo.get("data_saldo_da") and fl.metadati.get("saldo_alla_data") and not fl.metadati.get("data_saldo"):
+        # es. Fineco: il saldo finale vale alla data di fine del periodo estratto
+        if fl.metadati.get(profilo["data_saldo_da"]):
+            fl.metadati["data_saldo"] = fl.metadati[profilo["data_saldo_da"]]
     if profilo.get("lettore") == "paypal":
         # piu' righe per la stessa operazione (pagamento, ricarica, conversioni): lettura dedicata
         from . import paypal
@@ -144,7 +187,10 @@ def leggi(percorso, titolari=(), dati: bytes = None) -> FileLetto:
         return a_data(v, fmt)
 
     estrazioni = {t: [re.compile(x) for x in xs] for t, xs in profilo.get("estrazione", {}).items()}
+    senza_spazi = bool(profilo.get("estrazione_senza_spazi"))
     larghezza = len([c for c in intest if c])
+    solo_se = profilo.get("solo_se") or {}
+    escluse = 0
     righe_saldo = {k.strip().lower(): v for k, v in (profilo.get("righe_saldo") or {}).items()}
 
     def importo(r):
@@ -168,6 +214,14 @@ def leggi(percorso, titolari=(), dati: bytes = None) -> FileLetto:
         if piene < min(2, larghezza):
             fl.scartate.append((n, "riga incompleta o di totale"))
             continue
+        if solo_se:
+            i = idx.get(solo_se["colonna"])
+            stato = "" if i is None or i >= len(r) or _vuoto(r[i]) else str(r[i]).strip()
+            if stato not in solo_se["valori"]:
+                fl.scartate.append((n, "%s (%s: %s)" % (solo_se.get("motivo", "riga esclusa"), solo_se["colonna"],
+                                                         stato or "vuoto")))
+                escluse += 1
+                continue
         descr_riga = str(val(r, "descrizione") or "").strip().lower()
         if descr_riga in righe_saldo:
             # 'Saldo iniziale' / 'Saldo finale' scritti come righe: servono alla quadratura, non sono movimenti
@@ -224,10 +278,21 @@ def leggi(percorso, titolari=(), dati: bytes = None) -> FileLetto:
                     esercente = descr or None
             ora_op = ora
             for rx in estrazioni.get(tipo, []):
-                x = rx.search(descr)
-                if not x:
-                    continue
-                g = {k: v for k, v in x.groupdict().items() if v}
+                if senza_spazi:
+                    g = cerca_senza_spazi(rx, descr)
+                    if g is None:
+                        continue
+                    if "iban" in g:
+                        g["iban"] = re.sub(r"\s+", "", g["iban"]).upper()
+                        if verifica_iban(g["iban"]):
+                            del g["iban"]           # pezzi mal ricomposti: meglio nessun IBAN che uno sbagliato
+                    if "controparte" in g:
+                        g["controparte"] = _ricomponi_nome(g["controparte"], titolari)
+                else:
+                    x = rx.search(descr)
+                    if not x:
+                        continue
+                    g = {k: v for k, v in x.groupdict().items() if v}
                 if "esercente" in g:
                     esercente = g["esercente"]
                 if "controparte" in g and not m["controparte_nome"]:
@@ -265,6 +330,6 @@ def leggi(percorso, titolari=(), dati: bytes = None) -> FileLetto:
             fl.movimenti.append(m)
         except (FormatoNonValido, ValueError) as e:
             fl.scartate.append((n, str(e)))
-    if fl.scartate and len(fl.movimenti) < 0.1 * (len(fl.movimenti) + len(fl.scartate)):
+    if len(fl.scartate) > escluse and len(fl.movimenti) < 0.1 * (len(fl.movimenti) + len(fl.scartate) - escluse):
         fl.avvisi.append("Il profilo legge meno del 10% delle righe: probabilmente il formato e' cambiato.")
     return fl

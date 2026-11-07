@@ -110,3 +110,74 @@ def ing_csv():
     finale = 1000.0 + sum(m[4] for m in movimenti)
     righe.append("31/10/2026;;;%s;;Saldo finale" % ("+" + "{:,.2f}".format(finale).replace(",", "X").replace(".", ",").replace("X", ".")))
     return ("\r\n".join(righe) + "\r\n").encode("utf-8")
+
+
+def iban_valido(paese, bban):
+    """IBAN con le cifre di controllo giuste (gli IBAN sopra sono di fantasia e non le hanno)."""
+    numero = "".join(str(int(ch, 36)) for ch in bban + paese + "00")
+    return "%s%02d%s" % (paese, 98 - int(numero) % 97, bban)
+
+
+IBAN_FINECO = iban_valido("IT", "X0301503200000000000001")
+IBAN_DEPOSITO = iban_valido("IT", "X0306909606100000000002")
+IBAN_PALESTRA = iban_valido("IT", "X0200801600000000000003")
+
+
+def _a_pezzi(testo, larghezza=35):
+    """Come Fineco: la descrizione completa a pezzi di lunghezza fissa uniti da uno spazio, anche in mezzo a
+    parole, date e IBAN."""
+    return " ".join(testo[i:i + larghezza] for i in range(0, len(testo), larghezza))
+
+
+def fineco_xlsx(percorso, fino_al="31/10/2026"):
+    """Lista movimenti Fineco in Excel. Con fino_al='07/11/2026' e' l'estratto successivo: stesse righe, piu' un
+    bonifico nuovo, e l'addebito che prima era ancora da contabilizzare ora contabilizzato."""
+    import openpyxl
+    secondo = fino_al != "31/10/2026"
+    movimenti = [
+        (datetime(2026, 10, 5), datetime(2026, 9, 30), None, -3.95, "Canone Mensile Conto",
+         "Canone Mensile Conto Settembre 2026"),
+        (datetime(2026, 10, 8), datetime(2026, 10, 8), None, -0.42, "Interessi Passivi", "Interessi Passivi"),
+        (datetime(2026, 10, 9), datetime(2026, 9, 30), None, -8.5, "Imposta bollo dossier titoli",
+         "Addebito imposta di bollo Dossier: 99BB22"),
+        (datetime(2026, 10, 12), datetime(2026, 10, 12), None, -250.0, "Bonifico Istantaneo", _a_pezzi(
+            "Beneficiario: MARIO ROSSI IBAN: %s Data Inserimento: 12/10/2026 09:44:26 Canale: PHONE/VOICE P. "
+            "Causale: giroconto deposito TRN: 0000000000000000000320000000IT" % IBAN_DEPOSITO)),
+        # spezzato a mano in mezzo al nome e a un'etichetta
+        (datetime(2026, 10, 15), datetime(2026, 10, 15), 1000.0, None, "Bonifico Istantaneo",
+         "Ordinante: MARIO RO SSI Beneficiario: MARIO ROSSI Banca Ordin ante: ING Bank N.V . Data accredito: "
+         "15/10/2026 Causale: Re integro spese"),
+        (datetime(2026, 10, 20), datetime(2026, 10, 20), None, -49.0, "Bonifico SEPA Italia", _a_pezzi(
+            "Ben: Palestra Fit S.r.l. Ins: 20/10/2026 10:37:58 Da: PHONE/VOICE P. Iban: %s TransID: "
+            "0000000000000000003480320033310IT Cau: quota novembre" % IBAN_PALESTRA)),
+        # IBAN con un carattere sbagliato: non si tiene
+        (datetime(2026, 10, 21), datetime(2026, 10, 21), None, -10.0, "Bonifico SEPA Estero", _a_pezzi(
+            "Ben: Giulia Bianchi Ins: 21/10/2026 12:01:17 Da: PHONE/VOICE P. Iban: %s TransID: "
+            "00000000000000000803 20033310IT Cau: regalo" % (IBAN_PALESTRA[:-1] + "9"))),
+        # nel primo estratto non ancora contabilizzato; nel secondo contabilizzato, con il giorno di contabilizzazione
+        (datetime(2026, 11, 2) if secondo else datetime(2026, 10, 31), datetime(2026, 10, 31), None, -5.0,
+         "Imposta bollo conto corrente", "Imposta di bollo di conto corrente del 31.10.2026",
+         "Contabilizzato" if secondo else "Non contabilizzato"),
+    ]
+    if secondo:
+        movimenti.append((datetime(2026, 11, 4), datetime(2026, 11, 4), 20.0, None, "Bonifico Istantaneo", _a_pezzi(
+            "Ordinante: GIULIA BIANCHI Beneficiario: MARIO ROSSI Banca Ordinante: BANCA DI PROVA S.P.A. "
+            "Data accredito: 04/11/2026 Causale: cena")))
+    movimenti = [m if len(m) == 7 else m + ("Contabilizzato",) for m in movimenti]
+    saldo = round(1000 + sum((m[2] or 0) + (m[3] or 0) for m in movimenti if m[6] == "Contabilizzato"), 2)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Movimenti"
+    for r in (["Conto Corrente: 99BB22"], ["Intestazione Conto Corrente: MARIO ROSSI"],
+              ["Periodo Dal: 01/10/2026 Al: %s" % fino_al], [None],
+              ["Saldo Finale: %s" % ("{:,.2f}".format(saldo).replace(",", "X").replace(".", ",").replace("X", "."))],
+              ["Nota: Il saldo finale del periodo temporale selezionato considera solo i movimenti contabilizzati."],
+              [None], ["Nota: Per le carte di credito la data valuta e' quella di registrazione contabile."],
+              ["Nota: Per le carte di debito la data operazione non e' quella del pagamento."], [None],
+              ["Risultati Ricerca"], [None],
+              ["Data_Operazione", "Data_Valuta", "Entrate", "Uscite", "Descrizione", "Descrizione_Completa", "Stato"]):
+        ws.append(r)
+    for m in sorted(movimenti, key=lambda m: m[0], reverse=True):
+        ws.append(list(m))
+    wb.save(percorso)
+    return saldo

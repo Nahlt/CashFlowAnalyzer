@@ -43,7 +43,7 @@ def importa():
             try:
                 fl, suggerito, gia = imp.anteprima(c, f.name, dati)
             except FileNonRiconosciuto as e:
-                st.error("**%s**: %s. Formati gestiti: Credem, Credit Agricole, ING conto (Excel o CSV), ING carta di credito, Trade Republic, PayPal (report attivita' in CSV)." % (f.name, e))
+                st.error("**%s**: %s. Formati gestiti: Credem, Credit Agricole, Fineco (Excel), ING conto (Excel o CSV), ING carta di credito, Trade Republic, PayPal (report attivita' in CSV)." % (f.name, e))
                 continue
             except Exception as e:
                 st.error("**%s**: errore di lettura (%s)" % (f.name, e))

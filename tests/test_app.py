@@ -1,3 +1,4 @@
+import sys
 from decimal import Decimal
 
 import pytest
@@ -1835,6 +1836,77 @@ def test_installazione_ollama_parti_pure(monkeypatch):
         monkeypatch.setattr(io.shutil, "which", lambda nome: "/usr/bin/" + nome)
         monkeypatch.setenv("DISPLAY", ":0")
         assert io.comando_amministratore() == ["pkexec"]
+
+
+def test_installazione_ollama_righe_sul_posto():
+    """winget e curl ridisegnano la barra con \\r: nel registro resta solo l'ultima versione della riga, mentre
+    \\r\\n (fine riga di Windows) chiude una riga normale."""
+    from spese import installa_ollama as io
+    parti, resto = io.spezza_righe(b"Trovato Ollama\r\n  10 MB / 1.5 GB\r  700 MB / 1.5 GB\r 1.5 GB / 1.5 GB\r\nFatto\r")
+    assert parti == [(b"Trovato Ollama", False), (b"  10 MB / 1.5 GB", True), (b"  700 MB / 1.5 GB", True),
+                     (b" 1.5 GB / 1.5 GB", False)]
+    assert resto == b"Fatto\r"                         # \r in fondo: potrebbe seguire \n
+    assert io.spezza_righe(b"Fatto\r", fine=True) == ([(b"Fatto", True)], b"")
+    lav = io.Lavoro("http://127.0.0.1:11434", [], True)
+    lav.registra("Trovato Ollama")
+    lav.registra("10 MB / 1.5 GB")
+    lav.registra("700 MB / 1.5 GB", sostituisci=True)
+    assert list(lav.righe) == ["Trovato Ollama", "700 MB / 1.5 GB"]
+    # su Windows Python scrive \\n come \\r\\n: il risultato non cambia
+    comando = [sys.executable, "-c", "import sys; sys.stdout.write('inizio\\n10%\\r50%\\r100%\\r\\nfine\\n')"]
+    lav = io.Lavoro("http://127.0.0.1:11434", [], True)
+    assert io._esegui(comando, lav.registra) == 0
+    assert list(lav.righe) == ["inizio", "100%", "fine"]
+
+
+def test_fineco(conn, tmp_path):
+    """Lista movimenti Fineco in Excel: metadati in testa, entrate e uscite in due colonne, solo i movimenti
+    contabilizzati, descrizione spezzata con spazi anche dentro nomi, etichette e IBAN."""
+    from spese.lettore import leggi
+    p1, p2 = tmp_path / "Fineco_movements_20261031.xlsx", tmp_path / "Fineco_movements_20261107.xlsx"
+    saldo1 = sintetici.fineco_xlsx(p1)
+    sintetici.fineco_xlsx(p2, "07/11/2026")
+    fl = leggi(p1, ["Mario", "Rossi"], p1.read_bytes())
+    assert fl.profilo["id"] == "fineco" and not fl.avvisi
+    assert fl.metadati == {"numero": "99BB22", "titolare": "MARIO ROSSI", "periodo_da": "01/10/2026",
+                           "periodo_a": "31/10/2026", "saldo_alla_data": "1.678,13", "data_saldo": "31/10/2026"}
+    assert saldo1 == 1678.13
+    assert len(fl.scartate) == 1 and "non ancora contabilizzato" in fl.scartate[0][1]
+    per_data = {m["data"]: m for m in fl.movimenti}
+    assert len(per_data) == 7
+    canone = per_data["2026-10-05"]
+    assert (canone["tipo"], canone["importo_cent"], canone["data_valuta"]) == ("commissione", -395, "2026-09-30")
+    uscita = per_data["2026-10-12"]                    # istantaneo: IBAN spezzato in due, riunito e verificato
+    assert (uscita["tipo"], uscita["controparte_nome"], uscita["controparte_iban"]) == \
+        ("bonifico", "MARIO ROSSI", sintetici.IBAN_DEPOSITO)
+    entrata = per_data["2026-10-15"]                   # "MARIO RO SSI", "Banca Ordin ante:": nome ricomposto
+    assert (entrata["importo_cent"], entrata["controparte_nome"], entrata["controparte_iban"]) == \
+        (100000, "MARIO ROSSI", None)
+    sepa = per_data["2026-10-20"]
+    assert (sepa["controparte_nome"], sepa["controparte_iban"]) == ("Palestra Fit S.r.l.", sintetici.IBAN_PALESTRA)
+    sbagliato = per_data["2026-10-21"]                 # cifra di controllo che non torna: nessun IBAN
+    assert (sbagliato["controparte_nome"], sbagliato["controparte_iban"]) == ("Giulia Bianchi", None)
+
+    # import: il conto si propone da solo al secondo estratto; quadratura dal saldo del primo
+    fin = importa.crea_conto(conn, "Fineco", "fineco", "conto", "personale", "Fineco", sintetici.IBAN_FINECO)
+    importa.crea_conto(conn, "Deposito", None, "deposito", "personale", "Banca X", sintetici.IBAN_DEPOSITO,
+                             importato=0)
+    r1 = importa.importa(conn, fin, p1.name, p1.read_bytes())
+    assert r1["nuove"] == 7 and r1["quadratura"].startswith("saldo registrato")
+    _, suggerito, _ = importa.anteprima(conn, p2.name, p2.read_bytes())
+    assert suggerito == fin
+    r2 = importa.importa(conn, fin, p2.name, p2.read_bytes())
+    assert (r2["nuove"], r2["duplicate"], r2["scartate"]) == (2, 7, [])
+    assert r2["quadratura"] == "OK rispetto al saldo del 2026-10-31"
+    ricalcola(conn)
+    a = {(r["data"], r["importo_cent"]): r for r in righe(
+        conn, "SELECT a.data, a.importo_cent, a.natura, a.l2, a.motivo FROM analisi a "
+              "WHERE a.conto_id = ?", fin)}
+    assert a[("2026-10-05", -395)]["l2"] == "Commissioni bancarie"
+    assert a[("2026-10-08", -42)]["l2"] == "Interessi passivi"
+    assert a[("2026-10-09", -850)]["l2"] == a[("2026-11-02", -500)]["l2"] == "Bollo"
+    assert a[("2026-10-12", -25000)]["natura"] == "risparmio"      # verso il conto deposito, per IBAN
+    assert a[("2026-10-15", 100000)]["motivo"].startswith("Trasferimento a tuo nome")
 
 
 def test_installazione_ollama_lavoro(monkeypatch):

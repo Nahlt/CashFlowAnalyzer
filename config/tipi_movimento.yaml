@@ -12,7 +12,11 @@ tipi:
   pagamento_carta:        {natura: uscita, catena: true}
   addebito_sepa:          {natura: uscita, catena: true}
   prelievo:               {natura: uscita, l2: Prelievo da giustificare, revisione: true}
-  commissione:            {natura: uscita, l2: Commissioni bancarie}
+  commissione:
+    natura: uscita
+    l2: Commissioni bancarie
+    varianti:
+      - {se_descrizione: '(?i)interessi\s+passivi', l2: Interessi passivi}
   pagamento_pa:           {natura: uscita, l2: PagoPA/MAV}
   imposte:
     natura: uscita

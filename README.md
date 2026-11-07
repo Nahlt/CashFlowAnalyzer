@@ -15,7 +15,7 @@ I dati restano sul PC. Verso l'esterno possono uscire solo, e solo se lo scegli:
 
 | Area | Funzioni |
 | --- | --- |
-| Import | Estratti di Credem, Crédit Agricole, ING (conto in Excel o CSV, carta di credito), Trade Republic, PayPal. Formati descritti da profili YAML, duplicati scartati, quadratura con i saldi |
+| Import | Estratti di Credem, Crédit Agricole, Fineco (Excel), ING (conto in Excel o CSV, carta di credito), Trade Republic, PayPal. Formati descritti da profili YAML, duplicati scartati, quadratura con i saldi |
 | Classificazione | Tassonomia a due livelli modificabile; catena di regole, codici MCC, marchi (Name Suggestion Index), storico e somiglianza; modello locale (Ollama) o Claude con anteprima e risposte da confermare |
 | Abbinamenti | Trasferimenti tra i propri conti, contributi al conto comune, addebito mensile della carta di credito con le sue spese, addebiti PayPal con il report PayPal: ogni spesa conta una volta sola |
 | Revisione | Esercenti da classificare, bonifici e trasferimenti, addebiti PayPal da ricondurre, altri movimenti da rivedere |

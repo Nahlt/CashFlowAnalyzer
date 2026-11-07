@@ -81,25 +81,62 @@ def installato():
 
 
 # --- comandi -------------------------------------------------------------------------------------------
+def spezza_righe(buffer, fine=False):
+    """Divide l'output di un comando in righe: ([(testo, sul_posto)], resto non ancora concluso).
+
+    sul_posto = riga chiusa da un \\r da solo: winget e curl ridisegnano cosi' la barra di avanzamento, quindi la
+    riga dopo la sostituisce. \\r\\n (fine riga di Windows) e \\n chiudono una riga normale. Un \\r in fondo al
+    blocco resta nel resto, finche' non si sa se segue \\n (salvo a fine output)."""
+    out, i = [], 0
+    while True:
+        cr, lf = buffer.find(b"\r", i), buffer.find(b"\n", i)
+        j = min(k for k in (cr, lf, len(buffer)) if k >= 0)
+        if j == len(buffer):
+            break
+        if j == cr:
+            if j + 1 == len(buffer) and not fine:
+                break
+            if buffer[j + 1:j + 2] == b"\n":
+                out.append((buffer[i:j], False))
+                i = j + 2
+            else:
+                out.append((buffer[i:j], True))
+                i = j + 1
+        else:
+            out.append((buffer[i:j], False))
+            i = j + 1
+    return out, buffer[i:]
+
+
+def _pulisci(pezzo):
+    testo = pezzo.decode("utf-8", "replace")
+    return "".join(ch for ch in testo if ch == "\t" or ch >= " " and ch != "\x7f").strip()
+
+
 def _esegui(argomenti, registra, env=None):
-    """Esegue un comando senza finestre, riga per riga nel registro del lavoro. Restituisce il codice d'uscita."""
+    """Esegue un comando senza finestre, riga per riga nel registro del lavoro. Restituisce il codice d'uscita.
+    Le righe ridisegnate sul posto (barre di avanzamento) sostituiscono la precedente invece di accumularsi."""
     proc = subprocess.Popen([str(a) for a in argomenti], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, env=env, creationflags=SENZA_FINESTRA)
-    resto = b""
+    resto, sostituisci = b"", False
+
+    def scrivi(parti):
+        nonlocal sostituisci
+        for pezzo, sul_posto in parti:
+            testo = _pulisci(pezzo)
+            if testo:
+                registra(testo, sostituisci=sostituisci)
+                sostituisci = sul_posto
+            elif not sul_posto:
+                sostituisci = False
     while True:
         blocco = proc.stdout.read1(4096) if hasattr(proc.stdout, "read1") else proc.stdout.read(4096)
         if not blocco:
             break
-        resto += blocco
-        # winget e curl aggiornano la stessa riga con \r: ogni pezzo conta come riga
-        parti = resto.replace(b"\r", b"\n").split(b"\n")
-        resto = parti.pop()
-        for p in parti:
-            testo = p.decode("utf-8", "replace").strip()
-            if testo:
-                registra(testo)
-    if resto.strip():
-        registra(resto.decode("utf-8", "replace").strip())
+        parti, resto = spezza_righe(resto + blocco)
+        scrivi(parti)
+    parti, resto = spezza_righe(resto, fine=True)
+    scrivi(parti + [(resto, False)])
     return proc.wait()
 
 
@@ -302,8 +339,12 @@ class Lavoro:
         self.testo, self.percentuale = testo, None
         self.registra(testo)
 
-    def registra(self, riga):
-        self.righe.append(riga)
+    def registra(self, riga, sostituisci=False):
+        """Aggiunge una riga al registro; con sostituisci=True prende il posto dell'ultima (barra ridisegnata)."""
+        if sostituisci and self.righe:
+            self.righe[-1] = riga
+        else:
+            self.righe.append(riga)
 
     def quota(self, fatti, totale):
         self.percentuale = min(1.0, fatti / totale) if totale else None

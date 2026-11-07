@@ -5,6 +5,38 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.16.0 – 7 novembre 2026 · Fineco, avanzamento dell'installazione di Ollama
+
+**Novita'**
+- **Fineco** come nuova fonte: lista movimenti del conto corrente in Excel (`Fineco_movements_AAAAMMGG.xlsx`).
+  - Bonifici istantanei e SEPA (in entrata e in uscita), canone, interessi e imposte di bollo di conto e
+    dossier titoli. Numero di conto e intestatario si leggono dalla testa del file; l'intestatario si aggiunge
+    ai titolari come per ING.
+  - Si importano solo i movimenti *Contabilizzati*: gli altri compaiono tra le righe scartate, con il motivo, e
+    si importano con l'estratto successivo.
+  - Fineco spezza la descrizione completa con spazi anche in mezzo a parole, date e IBAN. Beneficiario,
+    ordinante e IBAN si leggono comunque: l'IBAN si riunisce ed e' tenuto solo se la cifra di controllo torna;
+    un nome spezzato ("MARIO RO SSI") si ricompone con le parole dei nomi di titolari e familiari, cosi' i
+    bonifici a tuo nome si riconoscono e quelli verso i tuoi conti si abbinano per IBAN.
+  - Il saldo finale vale come saldo alla fine del periodo: la quadratura si verifica dall'import successivo.
+- **Interessi passivi** in *FINANZA · Interessi passivi* invece che in *Commissioni bancarie*, per tutte le
+  banche, quando la descrizione li nomina.
+
+**Correzioni**
+- **Installazione di Ollama**: la barra di avanzamento restava a zero per tutta l'installazione con winget,
+  che non dice a che punto e'. Al suo posto c'e' un riquadro con lo spinner e la fase in corso (con la
+  percentuale quando e' nota, per esempio nel download dei modelli) e il tempo trascorso. I dettagli
+  dell'installazione sono dentro il riquadro, aperti finche' il lavoro e' in corso o finisce con un errore.
+  - Nei dettagli, le barre di avanzamento di winget e curl non riempiono piu' il registro con centinaia di righe
+    quasi uguali: ogni aggiornamento prende il posto del precedente.
+
+**Aggiornando**
+- Windows: ferma l'app, estrai la nuova versione sopra la cartella e avvia dal menu Start.
+- Linux: estrai sopra la cartella e riavvia l'app. Non serve reinstallare.
+- Al primo ricalcolo i movimenti con "interessi passivi" nella descrizione passano a *Interessi passivi*.
+
+---
+
 ## 0.15.0 – 7 novembre 2026 · installazione di Ollama dall'app
 
 **Novita'**

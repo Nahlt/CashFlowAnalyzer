@@ -1,0 +1,59 @@
+id: fineco
+nome: Fineco - Movimenti conto corrente (Excel)
+banca: Fineco
+tipo_conto: conto
+formato: xlsx
+# file "Fineco_movements_AAAAMMGG.xlsx": in testa conto, intestatario, periodo e saldo finale, poi la tabella
+firma: ["Data_Operazione", "Data_Valuta", "Entrate", "Uscite", "Descrizione", "Descrizione_Completa", "Stato"]
+numeri: excel
+date: excel
+
+metadati:
+  "Conto Corrente": numero
+  "Intestazione Conto Corrente": titolare
+  # solo il saldo finale, che conta i soli movimenti contabilizzati: vale come saldo alla fine del periodo
+  "Saldo Finale": saldo_alla_data
+periodo: 'Dal:\s*(?P<da>\d{2}/\d{2}/\d{4})\s+Al:\s*(?P<a>\d{2}/\d{2}/\d{4})'
+data_saldo_da: periodo_a
+
+colonne:
+  # Data_Operazione: giorno di contabilizzazione sul conto; Data_Valuta: valuta
+  data_contabile: "Data_Operazione"
+  data_valuta: "Data_Valuta"
+  importo_entrate: "Entrate"
+  importo_uscite: "Uscite"
+  descrizione: "Descrizione_Completa"
+codice: ["Descrizione"]
+
+# i movimenti non ancora contabilizzati possono cambiare: si importano quando lo sono
+solo_se:
+  colonna: "Stato"
+  valori: ["Contabilizzato"]
+  motivo: "movimento non ancora contabilizzato: si importa con un estratto successivo"
+
+tipi:
+  "Bonifico Istantaneo": bonifico
+  "Bonifico SEPA Italia": bonifico
+  "Bonifico SEPA Estero": bonifico
+  "Canone Mensile Conto": commissione
+  "Interessi Passivi": commissione
+  "Interessi Attivi": interessi
+  "Imposta bollo conto corrente": imposte
+  "Imposta bollo dossier titoli": imposte
+  "*": altro
+
+# Fineco spezza la descrizione completa in pezzi a lunghezza fissa e li unisce con uno spazio, anche in mezzo
+# a parole, date e IBAN ("TRADE REPUBL IC", "1 0/04/2026"). Le regole sotto si applicano al testo senza spazi;
+# i valori trovati tornano con gli spazi originali (l'IBAN senza spazi, tenuto solo se la cifra di controllo
+# torna; il nome della controparte con le parole dei titolari e dei familiari ricomposte).
+estrazione_senza_spazi: true
+estrazione:
+  bonifico:
+    # istantaneo in uscita: Beneficiario: X IBAN: IT.. Data Inserimento: ... Canale: ... Causale: ... TRN: ...
+    - '^Beneficiario:(?P<controparte>.+?)(?:IBAN:|DataInserimento:|Canale:|Causale:|$)'
+    # istantaneo in entrata: Ordinante: X Beneficiario: Y Banca Ordinante: ... Data accredito: ... Causale: ...
+    - '^Ordinante:(?P<controparte>.+?)(?:Beneficiario:|BancaOrdinante:|Dataaccredito:|Causale:|$)'
+    # SEPA in uscita: Ben: X Ins: gg/mm/aaaa hh:mm:ss Da: ... Iban: IT.. TransID: ... Cau: ...
+    - '^Ben:(?P<controparte>.+?)(?:Ins:|Da:|Iban:|$)'
+    # IBAN della controparte (IBAN: negli istantanei, Iban: nei SEPA)
+    - '(?i:iban):(?P<iban>[A-Za-z]{2}\d{2}[A-Za-z0-9]+?)(?:DataInserimento:|Canale:|Causale:|TRN:|TransID:|Cau:|$)'
