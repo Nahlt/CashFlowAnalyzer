@@ -54,7 +54,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            # release creata dalla pagina di GitHub: allega i pacchetti e, se la descrizione e' vuota, mette
+            # titolo e note del CHANGELOG
             gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+            if [ -z "$(gh release view "$GITHUB_REF_NAME" --json body --jq .body)" ]; then
+              gh release edit "$GITHUB_REF_NAME" --title "CashFlow Analyzer $V" --notes-file note.md
+            fi
           else
             gh release create "$GITHUB_REF_NAME" dist/* --title "CashFlow Analyzer $V" --notes-file note.md
           fi
