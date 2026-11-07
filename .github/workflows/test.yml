@@ -92,11 +92,36 @@ jobs:
           if ((Salute) -eq "ok") { Write-Output "::error::Server non fermato"; exit 1 }
           if (Test-Path "$env:SPESE_DATI\server.pid") { Write-Output "::error::File pid rimasto"; exit 1 }
 
-      - name: Icona nell'area di notifica (avvio completo)
+      - name: Avvio completo dal collegamento (nessuna finestra, icona)
         shell: pwsh
         run: |
+          # console visibili di Python: una console ha per titolo il programma che la usa (il browser non conta)
+          Add-Type @"
+          using System; using System.Text; using System.Runtime.InteropServices; using System.Collections.Generic;
+          public class Finestre {
+            delegate bool CB(IntPtr h, IntPtr l);
+            [DllImport("user32.dll")] static extern bool EnumWindows(CB cb, IntPtr l);
+            [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+            [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+            public static List<string> Visibili() {
+              var r = new List<string>();
+              EnumWindows((h, l) => { if (IsWindowVisible(h)) { var s = new StringBuilder(1024); GetWindowText(h, s, 1024); if (s.Length > 0) r.Add(s.ToString()); } return true; }, IntPtr.Zero);
+              return r;
+            }
+          }
+          "@
+          function FinestrePython { [Finestre]::Visibili() | Where-Object { $_ -match '\\pythonw?\.exe|\\\.venv\\' } }
+          # controllo del controllo: un processo avviato come nella 0.14.0 (DETACHED_PROCESS) apre una finestra?
+          & .venv\Scripts\python.exe -c "import subprocess; subprocess.Popen([r'.venv\Scripts\python.exe', '-c', 'import time; time.sleep(15)'], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS)"
+          Start-Sleep 5
+          $prova = @(FinestrePython)
+          if ($prova.Count) { Write-Output "::notice::Il controllo vede le finestre (prova: $($prova -join ' | '))" } else { Write-Output "::warning::Il controllo non vede finestre in questa sessione: verifica solo sul PC" }
+          Start-Sleep 12
+          # avvio come dal collegamento del menu Start
           Start-Process -FilePath .venv\Scripts\pythonw.exe -ArgumentList "avvia.py" -WorkingDirectory $PWD
           Start-Sleep 25
+          $aperte = @(FinestrePython)
+          if ($aperte.Count) { Write-Output "::error::Finestre aperte all'avvio: $($aperte -join ' | ')"; cmd /c avvia.cmd --ferma; exit 1 }
           Get-Content "$env:SPESE_DATI\icona.log" -ErrorAction SilentlyContinue
           if (-not (Test-Path "$env:SPESE_DATI\icona.pid")) { Write-Output "::warning::Icona non avviata (sessione senza desktop?)" }
           cmd /c avvia.cmd --ferma

@@ -110,10 +110,19 @@ def risponde():
 
 
 def _in_background(argomenti, uscita):
-    """Avvia un processo staccato da questo, che resta in vita quando l'avviatore termina."""
+    """Avvia un processo staccato da questo, che resta in vita quando l'avviatore termina.
+
+    Windows: niente finestre. Il python.exe di .venv e' un piccolo lanciatore che avvia a sua volta il Python
+    vero: con DETACHED_PROCESS il lanciatore resterebbe senza console e Windows aprirebbe per il Python vero
+    una finestra nuova e visibile. CREATE_NO_WINDOW da' invece al processo una console nascosta, che i
+    processi figli ereditano; la finestra e' anche chiesta nascosta (SW_HIDE)."""
     opzioni = {"stdin": subprocess.DEVNULL, "stdout": uscita, "stderr": subprocess.STDOUT, "cwd": str(APP)}
     if WINDOWS:
-        opzioni["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        opzioni["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+        avvio = subprocess.STARTUPINFO()
+        avvio.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        avvio.wShowWindow = 0                                     # SW_HIDE
+        opzioni["startupinfo"] = avvio
     else:
         opzioni["start_new_session"] = True
     return subprocess.Popen([str(a) for a in argomenti], **opzioni)

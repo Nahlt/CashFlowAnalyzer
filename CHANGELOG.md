@@ -5,6 +5,25 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.14.1 – 7 novembre 2026 · Windows: avvio senza finestre
+
+**Correzioni**
+- **Windows**: avviando l'app dal menu Start restava aperta una finestra del terminale con il percorso di
+  `.venv\Scripts\pythonw.exe`.
+  - Il `python.exe` dell'ambiente `.venv` e' un piccolo lanciatore che avvia il Python vero. L'avviatore lo
+    faceva partire senza console (`DETACHED_PROCESS`), e Windows apriva per il Python vero, cioe' per il server,
+    una finestra nuova e visibile.
+  - Ora server e icona partono con una console nascosta (`CREATE_NO_WINDOW`, finestra `SW_HIDE`), che anche il
+    Python vero eredita: nessuna finestra all'avvio, al riavvio dall'icona o con `avvia.cmd`.
+- **Test su GitHub**: dopo l'avvio completo, quello del collegamento del menu Start, controllano che non resti
+  aperta nessuna finestra di Python.
+
+**Aggiornando**
+- Windows: estrai la nuova versione sopra la cartella attuale e avvia dal menu Start; non serve reinstallare.
+- Linux: nessun cambiamento.
+
+---
+
 ## 0.14.0 – 7 novembre 2026 · CashFlow Analyzer anche su Windows
 
 **Novita'**
