@@ -119,6 +119,21 @@ def elimina_conto(conn, conto_id):
     return uso
 
 
+def avviso_tipo_conto(profilo, tipo_conto):
+    """Avviso quando un estratto di carta di credito va in un conto che non e' una carta, o il contrario. Le righe
+    di una carta si abbinano all'addebito mensile sul conto solo se stanno in un conto di tipo carta: altrimenti
+    contano come spese del conto e, insieme all'addebito, due volte."""
+    carta_file = profilo.get("tipo_conto", "conto") == "carta"
+    if carta_file == (tipo_conto == "carta"):
+        return None
+    if carta_file:
+        return ("Il file e' l'estratto di una carta di credito (%s), ma il conto scelto non e' di tipo Carta. Le "
+                "spese della carta non si abbinerebbero all'addebito mensile sul conto e conterebbero due volte: "
+                "scegli o crea un conto di tipo Carta." % profilo.get("nome", profilo.get("id")))
+    return ("Il file non e' l'estratto di una carta di credito (%s), ma il conto scelto e' di tipo Carta: i suoi "
+            "movimenti verrebbero trattati come spese della carta." % profilo.get("nome", profilo.get("id")))
+
+
 def crea_conto(conn, nome, profilo, tipo, perimetro, banca=None, iban=None, numero=None, conto_addebito_id=None, importato=1):
     cur = conn.execute(
         "INSERT INTO conti(nome, banca, profilo, tipo, perimetro, iban, numero, conto_addebito_id, importato, creato_il) "

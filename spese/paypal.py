@@ -4,9 +4,11 @@ Il report ha una riga per ogni evento del conto PayPal e piu' righe per la stess
 "Codice transazione di riferimento":
 - il pagamento all'esercente (Impatto sul saldo: Addebito), con il nome vero dell'esercente;
 - la ricarica che lo finanzia, se il saldo non basta: "Bonifico bancario sul conto PayPal" (dal conto in banca)
-  o "Deposito con carta generico" (dalla carta), Accredito, spesso "In sospeso";
+  o "Deposito con carta generico" / "Versamento generico con carta" (dalla carta), Accredito, spesso "In sospeso";
+  ha come codice di riferimento quello del pagamento che finanzia, e con questo si riconosce anche quando la
+  dicitura non e' tra quelle note;
 - per i pagamenti in valuta, due righe "Conversione di valuta generica" (euro in uscita, valuta in entrata);
-- righe "Memo" (autorizzazioni, blocchi) che non cambiano il saldo.
+- righe "Memo" / "Promemoria" (autorizzazioni, blocchi) che non cambiano il saldo.
 
 Qui si ricavano i movimenti del conto PayPal: pagamenti e rimborsi come spese dell'esercente (in euro, con la
 valuta originale accanto), ricariche, prelievi verso la banca e pagamenti da/a persone. L'addebito della stessa
@@ -15,9 +17,12 @@ spesa si conta una volta sola, con il nome dell'esercente preso da PayPal.
 
 Le colonne e le parole dei tipi stanno nei profili config/profili/paypal*.yaml.
 """
+import json
 import re
+from collections import Counter
 from difflib import SequenceMatcher
 
+from . import configurazione as cfg
 from .chiavi import chiave
 from .numeri import FormatoNonValido, a_centesimi, a_data
 
@@ -79,6 +84,47 @@ def _ruolo(tipo, profilo):
     return None
 
 
+def ricarica_collegata(importo, nome, ruolo, rif, uscite):
+    """Una riga in accredito senza nome, con un Tipo che il profilo non riconosce, il cui codice di riferimento
+    e' quello di un pagamento dello stesso importo nel report: e' la ricarica che finanzia quel pagamento,
+    qualunque sia la dicitura. I rimborsi hanno il loro Tipo e i pagamenti ricevuti da persone hanno un nome.
+    `uscite`: {codice transazione: importo in centesimi} dei pagamenti del report."""
+    return ruolo is None and (importo or 0) > 0 and not nome and bool(rif) and uscite.get(rif) == -importo
+
+
+def riallinea_ricariche(conn):
+    """Movimenti PayPal gia' importati come pagamenti ricevuti (bonifici) che sono ricariche: riconosciuti dalle
+    diciture del profilo in uso o dal codice di riferimento, cercato nella riga originale salvata. Corregge dati
+    importati prima della 0.16.1, quando "Versamento generico con carta" diventava un'entrata. Restituisce
+    quanti movimenti ha corretto. Va eseguito prima del ricalcolo; senza nulla da correggere non scrive niente."""
+    profili = cfg.profili()
+    corretti = []
+    for conto in conn.execute("SELECT id, profilo FROM conti WHERE profilo LIKE 'paypal%'").fetchall():
+        p = profili.get(conto["profilo"])
+        if not p:
+            continue
+        movs = conn.execute("SELECT id, importo_cent, codice, controparte_nome, tipo FROM movimenti WHERE conto_id = ?",
+                            (conto["id"],)).fetchall()
+        prefisso = "B-%d-" % conto["id"]
+        uscite = {m["id"][len(prefisso):]: m["importo_cent"] for m in movs
+                  if m["id"].startswith(prefisso) and (m["importo_cent"] or 0) < 0}
+        for m in movs:
+            if m["tipo"] != "bonifico" or (m["importo_cent"] or 0) <= 0 or m["controparte_nome"]:
+                continue
+            ruolo = _ruolo(m["codice"], p)
+            if ruolo == "ricarica":
+                corretti.append(m["id"])
+                continue
+            for (contenuto,) in conn.execute("SELECT contenuto FROM righe_raw WHERE mov_id = ?", (m["id"],)):
+                celle = [c.strip() for c in json.loads(contenuto) if isinstance(c, str)]
+                if any(ricarica_collegata(m["importo_cent"], None, ruolo, c, uscite) for c in celle):
+                    corretti.append(m["id"])
+                    break
+    if corretti:
+        conn.executemany("UPDATE movimenti SET tipo = 'ricarica' WHERE id = ?", [(x,) for x in corretti])
+    return len(corretti)
+
+
 def leggi(fl, titolari=()):
     """Riempie fl.movimenti e fl.scartate a partire dalle righe del report."""
     p = fl.profilo
@@ -97,6 +143,7 @@ def leggi(fl, titolari=()):
     esclusi = {x.lower() for x in p.get("stati_esclusi", [])}
     euro = p.get("valuta_conto", "EUR")
     letti, conversioni = [], {}
+    sconosciuti = Counter()                            # impatti sul saldo che il profilo non conosce
     for n, r in enumerate(righe[h + 1:], start=h + 2):
         if not any(c not in (None, "") and str(c).strip() for c in r):
             continue
@@ -126,6 +173,8 @@ def leggi(fl, titolari=()):
             lordo, tariffa = -abs(lordo), -abs(tariffa)
         elif imp in impatto["accredito"]:
             lordo = abs(lordo)
+        elif imp:
+            sconosciuti[val(r, "impatto")] += 1        # letta con il segno dell'importo, ma va segnalata
         riga = {"n": n, "r": r, "tipo_pp": tipo, "ruolo": ruolo, "stato": val(r, "stato"), "lordo": lordo,
                 "tariffa": tariffa, "valuta": (val(r, "valuta") or euro).upper(), "data": d,
                 "ora": (val(r, "ora") or "")[:5] or None, "nome": val(r, "nome") or "", "id": val(r, "id") or "",
@@ -135,6 +184,11 @@ def leggi(fl, titolari=()):
         else:
             letti.append(riga)
 
+    # ricariche con una dicitura che il profilo non conosce: riconosciute dal codice di riferimento
+    uscite = {x["id"]: x["lordo"] for x in letti if x["id"] and x["lordo"] < 0}
+    for x in letti:
+        if ricarica_collegata(x["lordo"], x["nome"], x["ruolo"], x["rif"], uscite):
+            x["ruolo"] = "ricarica"
     for x in letti:
         importo, orig, divisa = x["lordo"], None, None
         if x["valuta"] != euro:
@@ -169,6 +223,10 @@ def leggi(fl, titolari=()):
             m["tipo"] = "bonifico"
             m["controparte_nome"] = x["nome"] or None
         fl.movimenti.append(m)
+    if sconosciuti:
+        fl.avvisi.append("Impatto sul saldo non riconosciuto (%s): righe lette con il segno dell'importo. Se il "
+                         "formato del report e' cambiato, il profilo PayPal va aggiornato."
+                         % ", ".join("\"%s\" in %d righe" % (k, n) for k, n in sconosciuti.items()))
     if fl.scartate and len(fl.movimenti) < 0.1 * (len(fl.movimenti) + len(fl.scartate)):
         fl.avvisi.append("Il profilo legge meno del 10% delle righe: probabilmente il formato e' cambiato.")
     return fl

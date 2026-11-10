@@ -33,7 +33,8 @@ colonne:
 impatto:
   addebito: [Addebito]
   accredito: [Accredito]
-  memo: [Memo]
+  # "Promemoria" nei report in italiano: autorizzazioni e blocchi che non cambiano il saldo
+  memo: [Memo, Promemoria]
 # operazioni che non sono avvenute
 stati_esclusi: [Negata, Annullata, Rifiutata, Scaduta, Non riuscita, Errore, Creata]
 
@@ -43,7 +44,9 @@ stati_esclusi: [Negata, Annullata, Rifiutata, Scaduta, Non riuscita, Errore, Cre
 tipi:
   conversione: ["Conversione di valuta"]
   ignora: ["Autorizzazione", "Blocco", "Sblocco", "Annullamento autorizzazione"]
-  ricarica: ["Bonifico bancario sul conto PayPal", "Deposito con carta", "Ricarica", "Trasferimento dal conto bancario"]
+  # anche "Versamento generico con carta"; le ricariche con altre diciture si riconoscono dal codice di riferimento
+  ricarica: ["Bonifico bancario sul conto PayPal", "Deposito con carta", "Versamento", "Ricarica",
+             "Trasferimento dal conto bancario"]
   prelievo: ["Trasferimento avviato dall'utente", "Prelievo", "Bonifico su conto bancario", "Trasferimento sul conto bancario"]
   rimborso: ["Rimborso"]
   esercente: ["Express Checkout", "preautorizzato", "sito web", "da cellulare", "abbonamento", "Pagamento con carta",

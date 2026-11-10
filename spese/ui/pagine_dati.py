@@ -58,7 +58,7 @@ def importa():
             if gia:
                 st.info("Questo file risulta gia' importato: le righe gia' presenti verranno ignorate.")
             # anche i conti registrati a mano in Conti e copertura: al primo file diventano importati
-            conti = c.execute("SELECT id, nome, importato FROM conti WHERE chiuso_il IS NULL OR id = ? "
+            conti = c.execute("SELECT id, nome, importato, tipo FROM conti WHERE chiuso_il IS NULL OR id = ? "
                               "ORDER BY importato DESC, nome", (suggerito or 0,)).fetchall()
             nomi = {r["id"]: r["nome"] + ("" if r["importato"] else " (registrato a mano, ancora senza movimenti)")
                     for r in conti}
@@ -92,7 +92,14 @@ def importa():
                             format_func=lambda x: altri.get(x, "Non indicato"), key="add_%d" % i,
                             help="Serve ad abbinare l'addebito mensile della carta sul conto alle singole spese della "
                                  "carta, cosi' non si contano due volte.")
-            if st.button("Importa", key="imp_%d" % i, type="primary"):
+            # un estratto di carta in un conto che non e' una carta (o il contrario) fa contare due volte le spese
+            tipo_scelto = nuovo["tipo"] if scelta == 0 else next(r["tipo"] for r in conti if r["id"] == scelta)
+            avviso = imp.avviso_tipo_conto(fl.profilo, tipo_scelto)
+            via_libera = True
+            if avviso:
+                st.warning(avviso)
+                via_libera = st.checkbox("Importa comunque in questo conto", key="forza_%d" % i)
+            if st.button("Importa", key="imp_%d" % i, type="primary", disabled=not via_libera):
                 if scelta == 0:
                     if not nuovo["nome"].strip():
                         st.error("Indica il nome del conto.")
@@ -1090,7 +1097,7 @@ def movimenti():
                       Rivedere=["sì" if x else "" for x in df["da_rivedere"]],
                       Motivo=[testo(mo) if x else "" for x, mo in zip(df["da_rivedere"], df["motivo"])])
     colonne = ["data", "conto", "esercente", "controparte_nome", "Importo", "Conta come", "l1", "l2", "fonte", "Rivedere",
-               "Motivo"]
+               "Motivo", "descrizione"]
     if nat_on:
         valori = attr.valori()
         vista["Natura della spesa"] = [valori.get(testo(v), "") for v in df["attributo"]]
@@ -1108,7 +1115,8 @@ def movimenti():
     vista[colonne] = vista[colonne].astype(object).where(vista[colonne].notna(), "")     # niente "None" nelle celle vuote
     sel = st.dataframe(vista[colonne].rename(columns={"data": "Data", "conto": "Conto", "esercente": "Esercente",
                                                       "controparte_nome": "Controparte", "l1": "Categoria",
-                                                      "l2": "Sottocategoria", "fonte": "Fonte"}),
+                                                      "l2": "Sottocategoria", "fonte": "Fonte",
+                                                      "descrizione": "Descrizione"}),
                        hide_index=True, width="stretch", on_select="rerun",
                        selection_mode="multi-row" if prova else "single-row",
                        key=chiave_tabella("sel_mov_%d" % giro, df["mov_id"]), height=520)

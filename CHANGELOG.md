@@ -5,6 +5,44 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.16.1 – 10 novembre 2026 · ricariche PayPal, carta di credito nel conto sbagliato
+
+**Correzioni**
+- **Ricariche PayPal contate come entrate**: la ricarica "Versamento generico con carta" (PayPal prende i soldi
+  dalla carta per pagare una spesa) non era riconosciuta e diventava un'entrata da classificare. Di
+  conseguenza l'addebito della stessa spesa sul conto o sulla carta non si abbinava: le uscite e le entrate
+  risultavano gonfiate dell'importo della spesa, o andava ricondotto a mano in Revisione.
+  - La ricarica si riconosce anche dalla dicitura "Versamento" e, con qualunque dicitura, dal codice di
+    riferimento che la lega al pagamento dello stesso importo nel report.
+  - I report gia' importati si correggono da soli al primo ricalcolo (all'accesso): le ricariche diventano
+    trasferimenti interni e gli addebiti in banca si abbinano. Le riconduzioni fatte a mano restano.
+- **Estratto della carta di credito importato nel conto invece che in un conto di tipo Carta**: le spese
+  della carta e l'addebito mensile contavano entrambi, cioe' due volte.
+  - All'import l'app avvisa quando il tipo del conto scelto non e' quello del file (carta o conto) e importa
+    solo con la spunta *Importa comunque in questo conto*.
+  - Nel ricalcolo un addebito della carta non conta se nel suo periodo ci sono righe arrivate da un estratto
+    di carta in un conto che non e' una carta, o in una carta senza conto di addebito: resta da rivedere con
+    il motivo e con cosa fare. Prima contava come spesa "Varie" con il motivo, fuorviante, "importa
+    l'estratto della carta", che ora resta solo quando le righe della carta mancano davvero.
+- **PayPal, righe "Promemoria"** (autorizzazioni, nei report in italiano): scartate come le righe "Memo". Finora
+  si scartavano solo grazie al tipo "Autorizzazione". Un impatto sul saldo che il profilo non conosce viene
+  segnalato nel riepilogo dell'import.
+
+**Novita'**
+- **Movimenti**: nuova colonna *Descrizione* con il testo originale del movimento (per PayPal tipo di
+  operazione, nome e oggetto).
+
+**Aggiornando**
+- Windows: ferma l'app, estrai la nuova versione sopra la cartella e avvia dal menu Start.
+- Linux: estrai sopra la cartella e riavvia l'app. Non serve reinstallare.
+- Al primo accesso le ricariche PayPal importate come entrate diventano trasferimenti interni: entrate e
+  uscite dei mesi con spese PayPal possono calare.
+- Se l'estratto di una carta e' in un conto che non e' di tipo Carta, in Revisione > Altri movimenti gli
+  addebiti della carta lo segnalano: annulla l'import del file della carta e reimportalo in un conto di tipo
+  Carta, indicando il conto di addebito.
+
+---
+
 ## 0.16.0 – 7 novembre 2026 · Fineco, avanzamento dell'installazione di Ollama
 
 **Novita'**

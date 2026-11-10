@@ -9,7 +9,7 @@ from datetime import date, timedelta
 
 from . import configurazione as cfg
 from .catena import Catena, chiave_beneficiario
-from .db import leggi_impostazione
+from .db import leggi_impostazione, transazione
 
 
 def _d(s):
@@ -471,6 +471,17 @@ def abbina_contenitori(ctx, movs):
     for m in movs:
         if ctx.conti[m["conto_id"]]["tipo"] == "carta":
             righe_carta[m["conto_id"]].append(m)
+    # righe di carta che nessun addebito puo' usare ma che contano gia' come spese: arrivate da un estratto di
+    # carta in un conto che non e' una carta, o in una carta senza conto di addebito. Se ce ne sono nel periodo di
+    # un addebito, l'addebito non conta (sarebbero spese contate due volte) e va sistemato il conto.
+    profili_carta = [k for k, p in cfg.profili().items() if p.get("tipo_conto") == "carta"]
+    da_file_carta = set()
+    if profili_carta and getattr(ctx, "conn", None) is not None:
+        da_file_carta = {r[0] for r in ctx.conn.execute(
+            "SELECT DISTINCT r.mov_id FROM righe_raw r JOIN import_file f ON f.id = r.import_id WHERE f.profilo IN (%s)"
+            % ",".join("?" * len(profili_carta)), profili_carta)}
+    fuori_posto = [m for m in movs if (m["id"] in da_file_carta and ctx.conti[m["conto_id"]]["tipo"] != "carta")
+                   or m["conto_id"] in senza_conto]
     for v in righe_carta.values():
         v.sort(key=lambda r: (_giorno(r), r["id"]))
     usate_righe = set()
@@ -513,6 +524,17 @@ def abbina_contenitori(ctx, movs):
                               "differenza": diff, "ciclo": ciclo, "natura": "contenitore",
                               "da_rivedere": diff != 0,
                               "motivo": None if diff == 0 else "Le righe della carta non sommano all'addebito (%+.2f EUR)" % (diff / 100)}
+        elif altrove := [r for r in fuori_posto if dal < _giorno(r) <= ciclo]:
+            cosa = []
+            for cid in sorted({r["conto_id"] for r in altrove}):
+                c = ctx.conti[cid]
+                cosa.append("la carta %s non ha il conto di addebito: indicalo in Conti e copertura" % c["nome"]
+                            if c["tipo"] == "carta" else
+                            "le righe della carta sono nel conto %s, che non e' di tipo Carta: annulla l'import del "
+                            "file della carta e reimportalo in un conto di tipo Carta" % c["nome"])
+            esiti[m["id"]] = {"stato": "righe_altrove", "righe": 0, "differenza": None, "ciclo": ciclo,
+                              "natura": "contenitore", "da_rivedere": True,
+                              "motivo": "Addebito della carta di credito non contato: " + "; ".join(cosa)}
         else:
             motivo = "Addebito della carta di credito senza dettaglio: importa l'estratto della carta"
             if senza_conto and not libere:
@@ -541,6 +563,9 @@ def ricalcola(conn):
         return tax.risolvi(x)
     tm = cfg.tipi_movimento()
     tipi, comp_l2 = tm["tipi"], tm["componenti"]
+    from .paypal import riallinea_ricariche
+    with transazione(conn):
+        riallinea_ricariche(conn)          # ricariche PayPal importate come entrate prima della 0.16.1
     ctx = Contesto(conn)
     movs = [dict(r) for r in conn.execute("SELECT * FROM movimenti ORDER BY data, id")]
     tr = abbina_trasferimenti(ctx, movs)

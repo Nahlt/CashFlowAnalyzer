@@ -1023,6 +1023,43 @@ def test_importo_excel_con_errore_di_virgola_mobile():
         a_centesimi(12.305, "excel")
 
 
+def test_carta_importata_nel_conto(conn, tmp_path):
+    """L'estratto della carta importato nel conto invece che in un conto di tipo Carta: l'app avvisa all'import e,
+    se si importa lo stesso, l'addebito mensile della carta non conta (le spese della carta contano gia' nel conto)
+    e resta da rivedere con il motivo."""
+    from spese import configurazione as cfg
+    profili = cfg.profili()
+    assert "non e' di tipo Carta" in importa.avviso_tipo_conto(profili["ing_carta"], "conto")
+    assert "e' di tipo Carta" in importa.avviso_tipo_conto(profili["ing_conto"], "carta")
+    assert importa.avviso_tipo_conto(profili["ing_carta"], "carta") is None
+    assert importa.avviso_tipo_conto(profili["ing_conto"], "conto") is None
+    p = tmp_path / "ing.xlsx"
+    sintetici.ing_xlsx(p)
+    ing = importa.crea_conto(conn, "ING", "ing_conto", "conto", "personale", "ING")
+    importa.importa(conn, ing, "ing.xlsx", p.read_bytes())
+    importa.importa(conn, ing, "carta.tsv", sintetici.ing_carta_tsv())       # nel conto sbagliato
+    ricalcola(conn)
+    add = righe(conn, "SELECT a.natura, a.da_rivedere, a.motivo FROM analisi a JOIN movimenti m ON m.id = a.mov_id "
+                      "WHERE m.tipo = 'addebito_carta_credito'")[0]
+    assert (add["natura"], add["da_rivedere"]) == ("contenitore", 1)
+    assert "nel conto ING, che non e' di tipo Carta" in add["motivo"]
+    # senza estratto della carta l'addebito resta l'unica traccia della spesa: conta, da rivedere
+    conn.execute("DELETE FROM righe_raw WHERE import_id = (SELECT max(id) FROM import_file)")
+    ricalcola(conn)
+    add = righe(conn, "SELECT a.natura, a.motivo FROM analisi a JOIN movimenti m ON m.id = a.mov_id "
+                      "WHERE m.tipo = 'addebito_carta_credito'")[0]
+    assert add["natura"] == "uscita" and "importa l'estratto della carta" in add["motivo"]
+
+
+def test_paypal_impatto_sconosciuto():
+    """Un impatto sul saldo che il profilo non conosce: la riga si legge, ma l'import lo segnala."""
+    from spese.lettore import leggi
+    riga = _riga_pp("01/10/2026", "Negozio", "Pagamento Express Checkout", "Completata", "EUR", "-5,00", "X1",
+                    impatto="Sospeso")
+    fl = leggi("Download.CSV", [], (INTESTAZIONE_PP + "\n" + riga + "\n").encode("utf-8"))
+    assert len(fl.movimenti) == 1 and "\"Sospeso\" in 1 righe" in fl.avvisi[0]
+
+
 def test_due_carte_sullo_stesso_conto():
     """Due carte addebitate sullo stesso conto nello stesso giorno: ogni addebito va alla sua carta."""
     from types import SimpleNamespace
@@ -1287,6 +1324,68 @@ def _riga_pp(data, nome, tipo, stato, valuta, lordo, txn, rif="", oggetto="", im
              txn, "", "", oggetto, "", "0,00", "", "0,00", "", "", "", "", rif, "", "", "1", "", "0,00", "", "", "", "",
              "", "", "", oggetto, "", "", impatto]
     return ",".join('"%s"' % c for c in celle)
+
+
+# Righe reali di un report PayPal in italiano, di un estratto Trade Republic e di uno Crédit Agricole (novembre
+# 2026), anonimizzate: email, codici di transazione, numero d'ordine, mandato SDD, telefono e codice della
+# transazione Trade Republic sostituiti con valori di fantasia; nomi degli esercenti e importi come nell'originale.
+PP_REALI = [
+    # Feltrinelli: pagamento, ricarica dalla carta ("Versamento generico con carta", riferimento = il pagamento),
+    # autorizzazione con impatto "Promemoria"
+    '"12/10/2026","08:08:36","CEST","La Feltrinelli Internet Bookshop Srl","Pagamento Express Checkout","Completata","EUR","-16,95","0,00","-16,95","io@example.com","negozio@example.com","FEL00000000000001","Indirizzo, Citta, MI, 20100, Italia","Confermato","Ordine n.10000001. Totale 21,35 €","","0,00","","0,00","","","","","FEL00000000000009","10000001-0000001","","1","","-16,95","Indirizzo","","Citta","MI","20100","Italia","0200000","Ordine n.10000001. Totale 21,35 €","","IT","Addebito"',
+    '"12/10/2026","08:08:36","CEST","","Versamento generico con carta","Completata","EUR","16,95","0,00","16,95","","io@example.com","FEL00000000000002","","","Ordine n.10000001. Totale 21,35 €","","0,00","","0,00","","","","","FEL00000000000001","10000001-0000001","","1","","0,00","","","","","","","","Ordine n.10000001. Totale 21,35 €","","","Accredito"',
+    '"12/10/2026","08:08:36","CEST","La Feltrinelli Internet Bookshop Srl","Autorizzazione generica","Completata","EUR","-16,95","0,00","-16,95","io@example.com","negozio@example.com","FEL00000000000009","Indirizzo, Citta, MI, 20100, Italia","Confermato","Ordine n.10000001. Totale 21,35 €","","0,00","","0,00","","","","","O-0000000000000000","10000001-0000001","","1","","0,00","Indirizzo","","Citta","MI","20100","Italia","0200000","Ordine n.10000001. Totale 21,35 €","","IT","Promemoria"',
+    # Apple: abbonamento e ricarica dalla banca ("Bonifico bancario sul conto PayPal", in sospeso)
+    '"23/08/2026","23:07:42","CEST","Apple Services","Pagamento preautorizzato utenza","Completata","EUR","-7,00","0,00","-7,00","io@example.com","apple@example.com","APP00000000000001","","Non confermato","","","0,00","","0,00","","","","","B-0000000000000000","ML0000000000","","1","","-7,00","","","","","","","000000000","","","","Addebito"',
+    '"23/08/2026","23:07:42","CEST","","Bonifico bancario sul conto PayPal ","In sospeso","EUR","7,00","0,00","7,00","","io@example.com","APP00000000000002","","","","","0,00","","0,00","","","","","APP00000000000001","ML0000000000","","1","","0,00","","","","","","","","","","","Accredito"',
+]
+# la stessa spesa Feltrinelli addebitata sulla carta Trade Republic
+TR_REALE = ('"2026-10-13T06:45:48.707639Z","2026-10-13","DEFAULT","CASH","CARD_TRANSACTION","","PAYPAL *IBS","","","",'
+            '"-16.950000","","","EUR","","","","PAYPAL *IBS","00000000-0000-0000-0000-000000000001","","","","5942"')
+# l'abbonamento Apple addebitato con SDD di PayPal su Crédit Agricole
+CA_REALE = ("26/08/2026;26/08/2026;PAGAMENTO UTENZE                   ;SDD A : PAYPAL EUROPE S.A.R.L. ET CIE S.C.A "
+            "0000000000000/PAYPAL ADDEBITO SDD NUMERO 0000000000;'-7,00;EUR")
+
+
+def test_paypal_righe_reali(conn):
+    """Ogni spesa PayPal conta una volta sola: il pagamento all'esercente e' la spesa, la ricarica nel report e'
+    un trasferimento interno, l'addebito in banca e' un contenitore. Vale anche per la ricarica "Versamento
+    generico con carta", che fino alla 0.16.0 diventava un'entrata, e per i dati importati con quella versione."""
+    from spese.lettore import leggi
+    report = ("\n".join([INTESTAZIONE_PP] + PP_REALI) + "\n").encode("utf-8")
+    fl = leggi("Download.CSV", [], report)
+    assert fl.profilo["id"] == "paypal" and not fl.avvisi and not fl.scartate
+    tipi = {(m["data"], m["importo_cent"]): m["tipo"] for m in fl.movimenti}
+    assert tipi == {("2026-10-12", -1695): "pagamento_carta", ("2026-10-12", 1695): "ricarica",
+                    ("2026-08-23", -700): "pagamento_carta", ("2026-08-23", 700): "ricarica"}   # promemoria scartato
+
+    pp = importa.crea_conto(conn, "PayPal", "paypal", "conto", "personale", "PayPal")
+    tr = importa.crea_conto(conn, "Trade Republic", "trade_republic", "conto", "personale", "Trade Republic")
+    ca = importa.crea_conto(conn, "Credit Agricole", "credit_agricole", "conto", "personale", "Credit Agricole")
+    importa.importa(conn, pp, "Download.CSV", report)
+    intest_tr = sintetici.tr_csv().decode("utf-8").splitlines()[0]
+    importa.importa(conn, tr, "tr.csv", (intest_tr + "\n" + TR_REALE + "\n").encode("utf-8"))
+    importa.importa(conn, ca, "Lista_Movimenti_CAI.csv",
+                    ("Data Op.;Data Val.;Causale;Descrizione;Importo;Divisa\n" + CA_REALE + "\n").encode("utf-8"))
+
+    def esito():
+        ricalcola(conn)
+        return {(r["conto_id"], r["importo_cent"]): (r["natura"], r["data"]) for r in righe(
+            conn, "SELECT conto_id, importo_cent, natura, data FROM analisi WHERE componente = 'principale'")}
+    atteso = {(pp, -1695): ("uscita", "2026-10-13"),            # con la data dell'addebito in banca
+              (pp, 1695): ("trasferimento_interno", "2026-10-12"),
+              (tr, -1695): ("contenitore", "2026-10-13"),
+              (pp, -700): ("uscita", "2026-08-26"),
+              (pp, 700): ("trasferimento_interno", "2026-08-23"),
+              (ca, -700): ("contenitore", "2026-08-26")}
+    assert esito() == atteso
+    # resta da rivedere solo la categoria di Apple, che nel database di prova non e' ancora classificata
+    assert righe(conn, "SELECT conto_id, importo_cent, motivo FROM analisi WHERE da_rivedere = 1") == \
+        [{"conto_id": pp, "importo_cent": -700, "motivo": "Categoria da assegnare"}]
+
+    # dati importati con la 0.16.0: le ricariche erano pagamenti ricevuti (bonifici), quindi entrate
+    conn.execute("UPDATE movimenti SET tipo = 'bonifico' WHERE tipo = 'ricarica'")
+    assert esito() == atteso                                    # il ricalcolo le riconosce e le corregge
 
 
 def paypal_csv():

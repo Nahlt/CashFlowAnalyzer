@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.16.0 – Manuale
+# CashFlow Analyzer 0.16.1 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -89,7 +89,10 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
    consecutive della carta che sommano esattamente all'addebito, anche se l'estratto finisce giorni prima
    (ING addebita il 10 del mese le spese del mese prima). Se il conto di addebito non e' indicato e c'e' un
    solo conto con addebiti della carta (a parita', quello della stessa banca), lo usa da sola e lo dice in
-   Conti e copertura.
+   Conti e copertura. L'estratto della carta va importato in un conto di tipo **Carta**: se lo assegni a un
+   conto di altro tipo l'app avvisa e importa solo con una conferma. Se le righe della carta sono comunque
+   finite in un conto sbagliato, l'addebito mensile non conta (le spese contano gia' nel conto) e in Revisione
+   il motivo dice come rimediare: annullare l'import e reimportare il file in un conto di tipo Carta.
 3. **Conti e copertura**: registra l'IBAN dei conti, anche quelli che non importi (conto deposito,
    conto di un familiare). L'IBAN si puo' scrivere con gli spazi: viene salvato senza spazi e in maiuscolo,
    dopo un controllo di paese, lunghezza e cifra di controllo; se non torna, nulla viene salvato.
@@ -149,7 +152,8 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
      internet mentre usi l'app), con animazioni di apertura e di aggiornamento.
    - Aspetto "chiaro a schede": colori e carattere in `.streamlit/config.toml` (sezione `[theme]`), il resto in
      cima ad `app.py`. Il carattere Inter sta in `static/fonts/` e viene servito dall'app stessa.
-   In **Movimenti** la colonna *Motivo* dice perche' un movimento e' da rivedere (categoria da assegnare o da
+   In **Movimenti** la colonna *Descrizione* riporta il testo originale del movimento (per PayPal il tipo di
+   operazione, il nome e l'oggetto); la colonna *Motivo* dice perche' un movimento e' da rivedere (categoria da assegnare o da
    confermare, trasferimento senza contropartita, addebito della carta senza estratto, prelievo da
    giustificare...). Una tua decisione sul movimento chiude sempre la revisione. Per un pagamento con carta o un
    addebito SEPA puoi classificare da li' anche l'esercente ("Vale per tutti i movimenti di questo esercente").
@@ -275,7 +279,10 @@ del database cifrato.
 
 La stessa spesa compare anche sul conto o sulla carta che l'ha pagata ("PAYPAL *..." o addebito SEPA di
 PayPal): l'app abbina quell'addebito alla ricarica dello stesso importo nel report (entro una settimana), lo
-tratta come contenitore e conta la spesa una volta sola. Un addebito PayPal senza ricarica nel periodo del
+tratta come contenitore e conta la spesa una volta sola. La ricarica (per esempio "Bonifico bancario sul
+conto PayPal" o "Versamento generico con carta") e' un trasferimento interno: si riconosce dalla dicitura o,
+se PayPal ne usa una nuova, dal codice di riferimento che la lega al pagamento. Le righe "Promemoria"
+(autorizzazioni) non cambiano il saldo e non entrano. Un addebito PayPal senza ricarica nel periodo del
 report (per esempio perche' la banca lo registra piu' di una settimana dopo) compare in **Revisione > Addebiti PayPal**, per tutti i conti e le carte. Per ognuno l'app
 propone il pagamento del report con lo stesso importo (entro 60 giorni) e il nome dell'esercente piu' simile
 (es. "PAYPAL *VEEPEE IT" e "VENTE PRIVEE.COM SA"). Puoi accettare la proposta, anche per piu' addebiti insieme,
