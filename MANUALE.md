@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.16.2 – Manuale
+# CashFlow Analyzer 0.17.0 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -144,10 +144,23 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
    entrambi. Conti e periodo restano passando da una pagina all'altra.
    - **Andamento mensile**: passando il mouse su un mese vedi le prime categorie di spesa; con un clic (anche sul
      saldo netto) apri *Dove vanno i soldi* filtrato su quel mese, senza cambiare il periodo.
-   - **Dove vanno i soldi**: in alto le categorie (clic per sceglierne una); sotto, a sinistra le sue
-     sottocategorie (clic per filtrare, di nuovo per togliere) e a destra la spesa per mese con media mobile a
-     3 mesi, totale e media mensile. Il filtro sul mese vale per categorie, sottocategorie e tabelle; grafico per
-     mese, totale e media restano sull'intero periodo, con il mese evidenziato. Sotto, tabelle comprimibili.
+   - **Dove vanno i soldi**: in alto le categorie (clic per sceglierne una; in rosso *Da classificare*, le uscite
+     ancora senza categoria) e, sotto, la loro tabella (comprimibile, chiusa all'inizio). Poi a sinistra le
+     sottocategorie della categoria scelta (clic per filtrare, di nuovo per togliere) e a destra la spesa per mese
+     con media mobile a 3 mesi.
+     - **Clic su un mese** della spesa per mese (o dall'Andamento mensile): tutta la pagina mostra solo quel
+       mese, cioe' categorie, sottocategorie, esercenti, movimenti e quote della natura della spesa. Il grafico
+       per mese resta sull'intero periodo, con il mese evidenziato, per poterne scegliere un altro; un secondo clic
+       sullo stesso mese (o il pulsante con la ✕) toglie il filtro. Gli indicatori in alto diventano: uscite del
+       mese, spesa della voce scelta nel mese e media mensile del periodo con lo scarto del mese (in verde se hai
+       speso meno della media, in rosso se di piu').
+     - **Esercenti principali**: grafico a barre dei primi 15 esercenti della voce scelta. Un clic su una barra
+       filtra i movimenti su quell'esercente, di nuovo per togliere il filtro; cambiando categoria,
+       sottocategoria o mese il filtro si toglie da solo.
+     - **Movimenti** (comprimibile, chiuso all'inizio): solo le uscite e i rimborsi della voce scelta, cioe'
+       esattamente quelli che compongono la barra. La tabella e' la stessa della pagina Movimenti e funziona
+       allo stesso modo: selezionando una riga la classifichi (anche per tutto l'esercente), selezionandone
+       piu' d'una assegni etichette e natura della spesa. Dopo il salvataggio i grafici si aggiornano.
    - I grafici sono ECharts (componente `streamlit-echarts`, incluso nel pacchetto: nulla viene scaricato da
      internet mentre usi l'app), con animazioni di apertura e di aggiornamento.
    - Aspetto "chiaro a schede": colori e carattere in `.streamlit/config.toml` (sezione `[theme]`), il resto in

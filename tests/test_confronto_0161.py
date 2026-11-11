@@ -1,6 +1,5 @@
 """Regressioni dei difetti segnalati dalla seconda revisione della 0.16.1, corretti nella 0.16.2.
 Ogni test afferma il comportamento corretto: sulla 0.16.1 fallivano."""
-import sintetici
 from spese import analisi as an
 from spese import configurazione as cfg
 from spese import db, importa, llm, servizi

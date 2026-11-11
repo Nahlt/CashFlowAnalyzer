@@ -1107,6 +1107,13 @@ def movimenti():
     if df.empty:
         st.info("Nessun movimento con questi filtri.")
         return
+    tabella_movimenti(df, "mov")
+
+
+def tabella_movimenti(df, prefisso, altezza=520, restringi="restringi periodo o ricerca"):
+    """Tabella dei movimenti con la classificazione: una riga selezionata apre la modifica (come conta, categoria,
+    esercente); piu' righe, etichette e natura della spesa se quelle sezioni sono accese. La usano la pagina
+    Movimenti (prefisso "mov") e "Dove vanno i soldi" ("rip"): il prefisso tiene separate chiavi e scelte."""
     eti_on, nat_on = attr.etichette_attive(conn()), attr.natura_attiva(conn())
     prova = eti_on or nat_on
     vista = df.assign(Importo=[euro(v) for v in df["importo_cent"]],
@@ -1124,11 +1131,11 @@ def movimenti():
         vista["Etichette"] = [", ".join(eti.get(m, [])) for m in df["mov_id"]]
         colonne.append("Etichette")
     cosa = " e ".join(x for x, on in (("etichette", eti_on), ("natura della spesa", nat_on)) if on)
-    st.caption(("Le %d righe piu' recenti: restringi periodo o ricerca per vedere le altre" % len(df)
+    st.caption(("Le %d righe piu' recenti: %s per vedere le altre" % (len(df), restringi)
                 if len(df) >= an.LIMITE_MOVIMENTI else "%d righe" % len(df))
                + " (le commissioni e le imposte di un movimento compaiono come righe separate)."
                + (" Seleziona piu' righe per assegnare %s a tutte insieme." % cosa if prova else ""))
-    giro = st.session_state.get("mov_giro", 0)
+    giro = st.session_state.get(prefisso + "_giro", 0)
     vista[colonne] = vista[colonne].astype(object).where(vista[colonne].notna(), "")     # niente "None" nelle celle vuote
     sel = st.dataframe(vista[colonne].rename(columns={"data": "Data", "conto": "Conto", "esercente": "Esercente",
                                                       "controparte_nome": "Controparte", "l1": "Categoria",
@@ -1136,15 +1143,15 @@ def movimenti():
                                                       "descrizione": "Descrizione"}),
                        hide_index=True, width="stretch", on_select="rerun",
                        selection_mode="multi-row" if prova else "single-row",
-                       key=chiave_tabella("sel_mov_%d" % giro, df["mov_id"]), height=520)
+                       key=chiave_tabella("sel_%s_%d" % (prefisso, giro), df["mov_id"]), height=altezza)
     righe = sel.selection.rows if sel else []
     if len(righe) == 1:
-        _modifica_movimento(df.iloc[righe[0]], "mov")
+        _modifica_movimento(df.iloc[righe[0]], prefisso)
     if prova and righe:
-        _etichette_e_natura(df.iloc[righe], giro, eti_on, nat_on)
+        _etichette_e_natura(df.iloc[righe], giro, eti_on, nat_on, prefisso)
 
 
-def _etichette_e_natura(scelti, giro, eti_on=True, nat_on=True):
+def _etichette_e_natura(scelti, giro, eti_on=True, nat_on=True, prefisso="mov"):
     """Etichette e/o natura della spesa sui movimenti selezionati (secondo le sezioni accese)."""
     c = conn()
     ids = list(dict.fromkeys(scelti["mov_id"]))
@@ -1159,19 +1166,20 @@ def _etichette_e_natura(scelti, giro, eti_on=True, nat_on=True):
     aggiungi, nuova, togli, natura = [], "", [], ""
     if eti_on:
         with a:
-            aggiungi = st.multiselect("Aggiungi etichette", list(nomi), format_func=nomi.get, key="mov_et_add_%d" % giro,
+            aggiungi = st.multiselect("Aggiungi etichette", list(nomi), format_func=nomi.get,
+                                      key="%s_et_add_%d" % (prefisso, giro),
                                       placeholder="Scegli tra quelle esistenti" if nomi else "Nessuna etichetta ancora")
-            nuova = st.text_input("…o crea una nuova etichetta", key="mov_et_new_%d" % giro,
+            nuova = st.text_input("…o crea una nuova etichetta", key="%s_et_new_%d" % (prefisso, giro),
                                   placeholder="es. Vacanza Puglia 2025")
-            togli = st.multiselect("Togli etichette", sui_scelti, key="mov_et_del_%d" % giro,
+            togli = st.multiselect("Togli etichette", sui_scelti, key="%s_et_del_%d" % (prefisso, giro),
                                    placeholder="Scegli" if sui_scelti else "Nessuna sui selezionati")
     if nat_on:
         with (b if eti_on else a):
             valori = attr.valori()
             opz = ["", "sottocategoria"] + list(valori)
             etich = {"": "Non cambiare", "sottocategoria": "Come la sottocategoria (togli la scelta)", **valori}
-            natura = st.radio("Natura della spesa", opz, format_func=etich.get, key="mov_nat_%d" % giro)
-    if st.button("Applica ai selezionati", type="primary", key="mov_et_ok_%d" % giro,
+            natura = st.radio("Natura della spesa", opz, format_func=etich.get, key="%s_nat_%d" % (prefisso, giro))
+    if st.button("Applica ai selezionati", type="primary", key="%s_et_ok_%d" % (prefisso, giro),
                  disabled=not (aggiungi or nuova.strip() or togli or natura)):
         try:
             if nuova.strip():
@@ -1184,7 +1192,7 @@ def _etichette_e_natura(scelti, giro, eti_on=True, nat_on=True):
         per_nome = {v: k for k, v in nomi.items()}
         for n in togli:
             attr.togli(c, ids, per_nome[n])
-        st.session_state["mov_giro"] = giro + 1
+        st.session_state[prefisso + "_giro"] = giro + 1
         if natura:
             attr.imposta_movimento(c, ids, None if natura == "sottocategoria" else natura)
             esegui_ricalcolo("Aggiornati %d movimenti" % len(ids))

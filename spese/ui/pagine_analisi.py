@@ -68,12 +68,22 @@ def _mesi_del_periodo(c, f):
     return list(df["mese"]) if not df.empty else []
 
 
+def _mese_scelto(mese):
+    """Clic sul grafico della spesa per mese: filtra la pagina su quel mese; sullo stesso mese toglie il filtro."""
+    if st.session_state.get("rip_mese") == mese:
+        st.session_state.pop("rip_mese", None)
+    else:
+        st.session_state["rip_mese"] = mese
+
+
 def ripartizione():
-    """Dove vanno i soldi: categorie in alto (cliccabili); sotto, sottocategorie della categoria scelta (30%) e
-    spesa per mese con media mobile (70%). Il mese scelto dall'andamento filtra categorie e sottocategorie;
-    grafico per mese, totale e media restano sull'intero periodo."""
+    """Dove vanno i soldi: categorie in alto (cliccabili, "Da classificare" in rosso) con la loro tabella; sotto,
+    sottocategorie della categoria scelta (30%) e spesa per mese con media mobile (70%), poi esercenti principali
+    e movimenti. Il mese scelto (clic sulla spesa per mese o dall'andamento) vale per tutta la pagina; il grafico
+    per mese resta sull'intero periodo, con il mese in evidenza, per poterne scegliere un altro."""
     f = filtri_sidebar()
-    intestazione("Dove vanno i soldi", f, "Uscite al netto dei rimborsi · clicca una categoria per il dettaglio")
+    intestazione("Dove vanno i soldi", f, "Uscite al netto dei rimborsi · clicca una categoria per il dettaglio, "
+                                          "un mese per vedere solo quello")
     c = conn()
     mesi_periodo = _mesi_del_periodo(c, f)
     mese = st.session_state.get("rip_mese")
@@ -87,8 +97,8 @@ def ripartizione():
                     help="Togli il filtro sul mese"):
             st.session_state.pop("rip_mese", None)
             st.rerun()
-        b.caption("Categorie e sottocategorie del solo mese scelto. Il grafico per mese, il totale e la media "
-                  "restano sull'intero periodo.")
+        b.caption("Tutta la pagina mostra il solo mese scelto. Il grafico della spesa per mese resta sull'intero "
+                  "periodo: clicca un altro mese per cambiarlo, lo stesso per togliere il filtro.")
     df = an.ripartizione(c, fm, "l1")
     if df.empty:
         return _nessun_dato()
@@ -104,19 +114,37 @@ def ripartizione():
     valori = dict(zip(serie["mese"], serie["importo"])) if not serie.empty else {}
     totale = int(sum(valori.values()))
     n_mesi = len(mesi_periodo) or 1
+    media = round(totale / n_mesi)
+    voce = l2 or nome_l1
     k0, k1, k2 = st.columns(3)
-    k0.metric("Uscite di %s" % grafici.mese_lungo(mese) if mese else "Uscite del periodo", euro(tot))
-    k1.metric("%s · totale nel periodo" % (l2 or nome_l1), euro(totale))
-    k2.metric("%s · media mensile" % (l2 or nome_l1), euro(round(totale / n_mesi)))
+    if mese:
+        nel_mese = int(valori.get(mese, 0))
+        k0.metric("Uscite di %s" % grafici.mese_lungo(mese), euro(tot))
+        k1.metric("%s · %s" % (voce, grafici.mese_lungo(mese)), euro(nel_mese))
+        scarto = nel_mese - media
+        k2.metric("%s · media mensile del periodo" % voce, euro(media),
+                  delta="%s%s nel mese" % ("+" if scarto > 0 else "", euro(scarto)),
+                  delta_color="inverse" if scarto else "off")
+    else:
+        k0.metric("Uscite del periodo", euro(tot))
+        k1.metric("%s · totale nel periodo" % voce, euro(totale))
+        k2.metric("%s · media mensile" % voce, euro(media))
 
     with st.container(key="scheda_categorie"):
         st.subheader("Categorie" + (" · %s" % grafici.mese_lungo(mese) if mese else ""))
-        st.caption("Trasferimenti tra conti, risparmio e addebiti riepilogativi della carta sono esclusi.")
-        opz, ordine = grafici.barre_orizzontali(voci, list(df["importo"]), l1)
+        st.caption("Trasferimenti tra conti, risparmio e addebiti riepilogativi della carta sono esclusi. In rosso le "
+                   "uscite ancora senza categoria: si sistemano in **Revisione** o qui sotto, in Movimenti.")
+        opz, ordine = grafici.barre_orizzontali(voci, list(df["importo"]), l1, rosse=("Da classificare",))
         i = grafici.mostra(opz, "rip_l1_graf", max(220, 30 * len(voci) + 30), clic="y")
     if i is not None and 0 <= i < len(ordine) and ordine[i] != l1:
         st.session_state["rip_l1"], st.session_state["rip_l2"] = ordine[i], None
         st.rerun()
+    with st.expander("Tabella delle categorie"):
+        t = df.copy()
+        t["Quota"] = ["%d%%" % round(100 * v / tot) for v in t["importo"]] if tot else ""
+        t["Importo"] = [euro(v) for v in t["importo"]]
+        st.dataframe(t[["voce", "Importo", "Quota", "movimenti"]].rename(columns={"voce": "Categoria", "movimenti": "Movimenti"}),
+                     hide_index=True, width="stretch")
 
     sx, dx = st.columns([3, 7])
     with sx, st.container(key="scheda_sottocategorie"):
@@ -124,7 +152,7 @@ def ripartizione():
         i = None
         if l1 == "Da classificare":
             sotto = pd.DataFrame()
-            st.caption("Voci ancora senza categoria: si sistemano in **Revisione**.")
+            st.caption("Voci ancora senza categoria: si sistemano in **Revisione** o in Movimenti, qui sotto.")
         else:
             sotto = an.ripartizione(c, fm, "l2", l1)
         if not sotto.empty:
@@ -137,52 +165,88 @@ def ripartizione():
         st.session_state["rip_l2"] = None if ordine2[i] == l2 else ordine2[i]
         st.rerun()
     with dx, st.container(key="scheda_serie"):
-        st.subheader("Spesa per mese" + (" · %s" % l2 if l2 else " · %s" % nome_l1))
-        grafici.mostra(grafici.serie_mensile(mesi_periodo, [valori.get(m, 0) for m in mesi_periodo], mese),
-                       "rip_serie", 300)
+        st.subheader("Spesa per mese · %s" % voce)
+        st.caption("Clic su un mese per vedere solo quello, di nuovo per togliere il filtro")
+        i = grafici.mostra(grafici.serie_mensile(mesi_periodo, [valori.get(m, 0) for m in mesi_periodo], mese),
+                           "rip_serie", 300, clic="x")
+    if i is not None and 0 <= i < len(mesi_periodo):
+        _mese_scelto(mesi_periodo[i])
+        st.rerun()
 
-    with st.expander("Tabella delle categorie"):
-        t = df.copy()
-        t["Quota"] = ["%d%%" % round(100 * v / tot) for v in t["importo"]] if tot else ""
-        t["Importo"] = [euro(v) for v in t["importo"]]
-        st.dataframe(t[["voce", "Importo", "Quota", "movimenti"]].rename(columns={"voce": "Categoria", "movimenti": "Movimenti"}),
-                     hide_index=True, width="stretch")
-    dove = (" di %s" % grafici.mese_lungo(mese) if mese else "") + (" · %s" % (l2 or nome_l1))
-    with st.expander("Esercenti principali" + dove):
-        es = an.esercenti_categoria(c, fm, l1, l2)
+    dove = (" di %s" % grafici.mese_lungo(mese) if mese else "") + " · %s" % voce
+    eser = _esercenti_principali(c, fm, l1, l2, mese, dove)
+    _movimenti_della_voce(c, fm, l1, l2, eser, dove)
+    if attr.natura_attiva(c):
+        _natura_spesa(f, fm, mese)
+
+
+def _esercenti_principali(c, fm, l1, l2, mese, dove):
+    """Grafico dei primi esercenti della voce scelta. Clic su una barra: filtra i movimenti su quell'esercente
+    (di nuovo per togliere). Il filtro vale per la voce e il mese in cui e' stato scelto. Restituisce
+    l'esercente scelto o None."""
+    contesto = (l1, l2, mese, tuple(fm.conti), fm.perimetro, fm.da, fm.a)
+    if st.session_state.get("rip_eser_ctx") != contesto:
+        st.session_state.pop("rip_eser", None)
+        st.session_state["rip_eser_ctx"] = contesto
+    es = an.esercenti_categoria(c, fm, l1, l2)
+    eser = st.session_state.get("rip_eser")
+    if eser is not None and eser not in list(es["esercente"]):
+        eser = None
+        st.session_state.pop("rip_eser", None)
+    with st.container(key="scheda_esercenti"):
+        st.subheader("Esercenti principali" + dove)
         if es.empty:
             st.caption("Nessun esercente.")
+            return None
+        st.caption("I primi %d per importo. Clic su un esercente per filtrare i movimenti qui sotto, di nuovo per "
+                   "togliere il filtro." % len(es))
+        nomi = [testo(e) or "Senza nome" for e in es["esercente"]]
+        opz, ordine = grafici.barre_orizzontali(nomi, list(es["importo"]),
+                                                None if eser is None else (testo(eser) or "Senza nome"))
+        i = grafici.mostra(opz, "rip_eser_graf", max(200, 30 * len(es) + 30), clic="y")
+    if i is not None and 0 <= i < len(ordine):
+        scelto = list(es["esercente"])[nomi.index(ordine[i])]
+        if scelto == eser:
+            st.session_state.pop("rip_eser", None)
         else:
-            es["Importo"] = [euro(v) for v in es["importo"]]
-            st.dataframe(es[["esercente", "Importo", "movimenti"]].rename(columns={"esercente": "Esercente", "movimenti": "Movimenti"}),
-                         hide_index=True, width="stretch")
-    with st.expander("Movimenti" + dove):
-        mv = an.movimenti(c, fm, l1, l2)
+            st.session_state["rip_eser"] = scelto
+        st.rerun()
+    return eser
+
+
+def _movimenti_della_voce(c, fm, l1, l2, eser, dove):
+    """Movimenti della voce scelta (solo uscite e rimborsi, come nei grafici), con la stessa tabella e la stessa
+    classificazione della pagina Movimenti. Riquadro chiuso all'inizio; resta aperto se lo apri."""
+    filtro = "" if eser is None else " · %s" % (testo(eser) or "Senza nome")
+    with st.expander("Movimenti" + dove + filtro, key="rip_mov_aperto"):
+        if eser is not None:
+            if st.button("Esercente: %s  ✕" % (testo(eser) or "Senza nome"), icon=":material/filter_alt:",
+                         key="rip_eser_x", help="Togli il filtro sull'esercente"):
+                st.session_state.pop("rip_eser", None)
+                st.rerun()
+        mv = an.movimenti(c, fm, l1, l2, solo_uscite=True, esercente=eser)
         if mv.empty:
             st.caption("Nessun movimento.")
         else:
-            st.dataframe(pd.DataFrame({"Data": mv["data"], "Conto": mv["conto"],
-                                       "Esercente": [testo(e) or testo(n) for e, n in zip(mv["esercente"], mv["controparte_nome"])],
-                                       "Importo": [euro(v) for v in mv["importo_cent"]], "Sottocategoria": mv["l2"].fillna(""),
-                                       "Fonte": mv["fonte"].fillna("")}), hide_index=True, width="stretch")
-    if attr.natura_attiva(c):
-        _natura_spesa(f)
+            from .pagine_dati import tabella_movimenti
+            tabella_movimenti(mv, "rip", altezza=min(520, 38 + 35 * len(mv)), restringi="scegli un mese o un esercente")
 
 
-def _natura_spesa(f):
-    """Quote e andamento per natura della spesa (sull'intero periodo)."""
+def _natura_spesa(f, fm=None, mese=None):
+    """Quote per natura della spesa (del mese scelto, se c'e') e andamento sull'intero periodo."""
     with st.container(key="scheda_natura"):
-        _natura_spesa_dentro(f)
+        _natura_spesa_dentro(f, fm or f, mese)
 
 
-def _natura_spesa_dentro(f):
-    st.subheader("Natura della spesa")
+def _natura_spesa_dentro(f, fm, mese=None):
+    st.subheader("Natura della spesa" + (" · %s" % grafici.mese_lungo(mese) if mese else ""))
     df = an.per_attributo(conn(), f)
     if df.empty:
         return
     valori = attr.valori()
     serie = [(k, v) for k, v in valori.items()] + [("", "Non definita")]
-    tot_per = df.groupby("attributo")["importo"].sum().to_dict()
+    quote = an.per_attributo(conn(), fm) if mese else df
+    tot_per = quote.groupby("attributo")["importo"].sum().to_dict() if not quote.empty else {}
     tot = sum(tot_per.values())
     cols = st.columns(len(serie))
     for col, (k, nome) in zip(cols, serie):
@@ -190,7 +254,8 @@ def _natura_spesa_dentro(f):
         col.metric(nome, euro(v))
         if tot:
             col.caption("%d%% delle uscite" % round(100 * v / tot))
-    st.caption("Viene dalla sottocategoria (si cambia in Regole e tassonomia, scheda Natura della spesa) e si puo' "
+    st.caption(("Quote del mese scelto; il grafico resta sull'intero periodo. " if mese else "")
+               + "Viene dalla sottocategoria (si cambia in Regole e tassonomia, scheda Natura della spesa) e si puo' "
                "scegliere sul singolo movimento nella pagina Movimenti. Sezione facoltativa: si spegne in Impostazioni.")
     larga = df.pivot_table(index="mese", columns="attributo", values="importo", aggfunc="sum", fill_value=0).reset_index()
     presenti = [(k, n) for k, n in serie if k in larga.columns]

@@ -5,6 +5,37 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.17.0 – 11 novembre 2026 · "Dove vanno i soldi" piu' interattiva
+
+**Novita'** (pagina *Dove vanno i soldi*)
+- **"Da classificare" in rosso** nel grafico delle categorie (rosso tenue quando e' scelta un'altra categoria),
+  per vedere subito quanta spesa e' ancora senza categoria.
+- **Clic su un mese** nel grafico della spesa per mese: tutta la pagina mostra solo quel mese (categorie,
+  sottocategorie, esercenti, movimenti, quote della natura della spesa). Il grafico per mese resta sull'intero
+  periodo con il mese evidenziato; un secondo clic sullo stesso mese toglie il filtro. Con un mese scelto gli
+  indicatori mostrano la spesa della voce nel mese e la media mensile del periodo con lo scarto del mese.
+- **Tabella delle categorie** spostata subito sotto il grafico delle categorie (comprimibile, chiusa all'inizio).
+- **Esercenti principali come grafico a barre** (primi 15 per importo). Un clic su un esercente filtra i
+  movimenti, di nuovo per togliere il filtro.
+- **Movimenti con la stessa tabella della pagina Movimenti**: stesse colonne e stessa classificazione (una riga:
+  come conta, categoria, anche per tutto l'esercente; piu' righe: etichette e natura della spesa). Il riquadro
+  resta chiuso all'inizio e resta aperto se lo apri, anche cambiando esercente.
+
+**Correzioni**
+- Nell'elenco dei movimenti di *Dove vanno i soldi* comparivano anche righe che il grafico non conta: sotto
+  "Da classificare" giroconti tra i tuoi conti, addebiti riepilogativi della carta ed esclusi (non hanno
+  categoria); sotto una categoria le eventuali entrate con quella categoria. Ora l'elenco contiene solo uscite e
+  rimborsi e somma esattamente quanto la barra. Esempio con i dati di prova: sotto "Da classificare" la barra
+  contava 7 movimenti (174,99 €) e l'elenco ne mostrava 11, con 3 giroconti e un addebito della carta in piu'.
+- Test: tolta un'importazione inutile segnalata da pyflakes.
+
+**Aggiornando**
+- Estrai sopra la cartella e riavvia. Il database non cambia e i numeri delle analisi restano gli stessi.
+- 159 test (erano 150): nuovi test su dati sintetici per il rosso, il filtro per esercente e per mese, l'elenco
+  dei movimenti e la pagina (AppTest).
+
+---
+
 ## 0.16.2 – 11 novembre 2026 · correzioni dalla revisione del codice
 
 Correzioni dei difetti trovati dalla revisione della 0.16.1 (due revisioni indipendenti, 36 segnalazioni).

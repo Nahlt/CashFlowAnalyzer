@@ -126,24 +126,38 @@ def serie_categoria(conn, f: Filtri, l1, l2=None):
         GROUP BY a.mese ORDER BY a.mese""", par + p2)
 
 
+# a chi va una spesa: l'esercente, altrimenti la controparte, altrimenti il tipo di movimento. Stessa regola per il
+# grafico degli esercenti e per il filtro dei movimenti che si apre cliccandolo.
+ESERCENTE = "coalesce(m.esercente, m.controparte_nome, m.tipo)"
+
+
 def esercenti_categoria(conn, f: Filtri, l1, l2=None, limite=15):
     w, par = f.where()
     cond, p2 = _cond_cat(l1, l2)
     return _df(conn, f"""
-        SELECT coalesce(m.esercente, m.controparte_nome, m.tipo) AS esercente, -sum(a.importo_cent) AS importo,
+        SELECT {ESERCENTE} AS esercente, -sum(a.importo_cent) AS importo,
                count(*) AS movimenti
         FROM analisi a JOIN movimenti m ON m.id = a.mov_id
         WHERE {w} AND a.natura IN {USCITE} AND {cond}
         GROUP BY 1 ORDER BY importo DESC LIMIT {int(limite)}""", par + p2)
 
 
-def movimenti(conn, f: Filtri, l1=None, l2=None, testo=None, solo_rivedere=False, limite=LIMITE_MOVIMENTI):
+def movimenti(conn, f: Filtri, l1=None, l2=None, testo=None, solo_rivedere=False, limite=LIMITE_MOVIMENTI,
+              solo_uscite=False, esercente=None):
+    """Righe di analisi con i dati del movimento. solo_uscite: le sole uscite e i rimborsi, cioe' le righe che
+    contano in "Dove vanno i soldi" (senza, sotto "Da classificare" finirebbero anche giroconti, addebiti
+    riepilogativi della carta ed esclusi, che non hanno categoria). esercente: come nel grafico degli esercenti."""
     w, par = f.where()
     cond = []
     if l1 or l2:
         c, p = _cond_cat(l1, l2)
         cond.append(c)
         par.extend(p)
+    if solo_uscite:
+        cond.append("a.natura IN " + USCITE)
+    if esercente is not None:
+        cond.append(ESERCENTE + " = ?")
+        par.append(esercente)
     if testo:
         cond.append("(m.descrizione LIKE ? OR m.esercente LIKE ? OR m.controparte_nome LIKE ?)")
         par.extend(["%" + testo + "%"] * 3)

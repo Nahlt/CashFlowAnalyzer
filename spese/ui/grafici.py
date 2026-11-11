@@ -16,6 +16,8 @@ MESI = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "n
 MESI_LUNGHI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre",
                "ottobre", "novembre", "dicembre"]
 TENUE = "#a9c8ee"            # barre non selezionate quando ce n'e' una scelta
+ROSSO = "#e34948"            # voci da sistemare (es. "Da classificare")
+ROSSO_TENUE = "#f2a7a6"      # la stessa, quando e' scelta un'altra voce
 
 EURO = JsCode("function(v){ if (v == null || isNaN(v)) return ''; return Number(v).toLocaleString('it-IT', "
               "{minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always'}) + ' €'; }")
@@ -124,10 +126,18 @@ def barre_saldo(df):
     return o
 
 
-def barre_orizzontali(voci, valori_cent, selezionata=None, etichette_sopra=False):
+def _colore_barra(voce, selezionata, rosse):
+    acceso = selezionata is None or voce == selezionata
+    if voce in rosse:
+        return ROSSO if acceso else ROSSO_TENUE
+    return BLU if acceso else TENUE
+
+
+def barre_orizzontali(voci, valori_cent, selezionata=None, etichette_sopra=False, rosse=()):
     """Barre orizzontali su una traccia grigia, la piu' grande in alto. Restituisce (opzioni,
     voci_nell_ordine_dell_asse): l'indice di un clic si riferisce alla seconda lista.
-    etichette_sopra: il nome sopra la barra invece che a sinistra (per le colonne strette)."""
+    etichette_sopra: il nome sopra la barra invece che a sinistra (per le colonne strette).
+    rosse: voci disegnate in rosso invece che in blu (es. "Da classificare")."""
     coppie = list(zip(voci, valori_cent))[::-1]          # ECharts disegna la prima categoria in basso
     ordine = [v for v, _ in coppie]
     o = _base(legenda=False, griglia={"right": 70, "left": 4 if etichette_sopra else 8, "top": 18 if etichette_sopra else 6})
@@ -144,7 +154,7 @@ def barre_orizzontali(voci, valori_cent, selezionata=None, etichette_sopra=False
     o["series"] = [{"type": "bar", "barMaxWidth": 10 if etichette_sopra else 14, "showBackground": True,
                     "backgroundStyle": {"color": "#f0f3f7", "borderRadius": 4}, "data": [
         {"value": round(c / 100, 2), "itemStyle": {
-            "color": BLU if (selezionata is None or v == selezionata) else TENUE, "borderRadius": [0, 4, 4, 0]}}
+            "color": _colore_barra(v, selezionata, rosse), "borderRadius": [0, 4, 4, 0]}}
         for v, c in coppie],
         "label": {"show": True, "position": "right", "formatter": JsCode(
             "function(p){ return Math.round(p.value).toLocaleString('it-IT', {useGrouping: 'always'}) + ' €'; }")}}]
@@ -152,7 +162,8 @@ def barre_orizzontali(voci, valori_cent, selezionata=None, etichette_sopra=False
 
 
 def serie_mensile(mesi, valori_cent, mese_evidenziato=None):
-    """Spesa del mese (barre) e media mobile a 3 mesi (linea grigia)."""
+    """Spesa del mese (barre) e media mobile a 3 mesi (linea grigia). Si disegna con mostra(..., clic="x"):
+    l'indice restituito e' quello del mese in `mesi`."""
     v = [round(x / 100, 2) for x in valori_cent]
     media = [round(sum(v[max(0, i - 2):i + 1]) / len(v[max(0, i - 2):i + 1]), 2) for i in range(len(v))]
     o = _base()
@@ -165,6 +176,13 @@ def serie_mensile(mesi, valori_cent, mese_evidenziato=None):
          "itemStyle": {"color": BLU}},
         {"type": "line", "name": "Media mobile 3 mesi", "data": media, "symbol": "none", "smooth": False,
          "lineStyle": {"width": 2, "color": GRIGIO}, "itemStyle": {"color": GRIGIO}}]
+    o["tooltip"]["formatter"] = JsCode(
+        "function(p){ var f = function(v){ return Number(v).toLocaleString('it-IT', {minimumFractionDigits: 2, "
+        "maximumFractionDigits: 2, useGrouping: 'always'}) + ' €'; }; var h = '<b>' + p[0].name + '</b><br>';"
+        "p.forEach(function(s){ h += s.marker + s.seriesName + ': <b>' + f(s.value) + '</b><br>'; });"
+        "var t = p[0].name === %s ? 'Clic per togliere il filtro sul mese' : 'Clic per vedere solo questo mese';"
+        "return h + '<div style=\"font-size:11px;opacity:.65;margin-top:4px\">' + t + '</div>'; }"
+        % json.dumps(etichetta_mese(mese_evidenziato) if mese_evidenziato else None))
     return o
 
 
