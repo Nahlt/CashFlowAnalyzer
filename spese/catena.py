@@ -1,13 +1,21 @@
 """Catena di categorizzazione.
 
-Ordine: decisione sul movimento > regole utente > categoria del tipo di movimento >
-regole esercenti forza alta > MCC decisivo > regole forza bassa > marchi NSI decisivi >
-cache (modello locale / Claude / utente) > storico delle decisioni > somiglianza > proposta debole.
+Ordine: decisione sul movimento > regole utente > categoria del tipo di movimento > esercente confermato
+dall'utente > regole esercenti forza alta > MCC decisivo > regole forza bassa > marchi NSI decisivi >
+cache (modello locale / Claude) > storico delle decisioni > somiglianza > proposta debole.
+
+Le conferme dell'utente stanno prima delle regole del programma e dei marchi (dalla 0.17.1): prima una regola
+o un marchio decisivo prevaleva in silenzio su "vale per tutti i movimenti di questo esercente".
+
+Regole del programma e marchi dipendono solo dal nome dell'esercente e da file che non cambiano mentre l'app
+gira: le corrispondenze si memorizzano per nome (8.108 marchi da provare per ogni movimento rendevano lento
+ogni ricalcolo). La categoria si risolve invece ogni volta sulla tassonomia in uso, che puo' cambiare.
 """
 import math
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from functools import lru_cache
 
 from . import configurazione as cfg
 from .chiavi import jaccard
@@ -28,21 +36,39 @@ def _p(cat, dettaglio):
     return "%s (%s)" % (cfg.etichetta(cat), dettaglio)
 
 
-def _miglior_regola(testo, forza):
-    tax = cfg.tassonomia()
-    migliore = None
+MEMORIA_NOMI = 50000          # nomi di esercenti diversi tenuti in memoria (ben oltre quelli di una famiglia)
+
+
+@lru_cache(maxsize=MEMORIA_NOMI)
+def _regole_che_corrispondono(testo, forza):
+    """Le regole del programma di quella forza che corrispondono al nome, nell'ordine del file:
+    [(lunghezza della corrispondenza, l2)]. Dipende solo dal nome: si calcola una volta per nome."""
+    out = []
     for r in cfg.regole_esercenti():
         if r.forza != forza:
             continue
         m = r.rx.search(testo)
-        if m and (migliore is None or len(m.group(0)) > migliore[0]):
-            cat = tax.risolvi(r.l2)
+        if m:
+            out.append((len(m.group(0)), r.l2))
+    return tuple(out)
+
+
+def _miglior_regola(testo, forza):
+    """La corrispondenza piu' lunga la cui sottocategoria esiste nella tassonomia in uso (a parita', la prima)."""
+    tax = cfg.tassonomia()
+    migliore = None
+    for lunghezza, l2 in _regole_che_corrispondono(testo, forza):
+        if migliore is None or lunghezza > migliore[0]:
+            cat = tax.risolvi(l2)
             if cat:
-                migliore = (len(m.group(0)), cat)
+                migliore = (lunghezza, cat)
     return migliore[1] if migliore else None
 
 
+@lru_cache(maxsize=MEMORIA_NOMI)
 def _marchio(testo):
+    """Il marchio NSI riconosciuto nel nome (priorita' piu' bassa, poi corrispondenza piu' lunga), o None.
+    Dipende solo dal nome: si calcola una volta per nome. Il dizionario restituito non va modificato."""
     migliore = None
     for rx, m in cfg.marchi():
         if migliore and m["priorita"] > migliore[0]:
@@ -152,6 +178,10 @@ class Catena:
             return Esito(cat, "regola utente", 1.0)
         if cat_tipo:
             return Esito(cat_tipo, "tipo movimento", 1.0)
+        confermato = self.cache.get(chiave_x) if chiave_x else None
+        if confermato and confermato["motore"] == "utente" and confermato["cat"]:
+            # esercente confermato da te: prevale su regole del programma, codici MCC e marchi
+            return Esito(confermato["cat"], "utente", confermato["confidenza"] or 1.0)
         if catena:
             fonte, cat, proposta = deterministica(mov["esercente"], mov["mcc"])
             if cat:

@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.17.0 – Manuale
+# CashFlow Analyzer 0.17.1 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -169,7 +169,8 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
    operazione, il nome e l'oggetto); la colonna *Motivo* dice perche' un movimento e' da rivedere (categoria da assegnare o da
    confermare, trasferimento senza contropartita, addebito della carta senza estratto, prelievo da
    giustificare...). Una tua decisione sul movimento chiude sempre la revisione. Per un pagamento con carta o un
-   addebito SEPA puoi classificare da li' anche l'esercente ("Vale per tutti i movimenti di questo esercente").
+   addebito SEPA puoi classificare da li' anche l'esercente ("Vale per tutti i movimenti di questo esercente"):
+   la tua conferma prevale sulle regole del programma, sui codici MCC e sui marchi.
    *Come conta* un movimento: secondo la categoria (la sua sezione dice se e' spesa, entrata o risparmio; una
    spesa con importo positivo e' un rimborso), oppure non conta, come trasferimento tra tuoi conti o escluso
    dalle analisi.
@@ -437,8 +438,9 @@ la cartella del programma. Ollama, se l'hai installato, si toglie a parte.
 | `tests/` | Test automatici con file sintetici (ING, Credem, Trade Republic, PayPal) e dati inventati |
 
 Ordine della catena di categorizzazione: tua decisione sul movimento, tue regole, categoria del tipo
-di movimento, regole forti, codice MCC, regole deboli, marchi, cache (modello locale, Claude, tue
-conferme), storico, somiglianza con esercenti gia' noti, proposta da confermare.
+di movimento, esercenti confermati da te, regole forti, codice MCC, regole deboli, marchi, cache (modello
+locale, Claude), storico, somiglianza con esercenti gia' noti, proposta da confermare. Regole e marchi si
+cercano una volta per nome di esercente e poi si riusano finche' l'app resta aperta.
 
 ## Test
 

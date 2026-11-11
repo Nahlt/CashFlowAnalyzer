@@ -5,6 +5,30 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.17.1 – 11 novembre 2026 · salvataggi veloci, le tue conferme degli esercenti prevalgono
+
+**Correzioni**
+- **Salvataggi lenti** (2-3 secondi per classificare un movimento, di piu' con molti movimenti): a ogni
+  salvataggio il ricalcolo provava, per ogni movimento, gli 8.108 marchi dell'elenco NSI uno dopo l'altro,
+  anche per lo stesso esercente ripetuto decine di volte. Ora regole del programma e marchi si cercano una volta
+  per nome dell'esercente e il risultato si riusa finche' l'app resta aperta (dipende solo dal nome). Su un
+  database di prova con 6.000 movimenti il ricalcolo passa da 8,5 a 0,2 secondi. I risultati sono identici.
+- **"Vale per tutti i movimenti di questo esercente" non aveva effetto** sugli esercenti riconosciuti da una
+  regola del programma (48) o da un marchio decisivo (191): la regola o il marchio prevaleva in silenzio sulla
+  tua conferma. Ora gli esercenti confermati da te (anche modificati in Regole e tassonomia) vengono prima di
+  regole, codici MCC e marchi. Claude e il modello locale restano dopo. Esempio: un pagamento "ESSELUNGA" che
+  hai confermato come *Negozi alimentari* contava in *Supermercato* (regola del programma); ora conta in
+  *Negozi alimentari*.
+
+**Aggiornando**
+- Estrai sopra la cartella e riavvia. Il database non cambia.
+- Cambiano categoria solo gli esercenti che avevi confermato con una categoria diversa da quella di una regola
+  o di un marchio. Per gli esercenti confermati la colonna *Fonte* di Movimenti mostra ora "utente" anche dove
+  prima mostrava "regola" o "marchio" con la stessa categoria.
+- 171 test (erano 159).
+
+---
+
 ## 0.17.0 – 11 novembre 2026 · "Dove vanno i soldi" piu' interattiva
 
 **Novita'** (pagina *Dove vanno i soldi*)
