@@ -693,7 +693,7 @@ def test_esporta_tassonomia_yaml(caricato):
     testo = tu.esporta_yaml(conn)
     assert testo.startswith("# Tassonomia esportata")
     d = yaml.safe_load(testo)
-    assert list(d) == ["versione", "uscite", "entrate", "risparmio", "solo_locale"]
+    assert list(d) == ["versione", "uscite", "entrate", "risparmio", "solo_locale", "non_inviare"]
     assert d["uscite"]["CASA"][-1] == "Box auto" and "Auto: noleggio/rata" in d["uscite"]["TRASPORTI"]
     # riletta come file di partenza da' la stessa tassonomia
     cfg.imposta_tassonomia(d)
@@ -1370,18 +1370,19 @@ def test_paypal_righe_reali(conn):
 
     def esito():
         ricalcola(conn)
-        return {(r["conto_id"], r["importo_cent"]): (r["natura"], r["data"]) for r in righe(
+        return {(r["conto_id"], r["importo_cent"], r["natura"], r["data"]) for r in righe(
             conn, "SELECT conto_id, importo_cent, natura, data FROM analisi WHERE componente = 'principale'")}
-    atteso = {(pp, -1695): ("uscita", "2026-10-13"),            # con la data dell'addebito in banca
-              (pp, 1695): ("trasferimento_interno", "2026-10-12"),
-              (tr, -1695): ("contenitore", "2026-10-13"),
-              (pp, -700): ("uscita", "2026-08-26"),
-              (pp, 700): ("trasferimento_interno", "2026-08-23"),
-              (ca, -700): ("contenitore", "2026-08-26")}
+    # dalla 0.16.2 la spesa del report sta sul conto che l'ha pagata, con la data dell'addebito in banca
+    atteso = {(tr, -1695, "uscita", "2026-10-13"),
+              (pp, 1695, "trasferimento_interno", "2026-10-12"),
+              (tr, -1695, "contenitore", "2026-10-13"),
+              (ca, -700, "uscita", "2026-08-26"),
+              (pp, 700, "trasferimento_interno", "2026-08-23"),
+              (ca, -700, "contenitore", "2026-08-26")}
     assert esito() == atteso
     # resta da rivedere solo la categoria di Apple, che nel database di prova non e' ancora classificata
     assert righe(conn, "SELECT conto_id, importo_cent, motivo FROM analisi WHERE da_rivedere = 1") == \
-        [{"conto_id": pp, "importo_cent": -700, "motivo": "Categoria da assegnare"}]
+        [{"conto_id": ca, "importo_cent": -700, "motivo": "Categoria da assegnare"}]
 
     # dati importati con la 0.16.0: le ricariche erano pagamenti ricevuti (bonifici), quindi entrate
     conn.execute("UPDATE movimenti SET tipo = 'bonifico' WHERE tipo = 'ricarica'")

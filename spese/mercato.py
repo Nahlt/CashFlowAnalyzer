@@ -10,11 +10,14 @@ I prezzi si salvano in euro: le quotazioni in altra valuta si convertono con il 
 """
 import os
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 
-from .db import leggi_impostazione, ora, scrivi_impostazione
+from .db import leggi_impostazione, ora, scrivi_impostazione, transazione
 
 CHIAVE_ATTIVO = "mercato_yahoo"
 CHIAVE_ULTIMO = "mercato_aggiornato_il"
+CHIAVE_COPERTURA = "mercato_coperto_dal"     # {isin: primo giorno per cui i prezzi sono stati chiesti e salvati}
+SEI = Decimal("0.000001")
 MOTORE = "yahoo"
 INIZIO = date(2000, 1, 1)           # primo scarico: data fissa, non legata ai propri movimenti
 SOVRAPPOSIZIONE = 7                 # giorni riscaricati a ogni aggiornamento (chiusure corrette dopo)
@@ -78,11 +81,15 @@ def cerca_simbolo(conn, isin, http=None):
 def imposta_simbolo(conn, isin, simbolo):
     """Simbolo indicato a mano (vuoto: si torna alla ricerca automatica). I prezzi si riscaricano."""
     simbolo = (simbolo or "").strip().upper() or None
-    conn.execute("DELETE FROM prezzi_mercato WHERE isin = ?", (isin,))
-    conn.execute("INSERT INTO titoli_mercato(isin, simbolo, scelto) VALUES (?,?,?) ON CONFLICT(isin) DO UPDATE SET "
-                 "simbolo = excluded.simbolo, scelto = excluded.scelto, valuta = NULL, nome = NULL, borsa = NULL, "
-                 "aggiornato_il = NULL, errore = NULL", (isin, simbolo, 1 if simbolo else 0))
-    scrivi_impostazione(conn, CHIAVE_ULTIMO, None)
+    with transazione(conn):
+        conn.execute("DELETE FROM prezzi_mercato WHERE isin = ?", (isin,))
+        conn.execute("INSERT INTO titoli_mercato(isin, simbolo, scelto) VALUES (?,?,?) ON CONFLICT(isin) DO UPDATE SET "
+                     "simbolo = excluded.simbolo, scelto = excluded.scelto, valuta = NULL, nome = NULL, borsa = NULL, "
+                     "aggiornato_il = NULL, errore = NULL", (isin, simbolo, 1 if simbolo else 0))
+        copertura = leggi_impostazione(conn, CHIAVE_COPERTURA, {}) or {}
+        if copertura.pop(isin, None) is not None:
+            scrivi_impostazione(conn, CHIAVE_COPERTURA, copertura)
+        scrivi_impostazione(conn, CHIAVE_ULTIMO, None)
 
 
 def titoli(conn):
@@ -114,7 +121,7 @@ def serie(simbolo, dal, http=None, al=None):
         if v is None:
             continue
         g = datetime.fromtimestamp(int(t) + scarto, tz=timezone.utc).date().isoformat()
-        punti[g] = float(v)                         # a parita' di giorno vale l'ultimo valore
+        punti[g] = Decimal(str(v))                  # decimale esatto del numero ricevuto; a parita' di giorno l'ultimo
     return meta, sorted(punti.items())
 
 
@@ -125,7 +132,7 @@ def _cambi(conn, valuta, http, serve_dal):
     if valuta == "EUR":
         return None, []
     primo, ultimo = conn.execute("SELECT MIN(data), MAX(data) FROM cambi_mercato WHERE valuta = ?", (valuta,)).fetchone()
-    salvati = dict(conn.execute("SELECT data, tasso FROM cambi_mercato WHERE valuta = ?", (valuta,)).fetchall())
+    salvati = {d: Decimal(str(v)) for d, v in conn.execute("SELECT data, tasso FROM cambi_mercato WHERE valuta = ?", (valuta,))}
     copre = primo and primo <= (serve_dal + timedelta(days=SOVRAPPOSIZIONE)).isoformat()
     nuovi = []
     if not copre or ultimo < date.today().isoformat():
@@ -151,7 +158,7 @@ def in_euro(punti, cambi):
             i += 1
         t = tasso if tasso is not None else (cambi[0][1] if cambi else None)
         if t is not None:
-            out.append((d, v * t))
+            out.append((d, Decimal(str(v)) * Decimal(str(t))))
     return out
 
 
@@ -205,6 +212,7 @@ def aggiorna(conn, isin_dal, http=None, avanzamento=None):
     http = http or Http()
     noti = titoli(conn)
     errori = {}
+    copertura = leggi_impostazione(conn, CHIAVE_COPERTURA, {}) or {}
     elenco = sorted(isin_dal.items())
     for n, (isin, serve_dal) in enumerate(elenco):
         t = noti.get(isin) or {}
@@ -219,14 +227,20 @@ def aggiorna(conn, isin_dal, http=None, avanzamento=None):
                 simbolo = trovato["symbol"]
             if not simbolo:
                 continue                                # escluso a mano
-            ultimo = conn.execute("SELECT MAX(data) FROM prezzi_mercato WHERE isin = ?", (isin,)).fetchone()[0]
+            primo_salvato, ultimo = conn.execute("SELECT MIN(data), MAX(data) FROM prezzi_mercato WHERE isin = ?",
+                                                 (isin,)).fetchone()
+            # i prezzi salvati partono dal primo giorno che serviva al momento dello scarico: se ora ne serve
+            # uno precedente (importato uno storico piu' vecchio) si riscarica tutto dalla data fissa
+            coperto_dal = copertura.get(isin) or primo_salvato
+            completo = bool(ultimo and coperto_dal
+                            and coperto_dal <= (serve_dal + timedelta(days=SOVRAPPOSIZIONE)).isoformat())
             punti, cambi_nuovi, valuta, valuta_base = [], [], t.get("valuta"), None
-            if not ultimo or ultimo < date.today().isoformat():
-                inizio = date.fromisoformat(ultimo) - timedelta(days=SOVRAPPOSIZIONE) if ultimo else INIZIO
+            if not completo or ultimo < date.today().isoformat():
+                inizio = date.fromisoformat(ultimo) - timedelta(days=SOVRAPPOSIZIONE) if completo else INIZIO
                 meta, punti = serie(simbolo, inizio, http)
                 valuta = meta.get("currency") or "EUR"
                 if valuta in CENTESIMI:
-                    punti, valuta_base = [(d, v / 100) for d, v in punti], CENTESIMI[valuta]
+                    punti, valuta_base = [(d, Decimal(str(v)) / 100) for d, v in punti], CENTESIMI[valuta]
                 else:
                     valuta_base = valuta.upper()
                 primo = (serve_dal - timedelta(days=SOVRAPPOSIZIONE)).isoformat()
@@ -246,9 +260,12 @@ def aggiorna(conn, isin_dal, http=None, avanzamento=None):
                                  (isin, simbolo, trovato.get("longname") or trovato.get("shortname"),
                                   trovato.get("exchDisp") or trovato.get("exchange")))
                 conn.executemany("INSERT OR REPLACE INTO cambi_mercato(valuta, data, tasso) VALUES (?,?,?)",
-                                 [(valuta_base, d, v) for d, v in cambi_nuovi])
+                                 [(valuta_base, d, _testo(v)) for d, v in cambi_nuovi])
                 conn.executemany("INSERT OR REPLACE INTO prezzi_mercato(isin, data, prezzo) VALUES (?,?,?)",
-                                 [(isin, d, round(v, 6)) for d, v in punti])
+                                 [(isin, d, _testo(v)) for d, v in punti])
+                if not completo:
+                    copertura[isin] = min(serve_dal.isoformat(), copertura.get(isin) or "9999")
+                    scrivi_impostazione(conn, CHIAVE_COPERTURA, copertura)
                 conn.execute("UPDATE titoli_mercato SET valuta = ?, aggiornato_il = ?, errore = NULL WHERE isin = ?",
                              (valuta, ora(), isin))
             except BaseException:
@@ -271,8 +288,13 @@ def aggiorna(conn, isin_dal, http=None, avanzamento=None):
 
 
 # --- lettura -------------------------------------------------------------------------------
+def _testo(v):
+    """Prezzo o cambio come testo decimale, con al piu' sei cifre dopo la virgola."""
+    return format(Decimal(str(v)).quantize(SEI).normalize(), "f")
+
+
 def prezzi(conn, isin_lista=None):
-    """{isin: [(data, prezzo €)]} in ordine di data."""
+    """{isin: [(data, prezzo € come Decimal)]} in ordine di data."""
     sql, par = "SELECT isin, data, prezzo FROM prezzi_mercato", []
     if isin_lista is not None:
         if not isin_lista:
@@ -281,7 +303,7 @@ def prezzi(conn, isin_lista=None):
         par = list(isin_lista)
     out = {}
     for isin, d, v in conn.execute(sql + " ORDER BY isin, data", par):
-        out.setdefault(isin, []).append((d, v))
+        out.setdefault(isin, []).append((d, Decimal(str(v))))
     return out
 
 

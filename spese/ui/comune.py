@@ -281,3 +281,12 @@ def ollama_non_raggiungibile(c, dettaglio, chiave):
     if dettaglio:
         with st.expander("Dettagli tecnici"):
             st.code(str(dettaglio), language="text")
+
+
+def avviso_ollama_non_locale(url):
+    """L'indirizzo di Ollama e' una scelta dell'utente: se non e' questo PC, lo si dice chiaramente."""
+    from .. import installa_ollama as io
+    if url and not io.indirizzo_locale(url):
+        st.warning("L'indirizzo di Ollama (%s) non e' su questo PC: con il modello \"locale\" i nomi degli esercenti, "
+                   "anche quelli dell'area salute, vengono inviati a quel computer. Il blocco dei modelli cloud "
+                   "(OLLAMA_NO_CLOUD) va impostato li'." % url, icon=":material/lan:")

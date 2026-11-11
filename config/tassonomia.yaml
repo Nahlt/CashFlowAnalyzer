@@ -1,6 +1,8 @@
 # Tassonomia a due livelli (L1 -> elenco L2). La chiave di una voce e' la coppia categoria + sottocategoria:
 # la stessa sottocategoria puo' stare sotto piu' categorie (es. CASA · Varie e ACQUISTI · Varie).
-# solo_locale: le voci di queste categorie non vengono mai inviate a servizi esterni.
+# solo_locale: gli esercenti di queste categorie non vengono mai inviati a servizi esterni.
+# non_inviare: sottocategorie ("CATEGORIA|Sottocategoria") il cui nome non si scrive nelle richieste a Claude
+#   (utile se il nome contiene qualcosa di personale). Di partenza nessuna; si sceglie in Regole e tassonomia.
 # Versione 0.13.0: tassonomia di partenza aggiornata con quella usata nella pratica (esportata il 2026-11-06).
 versione: 1
 uscite:
@@ -120,3 +122,4 @@ risparmio:
   - Rientro dal risparmio
 solo_locale:
 - SALUTE
+non_inviare: []

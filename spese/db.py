@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS import_file (
     conto_id INTEGER NOT NULL REFERENCES conti(id),
     nome_file TEXT, hash_file TEXT, profilo TEXT, importato_il TEXT,
     righe_dati INTEGER, righe_scartate INTEGER, nuove INTEGER, duplicate INTEGER,
-    data_min TEXT, data_max TEXT, quadratura TEXT, avvisi TEXT
+    data_min TEXT, data_max TEXT, quadratura TEXT, avvisi TEXT,
+    conto_prima TEXT                    -- cosa questo import ha riempito nel conto (formato, banca): JSON
 );
 
 CREATE TABLE IF NOT EXISTS righe_raw (
@@ -180,11 +181,11 @@ CREATE TABLE IF NOT EXISTS titoli_mercato (
     aggiornato_il TEXT, errore TEXT
 );
 CREATE TABLE IF NOT EXISTS prezzi_mercato (
-    isin TEXT NOT NULL, data TEXT NOT NULL, prezzo REAL NOT NULL,   -- chiusura del giorno, in euro
+    isin TEXT NOT NULL, data TEXT NOT NULL, prezzo TEXT NOT NULL,   -- chiusura del giorno, in euro (testo Decimal)
     PRIMARY KEY (isin, data)
 );
 CREATE TABLE IF NOT EXISTS cambi_mercato (
-    valuta TEXT NOT NULL, data TEXT NOT NULL, tasso REAL NOT NULL,   -- euro per 1 unita' di valuta
+    valuta TEXT NOT NULL, data TEXT NOT NULL, tasso TEXT NOT NULL,   -- euro per 1 unita' di valuta (testo Decimal)
     PRIMARY KEY (valuta, data)
 );
 
@@ -198,6 +199,8 @@ CREATE TABLE IF NOT EXISTS analisi (
     attributo TEXT                      -- natura della spesa (necessaria, svago, superflua) per uscite e rimborsi
 );
 CREATE INDEX IF NOT EXISTS ix_analisi_mese ON analisi(perimetro, mese);
+CREATE INDEX IF NOT EXISTS ix_analisi_chiave ON analisi(chiave);
+CREATE INDEX IF NOT EXISTS ix_analisi_mov ON analisi(mov_id);
 
 CREATE TABLE IF NOT EXISTS trasferimenti (
     mov_id TEXT PRIMARY KEY, controparte_mov_id TEXT, stato TEXT, fiducia TEXT,
@@ -210,7 +213,17 @@ CREATE TABLE IF NOT EXISTS contenitori (
 """
 
 
+# Versione dello schema, salvata nel database (PRAGMA user_version). Cresce a ogni modifica che richiede una
+# migrazione: 2 = prezzi e cambi come testo decimale, un pagamento PayPal ricondotto a un solo addebito (0.16.2).
+# Un database con una versione piu' alta viene da un programma piu' recente: non si apre, per non rovinarlo.
+VERSIONE_SCHEMA = 2
+
+
 class PassphraseErrata(Exception):
+    pass
+
+
+class SchemaPiuRecente(Exception):
     pass
 
 
@@ -225,7 +238,8 @@ def _quota(s: str) -> str:
 def apri(percorso, passphrase: str):
     """Apre (o crea) il database cifrato. Solleva PassphraseErrata se la chiave non e' valida."""
     nuovo = not os.path.exists(percorso)
-    conn = sqlite.connect(str(percorso), check_same_thread=False, isolation_level=None)
+    # timeout: quanto si aspetta se un'altra scheda sta scrivendo (import, ricalcolo, backup)
+    conn = sqlite.connect(str(percorso), check_same_thread=False, isolation_level=None, timeout=20)
     if CIFRATO:
         if not passphrase:
             raise PassphraseErrata("passphrase vuota")
@@ -241,8 +255,15 @@ def apri(percorso, passphrase: str):
         raise PassphraseErrata(str(e))
     conn.row_factory = sqlite.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    versione = conn.execute("PRAGMA user_version").fetchone()[0]
+    if versione > VERSIONE_SCHEMA:
+        conn.close()
+        raise SchemaPiuRecente("il database e' stato usato con una versione piu' recente del programma (schema %d, "
+                               "questa versione arriva a %d): aggiorna CashFlow Analyzer" % (versione, VERSIONE_SCHEMA))
     conn.executescript(SCHEMA)
     _migra(conn)
+    if versione != VERSIONE_SCHEMA:
+        conn.execute("PRAGMA user_version = %d" % VERSIONE_SCHEMA)
     if nuovo:
         try:
             os.chmod(percorso, 0o600)
@@ -261,7 +282,24 @@ def _migra(conn):
         for nome, tipo in colonne:
             if nome not in esistenti:
                 conn.execute("ALTER TABLE %s ADD COLUMN %s %s" % (tabella, nome, tipo))
+    if "avviso" not in {r[1] for r in conn.execute("PRAGMA table_info(movimenti)")}:
+        conn.execute("ALTER TABLE movimenti ADD COLUMN avviso TEXT")
+    if "conto_prima" not in {r[1] for r in conn.execute("PRAGMA table_info(import_file)")}:
+        conn.execute("ALTER TABLE import_file ADD COLUMN conto_prima TEXT")
     conn.execute("CREATE INDEX IF NOT EXISTS ix_raw_mov ON righe_raw(mov_id)")
+    _migra_mercato(conn)
+    # un pagamento del report PayPal copre un solo addebito: se era stato ricondotto a mano a due (fino alla
+    # 0.16.1 si poteva), resta la scelta piu' recente e l'altro addebito torna da controllare
+    doppi = conn.execute("SELECT paypal_id FROM abbinamenti_paypal WHERE paypal_id IS NOT NULL "
+                         "GROUP BY paypal_id HAVING count(*) > 1").fetchall()
+    if doppi:
+        with transazione(conn):
+            for (pid,) in doppi:
+                tieni = conn.execute("SELECT addebito_id FROM abbinamenti_paypal WHERE paypal_id = ? "
+                                     "ORDER BY deciso_il DESC, addebito_id LIMIT 1", (pid,)).fetchone()[0]
+                conn.execute("DELETE FROM abbinamenti_paypal WHERE paypal_id = ? AND addebito_id <> ?", (pid, tieni))
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_paypal_pagamento ON abbinamenti_paypal(paypal_id) "
+                 "WHERE paypal_id IS NOT NULL")
     # IBAN dei conti salvati con spazi o in minuscolo (versioni fino alla 0.2.1)
     from .iban import normalizza as normalizza_iban
     for cid, iban in conn.execute("SELECT id, iban FROM conti WHERE iban IS NOT NULL").fetchall():
@@ -272,20 +310,43 @@ def _migra(conn):
                  "WHERE mov_id IS NULL AND EXISTS (SELECT 1 FROM movimenti m WHERE m.raw_id = righe_raw.id)")
 
 
+def _migra_mercato(conn):
+    """Prezzi e cambi salvati come numeri in virgola mobile (fino alla 0.16.1) diventano testo decimale: le
+    tabelle si ricreano e i valori si copiano con le stesse cifre con cui si leggevano."""
+    from decimal import Decimal
+    for tabella, colonna, ddl in (
+            ("prezzi_mercato", "prezzo", "CREATE TABLE prezzi_mercato (isin TEXT NOT NULL, data TEXT NOT NULL, "
+                                         "prezzo TEXT NOT NULL, PRIMARY KEY (isin, data))"),
+            ("cambi_mercato", "tasso", "CREATE TABLE cambi_mercato (valuta TEXT NOT NULL, data TEXT NOT NULL, "
+                                       "tasso TEXT NOT NULL, PRIMARY KEY (valuta, data))")):
+        tipi = {r[1]: (r[2] or "").upper() for r in conn.execute("PRAGMA table_info(%s)" % tabella)}
+        if tipi.get(colonna) != "REAL":
+            continue
+        with transazione(conn):
+            righe = conn.execute("SELECT * FROM %s" % tabella).fetchall()
+            conn.execute("ALTER TABLE %s RENAME TO %s_vecchia" % (tabella, tabella))
+            conn.execute(ddl)
+            conn.executemany("INSERT INTO %s VALUES (?,?,?)" % tabella,
+                             [(r[0], r[1], format(Decimal(repr(float(r[2]))).quantize(Decimal("0.000001")).normalize(), "f"))
+                              for r in righe])
+            conn.execute("DROP TABLE %s_vecchia" % tabella)
+
+
 def cambia_passphrase(conn, nuova: str):
     if CIFRATO:
         conn.execute("PRAGMA rekey = " + _quota(nuova))
 
 
 @contextmanager
-def transazione(conn):
+def transazione(conn, immediata=False):
     """Raccoglie piu' scritture in un solo commit. Il database lavora in autocommit: senza, ogni riga e' una
     scrittura su disco a se' (con centinaia di righe, secondi o minuti). Se una transazione e' gia' aperta si
-    resta dentro quella."""
+    resta dentro quella. Con immediata=True prende subito il blocco di scrittura: serve quando cio' che si
+    scrive dipende da cio' che si e' appena letto (il ricalcolo), cosi' un'altra scheda non scrive nel mezzo."""
     if conn.in_transaction:
         yield conn
         return
-    conn.execute("BEGIN")
+    conn.execute("BEGIN IMMEDIATE" if immediata else "BEGIN")
     try:
         yield conn
     except BaseException:
@@ -306,12 +367,29 @@ def scrivi_impostazione(conn, chiave, valore):
                  "ON CONFLICT(chiave) DO UPDATE SET valore = excluded.valore", (chiave, json.dumps(valore)))
 
 
+class DatabaseOccupato(Exception):
+    pass
+
+
 def backup(conn, destinazione):
-    """Copia del file cifrato (stessa passphrase). Il database lavora senza transazioni aperte
-    tra un'operazione e l'altra, quindi la copia del file e' consistente."""
+    """Copia del file cifrato (stessa passphrase). Durante la copia questa connessione tiene il blocco di
+    scrittura: se un'altra scheda ha una scrittura in corso si aspetta che finisca (o si rinuncia con
+    DatabaseOccupato), e nessuna puo' iniziarne una. Cosi' il file copiato contiene solo dati confermati: senza
+    il blocco poteva finirci dentro una transazione a meta', poi annullata nel database originale."""
     import shutil
+    if conn.in_transaction:
+        raise DatabaseOccupato("c'e' una scrittura in corso in questa scheda: riprova tra un momento")
     dbfile = conn.execute("PRAGMA database_list").fetchone()[2]
-    shutil.copy2(dbfile, destinazione)
+    if (conn.execute("PRAGMA journal_mode").fetchone()[0] or "").lower() == "wal":
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")       # l'app non usa WAL; se attivato a mano, si svuota prima
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+    except sqlite.OperationalError as e:
+        raise DatabaseOccupato("un'altra scheda sta scrivendo nel database: riprova tra un momento (%s)" % e)
+    try:
+        shutil.copy2(dbfile, destinazione)
+    finally:
+        conn.execute("ROLLBACK")
     try:
         os.chmod(destinazione, 0o600)
     except OSError:

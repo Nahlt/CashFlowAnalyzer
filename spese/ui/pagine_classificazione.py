@@ -6,7 +6,8 @@ from .. import configurazione as cfg
 from .. import attributi as attr
 from .. import llm, servizi
 from ..db import leggi_impostazione, scrivi_impostazione, transazione
-from .comune import chiave_tabella, conn, esegui_ricalcolo, ollama_non_raggiungibile, scarica_modello_locale, testo
+from .comune import (avviso_ollama_non_locale, chiave_tabella, conn, esegui_ricalcolo, ollama_non_raggiungibile,
+                     scarica_modello_locale, testo)
 
 MODI = {"locale": "Prima il modello locale, poi Claude solo per le voci incerte",
         "claude": "Direttamente Claude"}
@@ -190,6 +191,7 @@ def _selezione_revisione(c, n_tutti, aperte=()):
 
 
 def _sezione_locale(c, voci, etichetta):
+    avviso_ollama_non_locale(llm.ollama_config(c)["url"])
     ok, info = llm.ollama_disponibile(c)
     if not ok:
         ollama_non_raggiungibile(c, info, "cls")
@@ -259,7 +261,12 @@ def _sezione_claude(c, solo=None):
     bloccati = cand[cand["stato"] == "bloccato"]
     if not coda.empty:
         st.caption("Togli la spunta alle voci che preferisci classificare a mano e, se serve, accorcia il testo da "
-                   "inviare (es. togliendo la citta'). Le scelte si salvano quando premi Invia.")
+                   "inviare (es. togliendo la citta'). Il testo corretto a mano viene normalizzato come gli altri "
+                   "(maiuscole, cifre sostituite da #) e ricontrollato: l'anteprima qui sotto mostra esattamente "
+                   "cio' che parte. Le scelte si salvano quando premi Invia.")
+        st.caption("Gli esercenti dell'area salute si riconoscono dal nome o dal codice della carta, quindi qualcuno "
+                   "puo' sfuggire: per stare tranquillo classifica prima con il **modello locale**, che resta sul "
+                   "PC e tiene fuori da qui tutto cio' che propone come salute.")
         giro = st.session_state.get("coda_giro", 0)
         vista = pd.DataFrame({"Invia": coda["stato"] == "approvato", "Esercente": coda["chiave"],
                               "Testo da inviare": coda["testo"]})
@@ -289,9 +296,10 @@ def _sezione_claude(c, solo=None):
             # salva spunte e testi, poi invia quelle spuntate
             with transazione(c):
                 for (_, r), (_, e) in zip(coda.iterrows(), ed.iterrows()):
-                    nuovo = testo(e["Testo da inviare"])
+                    # cella svuotata: torna la chiave dell'esercente, come mostra l'anteprima
+                    nuovo = testo(e["Testo da inviare"]) or r["chiave"]
                     servizi.candidato(c, r["chiave"], "approvato" if e["Invia"] else "escluso",
-                                      nuovo if nuovo and nuovo != testo(r["testo"]) else None)
+                                      nuovo if nuovo != testo(r["testo"]) else None)
             st.session_state["coda_giro"] = giro + 1
             barra = st.progress(0.0, text="Invio a Claude…")
             try:
@@ -694,7 +702,9 @@ def _tassonomia(c):
                "Le sottocategorie **predefinite** sono usate da regole e configurazioni del programma: si possono "
                "spostare sotto un'altra categoria, non rinominare o eliminare. Rinominare una tua sottocategoria "
                "aggiorna anche conferme, regole e decisioni gia' salvate. Le modifiche restano nel database e "
-               "sopravvivono agli aggiornamenti del programma.")
+               "sopravvivono agli aggiornamenti del programma. Nelle richieste a Claude l'elenco delle "
+               "sottocategorie di spesa viene scritto per intero: se il nome di una contiene qualcosa di personale, "
+               "spunta **Non inviare a Claude** e quel nome non uscira' (Claude non potra' proporla).")
     if msg := st.session_state.pop("tax_msg", None):
         st.success(msg)
     giro = st.session_state.get("tax_giro", 0)
@@ -710,6 +720,7 @@ def _tassonomia(c):
     st.markdown("**Rinomina o sposta**: modifica le celle e salva.")
     ed = st.data_editor(
         pd.DataFrame({"Sezione": base["sezione"], "Categoria": base["l1"], "Sottocategoria": base["l2"],
+                      "Non inviare a Claude": base["non_inviare"],
                       "Predefinita": base["predefinita"], "In uso": base["in_uso"]}),
         hide_index=True, width="stretch", num_rows="fixed", height=560, key=chiave_tabella("tax_ed_%d" % giro, zip(base["l1"], base["l2"])),
         disabled=["Predefinita", "In uso"],
@@ -717,11 +728,15 @@ def _tassonomia(c):
                        "Categoria": st.column_config.TextColumn("Categoria", help="Scrivi un nome nuovo per creare "
                                                                 "una categoria"),
                        "Sottocategoria": st.column_config.TextColumn("Sottocategoria"),
+                       "Non inviare a Claude": st.column_config.CheckboxColumn(
+                           "Non inviare a Claude", help="Il nome di questa sottocategoria non viene scritto nelle "
+                           "richieste a Claude. Vale per le sottocategorie di spesa", default=False),
                        "Predefinita": st.column_config.CheckboxColumn("Predefinita"),
                        "In uso": st.column_config.NumberColumn("In uso", help="Conferme, regole e decisioni che la usano")})
     if st.button("Salva le modifiche alla tassonomia", type="primary", key="tax_salva"):
         nuove = [{"sezione": r["Sezione"], "l1": r["Categoria"], "l2": r["Sottocategoria"],
-                  "originale": o["originale"]} for (_, r), o in zip(ed.iterrows(), elenco)]
+                  "originale": o["originale"], "non_inviare": bool(r["Non inviare a Claude"])}
+                 for (_, r), o in zip(ed.iterrows(), elenco)]
         errori, messaggi = tu.salva(c, nuove)
         for e in errori:
             st.error(e)

@@ -48,6 +48,10 @@ tipi:
   ricarica: ["Bonifico bancario sul conto PayPal", "Deposito con carta", "Versamento", "Ricarica",
              "Trasferimento dal conto bancario"]
   prelievo: ["Trasferimento avviato dall'utente", "Prelievo", "Bonifico su conto bancario", "Trasferimento sul conto bancario"]
-  rimborso: ["Rimborso"]
+  # storni e riaccrediti valgono come rimborsi: senza nome prendono l'esercente del pagamento a cui si riferiscono
+  rimborso: ["Rimborso", "Storno", "Chargeback", "Riaccredito", "Risoluzione contestazione"]
   esercente: ["Express Checkout", "preautorizzato", "sito web", "da cellulare", "abbonamento", "Pagamento con carta",
               "Pagamento PayPal", "Pagamento in 3 rate", "Paga in 3 rate", "Acquisto"]
+  # tipi usati sia per gli acquisti sia per il denaro inviato a una persona: senza un oggetto acquistato valgono
+  # come pagamento a una persona (il nome non diventa un esercente)
+  persona_senza_oggetto: ["da cellulare"]

@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.16.1 – Manuale
+# CashFlow Analyzer 0.16.2 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -69,8 +69,8 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
   azioni o quando il server si riavvia (icona Riavvia, `./avvia.sh --riavvia`, PC spento): in quei casi serve
   di nuovo la passphrase. La durata si cambia in `config/impostazioni.yaml` (`sessione.minuti_inattivita`).
   Chi usa il tuo utente sul PC con la sessione aperta vede i dati: blocca lo schermo quando ti allontani.
-- Cambiando la passphrase in **Impostazioni** le altre schede aperte restano attive e passano da sole alla
-  passphrase nuova. I backup creati prima del cambio restano protetti dalla passphrase precedente.
+- Per cambiare la passphrase in **Impostazioni** serve quella attuale, anche con la sessione aperta. Le altre
+  schede aperte restano attive e passano da sole alla passphrase nuova. I backup creati prima del cambio restano protetti dalla passphrase precedente.
 
 ## Primo utilizzo
 
@@ -248,6 +248,11 @@ Restano solo locali anche gli esercenti dal nome neutro che l'app ha gia' colloc
 proposta, in una sottocategoria della salute (dal modello locale, da un marchio noto o dal codice MCC della
 carta): si classificano con il modello locale o a mano in **Revisione**. Il blocco segue la categoria della
 salute anche se la rinomini in **Regole e tassonomia**.
+Il testo che correggi a mano nell'anteprima viene normalizzato come gli altri (maiuscole, cifre sostituite da
+`#`) e ricontrollato: l'anteprima mostra esattamente cio' che parte.
+Insieme agli esercenti la richiesta contiene l'elenco delle sottocategorie di spesa. Se il nome di una
+contiene qualcosa di personale, in **Regole e tassonomia** spunta *Non inviare a Claude*: quel nome non viene
+scritto nelle richieste (e Claude non potra' proporla). Di partenza nessuna e' esclusa.
 Ogni richiesta resta nel registro degli invii.
 
 ## Fineco
@@ -315,7 +320,10 @@ plusvalenze vengono solo dai movimenti con ISIN gia' importati (oggi Trade Repub
   e prezzi*. Quotazioni in altra valuta: convertite in euro con il cambio del giorno.
 - **Controlli**: vendite di piu' quote di quelle importate (storico che inizia dopo il primo acquisto), quote
   arrivate senza costo, dividendi calcolati su una quantita' diversa. Si risolvono indicando una **posizione di
-  partenza** (data, quote, costo).
+  partenza** (data, quote, costo). Per le quote arrivate senza costo (migrazione) usa la data della migrazione:
+  il costo vale per quelle quote, che non vengono contate due volte.
+- Quote e costo medio si calcolano per conto: se lo stesso titolo sta su due conti, la vendita delle quote di
+  uno usa il costo di quel conto. Nello stesso giorno gli eventi seguono l'ora dell'operazione.
 - Le altre analisi non cambiano: la vendita resta "Rientro dal risparmio" per intero.
 
 ## Categorie e sottocategorie

@@ -84,12 +84,49 @@ def _ruolo(tipo, profilo):
     return None
 
 
-def ricarica_collegata(importo, nome, ruolo, rif, uscite):
+GIORNI_RICARICA_COLLEGATA = 3       # la ricarica parte insieme al pagamento che finanzia, o pochi giorni dopo
+
+
+def _pagamento(uscite, rif):
+    """(importo in euro, data) del pagamento con quel codice; `uscite` puo' avere il solo importo."""
+    v = uscite.get(rif) if rif else None
+    if v is None:
+        return None, None
+    return v if isinstance(v, tuple) else (v, None)
+
+
+def _vicine(d1, d2, giorni=GIORNI_RICARICA_COLLEGATA):
+    if not d1 or not d2:
+        return True                                     # data non nota: decide l'importo
+    from datetime import date
+    return abs((date.fromisoformat(d1) - date.fromisoformat(d2)).days) <= giorni
+
+
+def ricarica_collegata(importo, nome, ruolo, rif, uscite, data=None):
     """Una riga in accredito senza nome, con un Tipo che il profilo non riconosce, il cui codice di riferimento
-    e' quello di un pagamento dello stesso importo nel report: e' la ricarica che finanzia quel pagamento,
-    qualunque sia la dicitura. I rimborsi hanno il loro Tipo e i pagamenti ricevuti da persone hanno un nome.
-    `uscite`: {codice transazione: importo in centesimi} dei pagamenti del report."""
-    return ruolo is None and (importo or 0) > 0 and not nome and bool(rif) and uscite.get(rif) == -importo
+    e' quello di un pagamento dello stesso importo (in euro) e degli stessi giorni nel report: e' la ricarica
+    che finanzia quel pagamento, qualunque sia la dicitura. I rimborsi e gli storni hanno il loro Tipo, i
+    pagamenti ricevuti da persone hanno un nome, e uno storno arriva giorni o settimane dopo.
+    `uscite`: {codice transazione: (importo in euro in centesimi, data)} dei pagamenti del report."""
+    if ruolo is not None or (importo or 0) <= 0 or nome or not rif:
+        return False
+    pagato, quando = _pagamento(uscite, rif)
+    return pagato == -importo and _vicine(data, quando)
+
+
+def ricarica_parziale(importo, nome, ruolo, rif, uscite, data=None):
+    """Come sopra, ma l'accredito e' piu' piccolo del pagamento: puo' essere una ricarica che lo finanzia solo in
+    parte (il resto dal saldo PayPal) oppure un rimborso parziale con una dicitura sconosciuta. Non si decide
+    da soli: il movimento resta un'entrata da rivedere."""
+    if ruolo is not None or (importo or 0) <= 0 or nome or not rif:
+        return False
+    pagato, quando = _pagamento(uscite, rif)
+    return pagato is not None and 0 < importo < -pagato and _vicine(data, quando)
+
+
+AVVISO_PARZIALE = ("Accredito PayPal collegato a un pagamento piu' grande, con una dicitura non riconosciuta: se e' "
+                   "la ricarica che lo finanzia in parte segnalo come trasferimento tra i tuoi conti, se e' un "
+                   "rimborso dagli la categoria della spesa")
 
 
 def riallinea_ricariche(conn):
@@ -103,10 +140,10 @@ def riallinea_ricariche(conn):
         p = profili.get(conto["profilo"])
         if not p:
             continue
-        movs = conn.execute("SELECT id, importo_cent, codice, controparte_nome, tipo FROM movimenti WHERE conto_id = ?",
-                            (conto["id"],)).fetchall()
+        movs = conn.execute("SELECT id, importo_cent, codice, controparte_nome, tipo, data FROM movimenti "
+                            "WHERE conto_id = ?", (conto["id"],)).fetchall()
         prefisso = "B-%d-" % conto["id"]
-        uscite = {m["id"][len(prefisso):]: m["importo_cent"] for m in movs
+        uscite = {m["id"][len(prefisso):]: (m["importo_cent"], m["data"]) for m in movs
                   if m["id"].startswith(prefisso) and (m["importo_cent"] or 0) < 0}
         for m in movs:
             if m["tipo"] != "bonifico" or (m["importo_cent"] or 0) <= 0 or m["controparte_nome"]:
@@ -115,9 +152,13 @@ def riallinea_ricariche(conn):
             if ruolo == "ricarica":
                 corretti.append(m["id"])
                 continue
+            proprio = m["id"][len(prefisso):] if m["id"].startswith(prefisso) else None
             for (contenuto,) in conn.execute("SELECT contenuto FROM righe_raw WHERE mov_id = ?", (m["id"],)):
+                # la riga salvata non ha i nomi delle colonne: il codice di riferimento e' la cella che riporta
+                # il codice di un pagamento del report (diverso da quello della riga stessa)
                 celle = [c.strip() for c in json.loads(contenuto) if isinstance(c, str)]
-                if any(ricarica_collegata(m["importo_cent"], None, ruolo, c, uscite) for c in celle):
+                if any(c != proprio and ricarica_collegata(m["importo_cent"], None, ruolo, c, uscite, m["data"])
+                       for c in celle):
                     corretti.append(m["id"])
                     break
     if corretti:
@@ -184,21 +225,43 @@ def leggi(fl, titolari=()):
         else:
             letti.append(riga)
 
-    # ricariche con una dicitura che il profilo non conosce: riconosciute dal codice di riferimento
-    uscite = {x["id"]: x["lordo"] for x in letti if x["id"] and x["lordo"] < 0}
+    # importo in euro di ogni riga: per i pagamenti in valuta e' la gamba in euro della conversione
     for x in letti:
-        if ricarica_collegata(x["lordo"], x["nome"], x["ruolo"], x["rif"], uscite):
-            x["ruolo"] = "ricarica"
-    for x in letti:
-        importo, orig, divisa = x["lordo"], None, None
+        x["euro"], x["orig"], x["divisa"] = x["lordo"], None, None
         if x["valuta"] != euro:
             conv = [c for c in conversioni.get(x["id"], []) if c["valuta"] == euro]
-            if not conv:
-                fl.scartate.append((x["n"], "importo in %s senza conversione in euro (pagato con un saldo in "
-                                            "valuta): non entra nelle analisi" % x["valuta"]))
-                continue
-            orig, divisa = "%d.%02d" % divmod(abs(x["lordo"]), 100), x["valuta"]
-            importo = conv[0]["lordo"]
+            x["euro"] = conv[0]["lordo"] if conv else None
+            x["orig"], x["divisa"] = "%d.%02d" % divmod(abs(x["lordo"]), 100), x["valuta"]
+    # ricariche con una dicitura che il profilo non conosce: riconosciute dal codice di riferimento, confrontando
+    # l'importo in euro (la ricarica di un pagamento in valuta e' in euro) e la data
+    uscite = {x["id"]: (x["euro"], x["data"]) for x in letti if x["id"] and (x["euro"] or 0) < 0}
+    per_codice = {x["id"]: x for x in letti if x["id"]}
+    persona_senza_oggetto = [w.lower() for w in p["tipi"].get("persona_senza_oggetto", [])]
+    for x in letti:
+        x["avviso"] = None
+        if x["euro"] is None:
+            continue
+        if ricarica_collegata(x["euro"], x["nome"], x["ruolo"], x["rif"], uscite, x["data"]):
+            x["ruolo"] = "ricarica"
+        elif ricarica_parziale(x["euro"], x["nome"], x["ruolo"], x["rif"], uscite, x["data"]):
+            x["avviso"] = AVVISO_PARZIALE
+        elif x["ruolo"] == "rimborso" and not x["nome"]:
+            # storno o rimborso senza nome: e' dell'esercente del pagamento a cui si riferisce
+            origine = per_codice.get(x["rif"])
+            if origine is not None and origine["ruolo"] == "esercente" and origine["nome"]:
+                x["nome"] = origine["nome"]
+        elif (x["ruolo"] == "esercente" and not x["oggetto"]
+              and any(w in x["tipo_pp"].lower() for w in persona_senza_oggetto)):
+            # "Pagamento da cellulare" senza un oggetto acquistato: denaro inviato a una persona, non una spesa
+            # presso un esercente. Il nome non deve diventare un esercente (potrebbe uscire verso Claude)
+            x["ruolo"] = None
+    for x in letti:
+        importo, orig, divisa = x["euro"], x["orig"], x["divisa"]
+        if importo is None:
+            fl.scartate.append((x["n"], "importo in %s senza conversione in euro (pagato con un saldo in "
+                                        "valuta): non entra nelle analisi" % x["valuta"]))
+            continue
+        if divisa:
             x["tariffa"] = 0                           # la tariffa e' in valuta: e' gia' dentro la conversione
         ruolo = x["ruolo"]
         m = {"n_riga": x["n"], "codice": x["tipo_pp"], "grezzo": [None if c is None else str(c) for c in x["r"]],
@@ -207,7 +270,8 @@ def leggi(fl, titolari=()):
              "importo_orig": orig, "divisa_orig": divisa, "cambio": None, "quantita": None, "prezzo": None,
              "isin": None, "mcc": None, "id_banca": x["id"] or None, "controparte_nome": None,
              "controparte_iban": None, "esercente": None, "chiave": None, "intermediario": None,
-             "descrizione": " · ".join(v for v in (x["tipo_pp"], x["nome"], x["oggetto"]) if v)}
+             "descrizione": " · ".join(v for v in (x["tipo_pp"], x["nome"], x["oggetto"]) if v),
+             "avviso": x["avviso"]}
         if ruolo == "ricarica":
             m["tipo"] = "ricarica"
         elif ruolo == "prelievo":

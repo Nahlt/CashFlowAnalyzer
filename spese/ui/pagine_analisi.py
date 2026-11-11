@@ -646,7 +646,9 @@ def _mesi_continui(mesi, da, a):
 def _partenza(c, titoli):
     from .. import portafoglio as pf
     st.markdown("**Posizione di partenza** — se gli estratti iniziano dopo il primo acquisto, o per le quote "
-                "arrivate senza costo: quote e costo che avevi a quella data.")
+                "arrivate senza costo: quote e costo che avevi a quella data. Per le quote arrivate senza costo "
+                "(migrazione) usa la data della migrazione: il costo indicato vale per quelle quote, che non "
+                "vengono contate una seconda volta.")
     attuali = pf.partenze(c)
     with st.form("pf_partenza"):
         a, b, d, e = st.columns([3, 1.3, 1.2, 1.3])

@@ -96,6 +96,11 @@ class Contesto:
         return bool(c and c[0] <= giorno <= c[1])
 
 
+# contributo verso (o da) un tuo conto importato che non copre ancora quella data: l'altro lato arrivera' con il
+# prossimo file. Guardando insieme i due conti il contributo si annulla come quelli abbinati (analisi.Filtri)
+ATTESA = "attesa"
+
+
 def _effetto(m):
     return (m["importo_cent"] or 0) + m["fee_cent"] + m["tax_cent"]
 
@@ -124,14 +129,24 @@ def abbina_trasferimenti(ctx, movs):
                 continue
             if gg > ctx.finestra and man != "si":
                 continue
-            iban_ok = (_iban(a["controparte_iban"]) == _iban(ctx.conti[b["conto_id"]]["iban"]) and a["controparte_iban"]) or \
-                      (_iban(b["controparte_iban"]) == _iban(ctx.conti[a["conto_id"]]["iban"]) and b["controparte_iban"]) or \
-                      ctx.conto_indicato(a) == b["conto_id"] or ctx.conto_indicato(b) == a["conto_id"]
-            prova = 0
-            prova += 1 if tipi[a["tipo"]].get("giroconto") or tipi[a["tipo"]].get("proprio") else 0
-            prova += 1 if tipi[b["tipo"]].get("giroconto") or tipi[b["tipo"]].get("proprio") else 0
-            prova += 1 if ctx.nome_titolare(a["controparte_nome"]) else 0
-            prova += 1 if ctx.nome_titolare(b["controparte_nome"]) else 0
+            iban_ok = bool((_iban(a["controparte_iban"]) == _iban(ctx.conti[b["conto_id"]]["iban"]) and a["controparte_iban"]) or
+                           (_iban(b["controparte_iban"]) == _iban(ctx.conti[a["conto_id"]]["iban"]) and b["controparte_iban"]) or
+                           ctx.conto_indicato(a) == b["conto_id"] or ctx.conto_indicato(b) == a["conto_id"])
+            # l'IBAN (o il conto indicato a mano) di un lato porta a un altro dei tuoi conti: non e' questa coppia
+            altrove = False
+            for x, y in ((a, b), (b, a)):
+                dest = ctx.iban_conto.get(_iban(x["controparte_iban"])) if x["controparte_iban"] else None
+                if dest is None:
+                    dest = ctx.conto_indicato(x)
+                if dest is not None and dest not in (x["conto_id"], y["conto_id"]):
+                    altrove = True
+            if altrove and man != "si":
+                continue
+            # un indizio per lato: tipo (giroconto, versamento dal proprio conto) o nome di un titolare. Due indizi
+            # sullo stesso lato ("giroconto a favore di MARIO ROSSI") non dicono nulla dell'altro movimento
+            lato = lambda x: bool(tipi[x["tipo"]].get("giroconto") or tipi[x["tipo"]].get("proprio")
+                                  or ctx.nome_titolare(x["controparte_nome"]))
+            prova = int(lato(a)) + int(lato(b))
             if man == "si" or iban_ok or prova >= 2:
                 fiducia = "alta"
             elif prova == 1:
@@ -141,11 +156,11 @@ def abbina_trasferimenti(ctx, movs):
             else:
                 continue
             rango = {"alta": 0, "media": 1, "bassa": 2}[fiducia]
-            coppie.append((0 if man == "si" else 1, rango, gg, a, b, fiducia))
-    coppie.sort(key=lambda x: (x[0], x[1], x[2]))
+            coppie.append((0 if man == "si" else 1, rango, 0 if iban_ok else 1, gg, a, b, fiducia))
+    coppie.sort(key=lambda x: x[:4])
     usati, esiti = set(), {}
     proposte = {}
-    for _, _, gg, a, b, fiducia in coppie:
+    for _, _, _, gg, a, b, fiducia in coppie:
         if a["id"] in usati or b["id"] in usati:
             continue
         if fiducia != "alta":
@@ -157,10 +172,12 @@ def abbina_trasferimenti(ctx, movs):
         for x, y, cx, cy in ((a, b, ca, cb), (b, a, cb, ca)):
             e = {"stato": "abbinato", "fiducia": fiducia, "controparte": y["id"], "conto_dest": y["conto_id"],
                  "da_rivedere": False, "motivo": None, "l2": None}
-            if cy["tipo"] in ("broker", "deposito") and cx["tipo"] not in ("broker", "deposito"):
+            if cy["tipo"] == "deposito" and cx["tipo"] not in ("broker", "deposito"):
                 e["natura"] = "risparmio"
                 e["l2"] = "Accantonamento" if x["importo_cent"] < 0 else "Rientro dal risparmio"
-            elif cx["tipo"] in ("broker", "deposito") and cy["tipo"] not in ("broker", "deposito"):
+            elif cx["tipo"] in ("broker", "deposito") or cy["tipo"] in ("broker", "deposito"):
+                # verso un broker di cui ci sono i movimenti: il risparmio sono gli acquisti di titoli, che contano
+                # gia' come accantonamento. Il versamento che li finanzia e' un passaggio tra i tuoi conti
                 e["natura"] = "trasferimento_interno"
             elif cx["perimetro"] == cy["perimetro"]:
                 e["natura"] = "trasferimento_interno"
@@ -199,6 +216,8 @@ def abbina_trasferimenti(ctx, movs):
             e.update(stato="contributo", natura="entrata", l2="Contributo ricevuto", conto_dest=dest)
             if cd and cd["importato"] and ctx.coperto(dest, m["data"]):
                 e.update(da_rivedere=True, motivo="Contributo da un tuo conto: la contropartita non c'e' nel periodo importato")
+            elif cd and cd["importato"]:
+                e["fiducia"] = ATTESA
         elif comune and uscita and cd is None and ctx.nome_familiare(m["controparte_nome"]):
             # bonifico dal conto comune a un familiare il cui conto non e' analizzato: rimborsa spese domiciliate sul
             # suo conto (rata dell'auto, assicurazione...). E' un'uscita vera; la categoria viene dalla causale
@@ -213,9 +232,26 @@ def abbina_trasferimenti(ctx, movs):
         elif dest is not None and dest != m["conto_id"]:
             cd = ctx.conti[dest]
             e["conto_dest"] = dest
-            if cd["tipo"] in ("broker", "deposito"):
+            mio = ctx.conti[m["conto_id"]]
+            presente = cd["importato"] and ctx.coperto(dest, m["data"])
+            if cd["tipo"] == "broker" and presente:
+                e.update(stato="mancante", natura="trasferimento_interno", da_rivedere=True,
+                         motivo="Trasferimento verso un tuo conto: la contropartita non c'e' nel periodo importato")
+            elif cd["tipo"] in ("broker", "deposito"):
                 e.update(stato="verso_risparmio", natura="risparmio", l2="Accantonamento" if uscita else "Rientro dal risparmio")
-            elif cd["importato"] and ctx.coperto(dest, m["data"]):
+            elif cd["perimetro"] != mio["perimetro"] and mio["tipo"] not in ("broker", "deposito"):
+                # tra un conto personale e il conto comune, come per le coppie abbinate: e' un contributo anche
+                # quando l'altro lato non e' (ancora) tra i movimenti importati
+                e["stato"] = "contributo"
+                if mio["perimetro"] == "comune":
+                    e.update(natura="entrata", l2="Contributo ricevuto")
+                else:
+                    e.update(natura="uscita", l2="Contributo versato")
+                if presente:
+                    e.update(da_rivedere=True, motivo="Contributo verso un tuo conto: la contropartita non c'e' nel periodo importato")
+                elif cd["importato"]:
+                    e["fiducia"] = ATTESA
+            elif presente:
                 e.update(stato="mancante", natura="trasferimento_interno", da_rivedere=True,
                          motivo="Trasferimento verso un tuo conto: la contropartita non c'e' nel periodo importato")
             else:
@@ -245,6 +281,10 @@ GIORNI_RICARICA = 3                 # ricarica e pagamento nel report: stesso im
 GIORNI_CANDIDATI = 60               # pagamenti PayPal proposti per un addebito da ricondurre a mano
 MOTIVO_PAYPAL = ("Addebito PayPal senza la ricarica corrispondente nel report PayPal (che copre questa data): "
                  "se la spesa c'e' anche nel report, e' contata due volte")
+
+
+MOTIVO_ACCREDITO_PAYPAL = ("Accredito PayPal senza l'uscita corrispondente nel report PayPal (che copre questa data): "
+                           "se il rimborso c'e' anche nel report, e' contato due volte")
 
 
 def _paypal(m):
@@ -295,6 +335,10 @@ def abbina_paypal(ctx, movs):
         p = per_id.get(pid) if pid else None
         if pid is None:
             esiti[a["id"]] = {"nel_report": False}         # spesa normale, nessun avviso
+        elif p is not None and p["conto_id"] in conti_pp and pid in coperti:
+            # lo stesso pagamento ricondotto a mano a due addebiti (dati salvati prima della 0.16.2): vale il
+            # primo, l'altro torna da controllare invece di sparire dai conti
+            esiti[a["id"]] = {"da_rivedere": True, "motivo": MOTIVO_PAYPAL}
         elif p is not None and p["conto_id"] in conti_pp:
             esiti[a["id"]] = {"natura": "contenitore", "abbinato": pid, "manuale": True}
             esiti[pid] = {"coperto": a["id"]}
@@ -318,6 +362,30 @@ def abbina_paypal(ctx, movs):
                 esiti[p["id"]] = {"coperto": a["id"]}
         elif dal and dal <= a["data"] <= al:
             esiti[a["id"]] = {"da_rivedere": True, "motivo": MOTIVO_PAYPAL}
+    # 3. il verso opposto: un rimborso (o un prelievo dal saldo) che PayPal riaccredita sul conto o sulla carta.
+    # Nel report ci sono il rimborso dell'esercente e l'uscita verso la banca; in banca arriva "PAYPAL *..." in
+    # accredito. Il rimborso e' uno solo, quello del report (con il nome dell'esercente): l'uscita dal conto
+    # PayPal e l'accredito in banca sono un passaggio tra i tuoi conti
+    prelievi = [m for m in movs if m["conto_id"] in conti_pp and m["tipo"] == "prelievo_verso_conto"
+                and (m["importo_cent"] or 0) < 0]
+    rimborsi = [m for m in movs if m["conto_id"] in conti_pp and m["tipo"] == "pagamento_carta"
+                and (m["importo_cent"] or 0) > 0]
+    accrediti = [m for m in movs if m["conto_id"] not in conti_pp and (m["importo_cent"] or 0) > 0
+                 and m["tipo"] in ("pagamento_carta", "addebito_sepa", "bonifico", "versamento") and _paypal(m)]
+    for a in sorted(accrediti, key=lambda m: m["data"]):
+        if a["id"] in esiti:
+            continue
+        w = _vicina(a, prelievi, usate, GIORNI_PAYPAL)
+        if w:
+            usate.add(w["id"])
+            esiti[a["id"]] = {"natura": "trasferimento_interno", "abbinato": w["id"]}
+            esiti[w["id"]] = {"natura": "trasferimento_interno", "abbinato": a["id"]}
+            r = _vicina(w, rimborsi, coperti, GIORNI_RICARICA)
+            if r:
+                coperti.add(r["id"])
+                esiti[r["id"]] = {"coperto": a["id"]}
+        elif dal and dal <= a["data"] <= al and a["tipo"] in ("pagamento_carta", "addebito_sepa"):
+            esiti[a["id"]] = {"da_rivedere": True, "motivo": MOTIVO_ACCREDITO_PAYPAL}
     return esiti
 
 
@@ -456,11 +524,35 @@ def _tratto_esatto(righe, obiettivo):
     return righe[meglio[1]:meglio[2]] if meglio else None
 
 
+MOTIVO_RIGA_FUORI_POSTO = ("Spesa arrivata dall'estratto di una carta di credito ma registrata nel conto %s, che non "
+                           "e' di tipo Carta: se lo stesso estratto e' anche in un conto di tipo Carta conta due "
+                           "volte. Annulla l'import del file della carta in questo conto")
+
+
+def _periodo_vicino(righe, ciclo, inizio, obiettivo):
+    """Senza un tratto che torna al centesimo: le righe del mese prima del ciclo oppure quelle dopo `inizio` (il
+    ciclo precedente), a seconda di quale somma si avvicina di piu' all'addebito."""
+    mese_prima = (_d(ciclo).replace(day=1) - timedelta(days=1)).isoformat()[:7]
+    periodi = [[r for r in righe if _giorno(r)[:7] == mese_prima], [r for r in righe if _giorno(r) > inizio]]
+    periodi = [x for x in periodi if x]
+    return min(periodi, key=lambda x: abs(sum(_effetto(r) for r in x) - obiettivo)) if periodi else []
+
+
 def abbina_contenitori(ctx, movs):
     """Addebito mensile della carta di credito sul conto <-> righe della carta. Le righe restano le spese (ognuna
-    con la sua categoria), l'addebito diventa un contenitore che non conta. Si cercano, tra le righe della carta
-    non ancora usate nei 75 giorni prima del ciclo, quelle consecutive che sommano esattamente all'addebito; se
-    non ce ne sono, il periodo piu' vicino (mese precedente o dal ciclo prima) e l'addebito va controllato."""
+    con la sua categoria), l'addebito diventa un contenitore che non conta.
+
+    1. Per ogni addebito, in ordine di ciclo, si cercano tra le righe della carta non ancora usate nei 75 giorni
+       prima del ciclo quelle consecutive che sommano esattamente all'addebito. Vale anche per le righe "fuori
+       posto" (estratto di carta in un conto che non e' una carta, o carta senza conto di addebito): l'addebito
+       non conta e resta da rivedere con cosa fare. Ogni riga copre un solo addebito.
+    2. Agli addebiti rimasti senza tratto esatto restano solo le righe che nessun addebito ha usato: il periodo
+       piu' vicino (mese precedente o dal ciclo prima). Se spiegano meno dell'addebito, la differenza conta come
+       spesa "Varie" da rivedere (componente "residuo"): un estratto parziale non fa sparire il resto.
+    3. Senza righe l'addebito conta per intero come spesa "Varie", da rivedere.
+
+    In ctx.righe_fuori_posto restano le righe di carta in un conto non di tipo Carta che nessun addebito ha
+    usato: {mov_id: motivo}, da segnalare perche' possono essere doppioni."""
     esiti = {}
     addebiti = sorted([m for m in movs if m["tipo"] == "addebito_carta_credito"],
                       key=lambda m: (m["ciclo_carta"] or m["data"], m["conto_id"]))
@@ -471,27 +563,62 @@ def abbina_contenitori(ctx, movs):
     for m in movs:
         if ctx.conti[m["conto_id"]]["tipo"] == "carta":
             righe_carta[m["conto_id"]].append(m)
-    # righe di carta che nessun addebito puo' usare ma che contano gia' come spese: arrivate da un estratto di
-    # carta in un conto che non e' una carta, o in una carta senza conto di addebito. Se ce ne sono nel periodo di
-    # un addebito, l'addebito non conta (sarebbero spese contate due volte) e va sistemato il conto.
+    # righe di carta che nessun addebito trova al loro posto ma che contano gia' come spese: arrivate da un
+    # estratto di carta in un conto che non e' una carta, o in una carta senza conto di addebito
     profili_carta = [k for k, p in cfg.profili().items() if p.get("tipo_conto") == "carta"]
     da_file_carta = set()
     if profili_carta and getattr(ctx, "conn", None) is not None:
         da_file_carta = {r[0] for r in ctx.conn.execute(
             "SELECT DISTINCT r.mov_id FROM righe_raw r JOIN import_file f ON f.id = r.import_id WHERE f.profilo IN (%s)"
             % ",".join("?" * len(profili_carta)), profili_carta)}
-    fuori_posto = [m for m in movs if (m["id"] in da_file_carta and ctx.conti[m["conto_id"]]["tipo"] != "carta")
-                   or m["conto_id"] in senza_conto]
+    nel_conto_sbagliato = [m for m in movs if m["id"] in da_file_carta and ctx.conti[m["conto_id"]]["tipo"] != "carta"
+                           and m["tipo"] != "addebito_carta_credito"]
+    fuori_posto = sorted(nel_conto_sbagliato + [m for m in movs if m["conto_id"] in senza_conto],
+                         key=lambda r: (_giorno(r), r["id"]))
+    conti_con_addebiti = {m["conto_id"] for m in addebiti}
     for v in righe_carta.values():
         v.sort(key=lambda r: (_giorno(r), r["id"]))
     usate_righe = set()
     prec = {}                       # (conto di addebito, carta) -> ciclo dell'ultimo addebito
     usate = defaultdict(set)        # (conto di addebito, ciclo) -> carte gia' abbinate a un addebito
-    for m in addebiti:
+
+    def finestra(m):
         ciclo = m["ciclo_carta"] or m["data"]
+        return ciclo, (_d(ciclo) - timedelta(days=FINESTRA_CARTA)).isoformat()
+
+    def libere_di(m, ciclo):
+        return [cid for cid in carte.get(m["conto_id"], []) if cid not in usate[(m["conto_id"], ciclo)]]
+
+    def altrove_di(m, ciclo, dal):
+        """Righe fuori posto che possono essere il dettaglio di questo addebito: quelle di una carta senza conto
+        di addebito, e quelle finite in un conto non di tipo Carta se e' lo stesso conto dell'addebito (o un conto
+        che non ha addebiti suoi). Una riga finita nel conto A non spiega un addebito del conto B."""
+        return [r for r in fuori_posto if r["id"] not in usate_righe and dal < _giorno(r) <= ciclo
+                and (ctx.conti[r["conto_id"]]["tipo"] == "carta" or r["conto_id"] == m["conto_id"]
+                     or r["conto_id"] not in conti_con_addebiti)]
+
+    def cosa_fare(righe):
+        cosa = []
+        for cid in sorted({r["conto_id"] for r in righe}):
+            c = ctx.conti[cid]
+            cosa.append("la carta %s non ha il conto di addebito: indicalo in Conti e copertura" % c["nome"]
+                        if c["tipo"] == "carta" else
+                        "le righe della carta sono nel conto %s, che non e' di tipo Carta: annulla l'import del "
+                        "file della carta e reimportalo in un conto di tipo Carta" % c["nome"])
+        return "; ".join(cosa)
+
+    def segna(m, ciclo, scelte, righe):
+        for cid in scelte:
+            prec[(m["conto_id"], cid)] = ciclo
+            usate[(m["conto_id"], ciclo)].add(cid)
+        usate_righe.update(r["id"] for r in righe)
+
+    # 1. tratti esatti, prima al loro posto poi fuori posto
+    in_attesa = []
+    for m in addebiti:
+        ciclo, dal = finestra(m)
         obiettivo = _effetto(m)
-        dal = (_d(ciclo) - timedelta(days=FINESTRA_CARTA)).isoformat()
-        libere = [cid for cid in carte.get(m["conto_id"], []) if cid not in usate[(m["conto_id"], ciclo)]]
+        libere = libere_di(m, ciclo)
         disponibili = {cid: [r for r in righe_carta[cid] if r["id"] not in usate_righe and dal < _giorno(r) <= ciclo]
                        for cid in libere}
         # due carte addebitate sullo stesso conto: ogni addebito va alla carta le cui righe lo fanno tornare;
@@ -505,36 +632,47 @@ def abbina_contenitori(ctx, movs):
         if righe is None and len(libere) > 1:
             insieme = sorted((r for cid in libere for r in disponibili[cid]), key=lambda r: (_giorno(r), r["id"]))
             righe = _tratto_esatto(insieme, obiettivo)
-        if righe is None:
-            # nessun tratto esatto: il periodo che si avvicina di piu' (mese prima del ciclo, o dal ciclo prima)
-            tutte = [r for cid in libere for r in disponibili[cid]]
-            mese_prima = (_d(ciclo).replace(day=1) - timedelta(days=1)).isoformat()[:7]
-            inizio = max([prec[(m["conto_id"], cid)] for cid in libere if (m["conto_id"], cid) in prec]
-                         or [(_d(ciclo) - timedelta(days=31)).isoformat()])
-            periodi = [[r for r in tutte if _giorno(r)[:7] == mese_prima], [r for r in tutte if _giorno(r) > inizio]]
-            periodi = [x for x in periodi if x]
-            righe = min(periodi, key=lambda x: abs(sum(_effetto(r) for r in x) - obiettivo)) if periodi else []
-        for cid in scelte:
-            prec[(m["conto_id"], cid)] = ciclo
-            usate[(m["conto_id"], ciclo)].add(cid)
-        usate_righe.update(r["id"] for r in righe)
         if righe:
-            diff = sum(_effetto(r) for r in righe) - obiettivo
-            esiti[m["id"]] = {"stato": "dettagliato" if diff == 0 else "differenza", "righe": len(righe),
-                              "differenza": diff, "ciclo": ciclo, "natura": "contenitore",
-                              "da_rivedere": diff != 0,
-                              "motivo": None if diff == 0 else "Le righe della carta non sommano all'addebito (%+.2f EUR)" % (diff / 100)}
-        elif altrove := [r for r in fuori_posto if dal < _giorno(r) <= ciclo]:
-            cosa = []
-            for cid in sorted({r["conto_id"] for r in altrove}):
-                c = ctx.conti[cid]
-                cosa.append("la carta %s non ha il conto di addebito: indicalo in Conti e copertura" % c["nome"]
-                            if c["tipo"] == "carta" else
-                            "le righe della carta sono nel conto %s, che non e' di tipo Carta: annulla l'import del "
-                            "file della carta e reimportalo in un conto di tipo Carta" % c["nome"])
+            segna(m, ciclo, scelte, righe)
+            esiti[m["id"]] = {"stato": "dettagliato", "righe": len(righe), "differenza": 0, "ciclo": ciclo,
+                              "natura": "contenitore", "da_rivedere": False, "motivo": None}
+            continue
+        altrove = _tratto_esatto(altrove_di(m, ciclo, dal), obiettivo)
+        if altrove:
+            usate_righe.update(r["id"] for r in altrove)
             esiti[m["id"]] = {"stato": "righe_altrove", "righe": 0, "differenza": None, "ciclo": ciclo,
                               "natura": "contenitore", "da_rivedere": True,
-                              "motivo": "Addebito della carta di credito non contato: " + "; ".join(cosa)}
+                              "motivo": "Addebito della carta di credito non contato: " + cosa_fare(altrove)}
+            continue
+        in_attesa.append(m)
+
+    # 2. e 3. senza tratto esatto: solo le righe che nessun addebito ha usato
+    for m in in_attesa:
+        ciclo, dal = finestra(m)
+        obiettivo = _effetto(m)
+        libere = libere_di(m, ciclo)
+        inizio = max([prec[(m["conto_id"], cid)] for cid in libere if (m["conto_id"], cid) in prec]
+                     or [(_d(ciclo) - timedelta(days=31)).isoformat()])
+        tutte = [r for cid in libere for r in righe_carta[cid] if r["id"] not in usate_righe and dal < _giorno(r) <= ciclo]
+        righe, altrove = _periodo_vicino(tutte, ciclo, inizio, obiettivo), False
+        if not righe:
+            righe, altrove = _periodo_vicino(altrove_di(m, ciclo, dal), ciclo, inizio, obiettivo), True
+        if righe:
+            segna(m, ciclo, [] if altrove else libere, righe)
+            diff = sum(_effetto(r) for r in righe) - obiettivo
+            # righe che spiegano meno dell'addebito (stesso segno, somma piu' piccola): il resto e' spesa non dettagliata
+            residuo = -diff if diff and (diff > 0) == (obiettivo < 0) and abs(diff) < abs(obiettivo) else 0
+            if residuo:
+                motivo = ("Le righe della carta importate spiegano solo %.2f EUR dell'addebito di %.2f EUR: la "
+                          "differenza (%.2f EUR) conta come spesa \"Varie\" finche' non importi il resto dell'estratto"
+                          % (abs(obiettivo - residuo) / 100, abs(obiettivo) / 100, abs(residuo) / 100))
+            else:
+                motivo = "Le righe della carta non sommano all'addebito (%+.2f EUR)" % (diff / 100)
+            if altrove:
+                motivo += "; " + cosa_fare(righe)
+            esiti[m["id"]] = {"stato": "differenza", "righe": 0 if altrove else len(righe), "differenza": diff,
+                              "ciclo": ciclo, "natura": "contenitore", "da_rivedere": True, "motivo": motivo,
+                              "residuo": residuo}
         else:
             motivo = "Addebito della carta di credito senza dettaglio: importa l'estratto della carta"
             if senza_conto and not libere:
@@ -542,6 +680,8 @@ def abbina_contenitori(ctx, movs):
                           "indicalo in Conti e copertura" % ", ".join(ctx.conti[c]["nome"] for c in senza_conto))
             esiti[m["id"]] = {"stato": "senza_dettaglio", "righe": 0, "differenza": None, "ciclo": ciclo,
                               "natura": "uscita", "l2": "Varie", "da_rivedere": True, "motivo": motivo}
+    ctx.righe_fuori_posto = {r["id"]: MOTIVO_RIGA_FUORI_POSTO % ctx.conti[r["conto_id"]]["nome"]
+                             for r in nel_conto_sbagliato if r["id"] not in usate_righe}
     return esiti
 
 
@@ -549,6 +689,15 @@ def abbina_contenitori(ctx, movs):
 # Ricalcolo
 # ---------------------------------------------------------------------------
 def ricalcola(conn):
+    """Lettura, calcolo e scrittura stanno in una sola transazione di scrittura: un'altra scheda che importa o
+    ricalcola nello stesso momento aspetta la fine, invece di vedersi sovrascrivere le analisi con una
+    fotografia vecchia dei movimenti."""
+    with transazione(conn, immediata=True):
+        _ricalcola(conn)
+    return riepilogo(conn)
+
+
+def _ricalcola(conn):
     from .tassonomia_utente import completa_categorie
     completa_categorie(conn)
     tax = cfg.tassonomia()
@@ -564,13 +713,13 @@ def ricalcola(conn):
     tm = cfg.tipi_movimento()
     tipi, comp_l2 = tm["tipi"], tm["componenti"]
     from .paypal import riallinea_ricariche
-    with transazione(conn):
-        riallinea_ricariche(conn)          # ricariche PayPal importate come entrate prima della 0.16.1
+    riallinea_ricariche(conn)              # ricariche PayPal importate come entrate prima della 0.16.1
     ctx = Contesto(conn)
     movs = [dict(r) for r in conn.execute("SELECT * FROM movimenti ORDER BY data, id")]
     tr = abbina_trasferimenti(ctx, movs)
     co = abbina_contenitori(ctx, movs)
     pp = abbina_paypal(ctx, movs)
+    fuori_posto = getattr(ctx, "righe_fuori_posto", {})
     catena = Catena(conn)
     from .attributi import per_movimento, predefiniti
     attr_l2, attr_mov = predefiniti(conn), per_movimento(conn)
@@ -581,9 +730,10 @@ def ricalcola(conn):
 
     def riga(m, componente, importo, natura, esito_cat, fonte, conf, rivedere, motivo, proposta, chiave_x=None):
         cat = come_cat(esito_cat)
+        # natura e categoria coerenti qualunque sia la fonte della categoria (decisione, regola, conferma
+        # dell'esercente, modello): vale la sezione della categoria. Un'uscita con importo positivo e' un rimborso
+        natura = cfg.natura_da_categoria(cat, natura)
         if natura == "uscita" and importo > 0:
-            natura = "rimborso"
-        if natura == "entrata" and cat and tax.sezione(cat) == "uscite":
             natura = "rimborso"
         attributo = None
         if natura in ("uscita", "rimborso"):
@@ -596,9 +746,10 @@ def ricalcola(conn):
     for m in movs:
         coperto = (pp.get(m["id"]) or {}).get("coperto")
         if coperto in per_id:
-            # spesa del report PayPal pagata da un addebito sul conto o sulla carta: conta una volta sola, con
-            # la data dell'addebito (quella dell'estratto della banca)
-            m = dict(m, data=per_id[coperto]["data"])
+            # spesa (o rimborso) del report PayPal pagata da un addebito sul conto o sulla carta: conta una
+            # volta sola, con la data dell'addebito (quella dell'estratto della banca) e sul conto che l'ha
+            # pagata. Cosi' resta nel perimetro giusto (comune o personale) e nelle analisi del solo conto
+            m = dict(m, data=per_id[coperto]["data"], conto_id=per_id[coperto]["conto_id"])
         t = tipi.get(m["tipo"], tipi["altro"])
         natura = t["natura"]
         l2_tipo = t.get("l2")
@@ -606,6 +757,7 @@ def ricalcola(conn):
             if v["_re"].search(m["descrizione"] or ""):
                 l2_tipo = v["l2"]
         rivedere, motivo = bool(t.get("revisione")), None
+        residuo = 0
         chiave_x = m["chiave"]
         chiave_cat = chiave_x
         catena_on = bool(t.get("catena"))
@@ -622,6 +774,9 @@ def ricalcola(conn):
             e = co.get(m["id"], {"natura": "contenitore"})
             natura, l2_tipo = e["natura"], e.get("l2")
             rivedere, motivo = e.get("da_rivedere", False), e.get("motivo")
+            residuo = e.get("residuo") or 0
+        if m["id"] in fuori_posto:
+            rivedere, motivo = True, fuori_posto[m["id"]]
         if m["id"] in pp:
             e = pp[m["id"]]
             if e.get("natura"):
@@ -629,6 +784,8 @@ def ricalcola(conn):
                 rivedere, motivo = False, None
             elif e.get("motivo"):
                 rivedere, motivo = True, e["motivo"]
+        if m.get("avviso") and not rivedere:
+            rivedere, motivo = True, m["avviso"]
         if natura == "da_definire":
             natura = "uscita" if (m["importo_cent"] or 0) < 0 else "entrata"
             rivedere, motivo = True, "Tipo di movimento non riconosciuto (codice %s)" % (m["codice"] or "-")
@@ -663,30 +820,27 @@ def ricalcola(conn):
                      rivedere or es.da_rivedere, motivo or es.motivo, es.proposta, chiave_x)
             else:
                 riga(m, "principale", m["importo_cent"], natura, None, None, None, rivedere, motivo, None, chiave_x)
+        if residuo and natura == "contenitore":
+            # addebito della carta spiegato solo in parte dalle righe importate: il resto e' spesa non dettagliata
+            es = catena.classifica(m, None, False, come_cat("Varie"))
+            riga(m, "residuo", residuo, "uscita", es.cat, es.fonte, es.confidenza, True, motivo, None)
         if m["fee_cent"]:
             riga(m, "commissione", m["fee_cent"], "uscita", comp_l2["commissione"], "tipo movimento", 1.0, False, None, None)
         if m["tax_cent"]:
             l2 = l2_tipo if m["tipo"] == "imposte" and l2_tipo else comp_l2["imposta"]
             riga(m, "imposta", m["tax_cent"], "uscita", l2, "tipo movimento", 1.0, False, None, None)
 
-    conn.execute("BEGIN")
-    try:
-        conn.execute("DELETE FROM analisi")
-        conn.executemany("INSERT INTO analisi(mov_id, componente, data, mese, conto_id, perimetro, importo_cent, natura, l1, l2, "
-                         "fonte, confidenza, da_rivedere, motivo, proposta, chiave, attributo) "
-                         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", righe)
-        conn.execute("DELETE FROM trasferimenti")
-        conn.executemany("INSERT INTO trasferimenti VALUES (?,?,?,?,?,?)",
-                         [(k, e.get("controparte") or e.get("proposta_abbinamento"), e["stato"], e.get("fiducia"),
-                           e.get("conto_dest"), e.get("beneficiario")) for k, e in tr.items()])
-        conn.execute("DELETE FROM contenitori")
-        conn.executemany("INSERT INTO contenitori VALUES (?,?,?,?,?)",
-                         [(k, e["stato"], e["righe"], e["differenza"], e["ciclo"]) for k, e in co.items()])
-        conn.execute("COMMIT")
-    except Exception:
-        conn.execute("ROLLBACK")
-        raise
-    return riepilogo(conn)
+    conn.execute("DELETE FROM analisi")
+    conn.executemany("INSERT INTO analisi(mov_id, componente, data, mese, conto_id, perimetro, importo_cent, natura, l1, l2, "
+                     "fonte, confidenza, da_rivedere, motivo, proposta, chiave, attributo) "
+                     "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", righe)
+    conn.execute("DELETE FROM trasferimenti")
+    conn.executemany("INSERT INTO trasferimenti VALUES (?,?,?,?,?,?)",
+                     [(k, e.get("controparte") or e.get("proposta_abbinamento"), e["stato"], e.get("fiducia"),
+                       e.get("conto_dest"), e.get("beneficiario")) for k, e in tr.items()])
+    conn.execute("DELETE FROM contenitori")
+    conn.executemany("INSERT INTO contenitori VALUES (?,?,?,?,?)",
+                     [(k, e["stato"], e["righe"], e["differenza"], e["ciclo"]) for k, e in co.items()])
 
 
 def riepilogo(conn):

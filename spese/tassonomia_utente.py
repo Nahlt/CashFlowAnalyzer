@@ -17,7 +17,7 @@ import json
 import yaml
 
 from . import configurazione as cfg
-from .db import leggi_impostazione, scrivi_impostazione
+from .db import leggi_impostazione, scrivi_impostazione, transazione
 
 SEZIONI = ("uscite", "entrate", "risparmio")
 CHIAVE = "tassonomia_utente"
@@ -28,7 +28,8 @@ NEL_CODICE = {"Varie", "Contributo versato", "Contributo ricevuto", "Accantoname
 def predefinita() -> dict:
     """Tassonomia del file di configurazione, nella forma {sezione: {L1: [L2]}, solo_locale: [...]}."""
     t = cfg._yaml("tassonomia.yaml")
-    return {**{s: {l1: list(v) for l1, v in t[s].items()} for s in SEZIONI}, "solo_locale": list(t.get("solo_locale", []))}
+    return {**{s: {l1: list(v) for l1, v in t[s].items()} for s in SEZIONI}, "solo_locale": list(t.get("solo_locale", [])),
+            "non_inviare": list(t.get("non_inviare") or [])}
 
 
 def protette() -> set:
@@ -76,6 +77,7 @@ def _completa(t):
                 if l2 not in presenti:
                     t.setdefault(s, {}).setdefault(l1, []).append(l2)
     t.setdefault("solo_locale", base["solo_locale"])
+    t.setdefault("non_inviare", [])
     return t
 
 
@@ -86,6 +88,7 @@ def righe(conn):
     prot = protette()
     uso = utilizzo(conn)
     tax = cfg.tassonomia()
+    escluse = set(t.get("non_inviare") or [])
     out = []
     for s in SEZIONI:
         for l1, voci in t[s].items():
@@ -94,7 +97,8 @@ def righe(conn):
                 # sotto piu' categorie, solo quella di partenza; le altre sono libere)
                 pred = l2 in prot and tax.risolvi(l2) in (None, (l1, l2))
                 out.append({"sezione": s, "l1": l1, "l2": l2, "originale": cfg.chiave_cat((l1, l2)),
-                            "predefinita": pred, "in_uso": uso.get((l1, l2), 0)})
+                            "predefinita": pred, "in_uso": uso.get((l1, l2), 0),
+                            "non_inviare": cfg.chiave_cat((l1, l2)) in escluse})
     return out
 
 
@@ -115,11 +119,16 @@ def completa_categorie(conn):
     """Voci salvate con la sola sottocategoria (versioni fino alla 0.6): si aggiunge la categoria, presa dalla
     tassonomia in uso. Idempotente; le voci ambigue restano da completare finche' la tassonomia non decide."""
     tax = cfg.tassonomia()
+    da_fare = []
     for tab in TABELLE_CON_CATEGORIA:
         for (l2,) in conn.execute("SELECT DISTINCT l2 FROM %s WHERE l1 IS NULL AND l2 IS NOT NULL" % tab).fetchall():
             cat = tax.risolvi(l2)
             if cat:
-                conn.execute("UPDATE %s SET l1 = ? WHERE l1 IS NULL AND l2 = ?" % tab, (cat[0], l2))
+                da_fare.append((tab, cat[0], l2))
+    if da_fare:                                         # niente da completare: nessuna scrittura
+        with transazione(conn):
+            for tab, l1, l2 in da_fare:
+                conn.execute("UPDATE %s SET l1 = ? WHERE l1 IS NULL AND l2 = ?" % tab, (l1, l2))
 
 
 def _rinomina_dati(conn, vecchia, nuova):
@@ -156,12 +165,14 @@ def _segui_area_riservata(aree, prima, t, rinomine):
 
 def salva(conn, nuove_righe):
     """Valida e salva la tassonomia modificata. nuove_righe: dict con sezione, l1, l2, originale
-    (originale vuoto per le righe aggiunte). La stessa sottocategoria puo' stare sotto categorie diverse
+    (originale vuoto per le righe aggiunte) e, facoltativo, non_inviare (la sottocategoria non si scrive nelle
+    richieste a Claude; senza il campo resta com'era). La stessa sottocategoria puo' stare sotto categorie diverse
     (CASA · Varie e ACQUISTI · Varie), non due volte nella stessa. Restituisce (errori, messaggi): se ci sono
     errori non salva nulla."""
     prima = {r["originale"]: r for r in righe(conn)}
     uso = utilizzo(conn)
     errori, rinomine, viste = [], {}, set()
+    escluse = []
     t = {s: {} for s in SEZIONI}
     for n, r in enumerate(nuove_righe, 1):
         l1 = _testo(r.get("l1")).upper()
@@ -192,6 +203,11 @@ def salva(conn, nuove_righe):
             if (l1, l2) != (p["l1"], p["l2"]):
                 rinomine[orig] = (l1, l2)
         t[sez].setdefault(l1, []).append(l2)
+        escludi = r.get("non_inviare")
+        if escludi is None or escludi != escludi:           # campo assente (o NaN): resta com'era
+            escludi = bool(orig and orig in prima and prima[orig].get("non_inviare"))
+        if escludi:
+            escluse.append(cfg.chiave_cat((l1, l2)))
     tenute = {_testo(r.get("originale")) for r in nuove_righe} - {""}
     for orig, r in prima.items():
         if orig in tenute:
@@ -204,7 +220,8 @@ def salva(conn, nuove_righe):
                           "(scegli Elimina e sposta le sue voci su un'altra)." % (cfg.etichetta(cat), uso[cat]))
     if errori:
         return errori, []
-    nuova = {**t, "solo_locale": _segui_area_riservata(attuale(conn).get("solo_locale", ["SALUTE"]), prima, t, rinomine)}
+    nuova = {**t, "solo_locale": _segui_area_riservata(attuale(conn).get("solo_locale", ["SALUTE"]), prima, t, rinomine),
+             "non_inviare": escluse}
     conn.execute("BEGIN")
     try:
         # prima su nomi provvisori: due voci che si scambiano il nome non si sovrappongono
@@ -244,6 +261,7 @@ def unisci(conn, da, verso):
                     t[s][l1] = [x for x in t[s][l1] if x != da[1]]
                 if not t[s][l1]:
                     del t[s][l1]
+        t["non_inviare"] = [k for k in (t.get("non_inviare") or []) if k != cfg.chiave_cat(da)]
         scrivi_impostazione(conn, CHIAVE, t)
         conn.execute("COMMIT")
     except Exception:
@@ -272,6 +290,7 @@ def esporta_yaml(conn) -> str:
     for s in SEZIONI:
         dati[s] = {l1: list(v) for l1, v in t[s].items() if v}
     dati["solo_locale"] = list(t.get("solo_locale", ["SALUTE"]))
+    dati["non_inviare"] = list(t.get("non_inviare") or [])
     testa = ("# Tassonomia esportata da CashFlow Analyzer il %s.\n"
              "# Stesso formato di config/tassonomia.yaml: per renderla quella di partenza sostituisci quel file.\n"
              % date.today().isoformat())

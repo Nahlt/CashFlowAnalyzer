@@ -28,9 +28,18 @@ class Filtri:
             par = list(conti)
         # solo i contributi abbinati (fiducia indicata): una contropartita solo proposta non annulla nulla,
         # altrimenti sparirebbe un lato e l'altro resterebbe
+        # lo stesso per i contributi verso un tuo conto importato che non copre ancora quella data (fiducia
+        # "attesa"): l'altro lato non c'e' ancora, ma il conto e' tra quelli guardati
+        attesa, par2 = "", []
+        if conti:
+            attesa = " AND t2.conto_destinazione_id IN (%s)" % ",".join("?" * len(conti))
+            par2 = list(conti)
         return ("NOT EXISTS (SELECT 1 FROM trasferimenti t JOIN movimenti mc ON mc.id = t.controparte_mov_id "
-                "WHERE t.mov_id = %s.mov_id AND t.stato = 'contributo' AND t.fiducia IS NOT NULL%s)"
-                % (alias, dentro)), par
+                "WHERE t.mov_id = %s.mov_id AND t.stato = 'contributo' AND t.fiducia IS NOT NULL "
+                "AND t.fiducia <> 'attesa'%s) "
+                "AND NOT EXISTS (SELECT 1 FROM trasferimenti t2 WHERE t2.mov_id = %s.mov_id "
+                "AND t2.stato = 'contributo' AND t2.fiducia = 'attesa'%s)"
+                % (alias, dentro, alias, attesa)), par + par2
 
     def where(self, alias="a"):
         if self.conti:
@@ -222,3 +231,19 @@ def con_mese(f: Filtri, mese):
     a, m = int(mese[:4]), int(mese[5:7])
     da, al = "%s-01" % mese, "%s-%02d" % (mese, calendar.monthrange(a, m)[1])
     return replace(f, da=max(da, f.da or da), a=min(al, f.a or al))
+
+
+def altri_da_rivedere(conn, motivo_paypal):
+    """Movimenti da rivedere che non hanno una scheda loro in Revisione (esercenti, bonifici, addebiti PayPal):
+    la scheda "Altri movimenti". Ci sono anche i bonifici con terzi di cui la banca non riporta ne' nome ne'
+    IBAN: senza un beneficiario la scheda dei bonifici non puo' raggrupparli, e resterebbero invisibili."""
+    return [dict(r) for r in conn.execute(
+        "SELECT a.mov_id, a.data, co.nome AS conto, a.importo_cent, a.natura, a.l1, a.l2, a.proposta, a.motivo, "
+        "m.descrizione, m.tipo, a.chiave "
+        "FROM analisi a JOIN movimenti m ON m.id = a.mov_id JOIN conti co ON co.id = a.conto_id "
+        "LEFT JOIN trasferimenti t ON t.mov_id = a.mov_id "
+        "WHERE a.da_rivedere = 1 AND a.componente = 'principale' AND coalesce(a.motivo, '') <> ? "
+        "AND NOT (a.l2 IS NULL AND m.tipo IN ('pagamento_carta','addebito_sepa') AND coalesce(a.chiave, '') <> '') "
+        "AND coalesce(t.stato, '') NOT IN ('proposto_proprio','spesa_familiare') "
+        "AND NOT (coalesce(t.stato, '') = 'terzi' AND coalesce(a.chiave, '') <> '') "
+        "AND coalesce(t.controparte_mov_id, '') = '' ORDER BY a.data DESC", [motivo_paypal])]

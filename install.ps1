@@ -173,7 +173,9 @@ $c = $shell.CreateShortcut($lnk)
 # .venv\Scripts\pythonw.exe: con Windows Terminal come terminale predefinito il lanciatore apriva una scheda
 # del terminale. avvia.py usa solo la libreria standard; -s esclude le librerie personali dell'utente.
 $pyw = $null
-foreach ($riga in Get-Content (Join-Path $APP ".venv\pyvenv.cfg")) {
+# pyvenv.cfg e' scritto in UTF-8: senza -Encoding Windows PowerShell 5.1 lo legge in ANSI e un nome utente
+# con lettere accentate darebbe un percorso sbagliato
+foreach ($riga in Get-Content -Encoding UTF8 (Join-Path $APP ".venv\pyvenv.cfg")) {
     if ($riga -match '^\s*home\s*=\s*(.+?)\s*$') { $pyw = Join-Path $Matches[1] "pythonw.exe" }
 }
 if (-not $pyw -or -not (Test-Path -LiteralPath $pyw)) { $pyw = Join-Path $APP ".venv\Scripts\pythonw.exe" }

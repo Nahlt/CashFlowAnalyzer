@@ -18,6 +18,7 @@ mostra l'avanzamento e puo' essere lasciata. Non usa il database: indirizzo e mo
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -42,6 +43,18 @@ class NonPossibile(Exception):
     def __init__(self, messaggio, comando=None):
         super().__init__(messaggio)
         self.comando = comando
+
+
+def firma_di_ollama(firma):
+    """La firma letta da PowerShell ("Stato|Soggetto del certificato") e' valida e il certificato e' intestato a
+    Ollama? Si guarda il nome dell'intestatario (CN o O del soggetto), non una parola qualunque del soggetto:
+    "CN=Not Ollama Fan Club" o un indirizzo con "ollama" dentro non bastano."""
+    stato, _, soggetto = (firma or "").partition("|")
+    if stato.strip() != "Valid":
+        return False
+    campi = re.findall(r'(?:^|,\s*)(CN|O)=("(?:[^"]|"")*"|[^,]*)', soggetto)
+    nomi = {v.strip().strip('"').strip().lower() for _, v in campi}
+    return any(n == "ollama" or re.fullmatch(r"ollama,? (inc\.?|incorporated|corp\.?|llc)", n) for n in nomi)
 
 
 # --- stato di Ollama su questo PC ----------------------------------------------------------------------
@@ -269,14 +282,17 @@ def _installa_windows(lavoro):
                                "installazione annullata. Installa Ollama da https://ollama.com/download.")
         # Windows PowerShell 5.1 senza il PSModulePath di un eventuale PowerShell 7: altrimenti non carica il
         # modulo che legge le firme
+        # Il percorso passa in una variabile d'ambiente, non dentro il comando: un apostrofo nel nome utente
+        # (C:\Users\D'Angelo\...) chiudeva la stringa e la verifica falliva sempre.
         env = {k: v for k, v in os.environ.items() if k.upper() != "PSMODULEPATH"}
+        env["CASHFLOW_SETUP"] = str(setup)
         esito = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
-                                "$s = Get-AuthenticodeSignature -LiteralPath '%s'; "
-                                "'{0}|{1}' -f $s.Status, $s.SignerCertificate.Subject" % setup],
+                                "$s = Get-AuthenticodeSignature -LiteralPath $env:CASHFLOW_SETUP; "
+                                "'{0}|{1}' -f $s.Status, $s.SignerCertificate.Subject"],
                                capture_output=True, text=True, env=env, creationflags=SENZA_FINESTRA)
         firma = esito.stdout.strip()
         lavoro.registra("Firma dell'installatore: %s" % (firma or esito.stderr.strip()[:300]))
-        if not (firma.startswith("Valid|") and "ollama" in firma.lower()):
+        if not firma_di_ollama(firma):
             raise NonPossibile("La firma digitale dell'installatore non e' valida o non e' di Ollama: installazione "
                                "annullata. Installa Ollama da https://ollama.com/download.")
         lavoro.fase("Installo Ollama (solo per il tuo utente)…")

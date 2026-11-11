@@ -114,8 +114,9 @@ def rinomina_etichetta(conn, etichetta_id, nome):
 
 
 def elimina_etichetta(conn, etichetta_id):
-    conn.execute("DELETE FROM etichette_movimento WHERE etichetta_id = ?", (etichetta_id,))
-    conn.execute("DELETE FROM etichette WHERE id = ?", (etichetta_id,))
+    with transazione(conn):
+        conn.execute("DELETE FROM etichette_movimento WHERE etichetta_id = ?", (etichetta_id,))
+        conn.execute("DELETE FROM etichette WHERE id = ?", (etichetta_id,))
 
 
 def assegna(conn, mov_ids, etichetta_id):

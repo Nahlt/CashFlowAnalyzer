@@ -36,10 +36,10 @@ def importa():
                    "dalle descrizioni (Credem li mette davanti all'esercente) e bloccano l'invio a Claude. "
                    "Se li aggiungi dopo, l'app ripulisce anche i movimenti gia' importati.",
                    icon=":material/person_alert:")
-    for i, f in enumerate(files or []):
+    visti = set()
+    for f in files or []:
         with st.container(border=True):
             dati = f.getvalue()
-            chiave_rep = "report_%s_%d" % (f.name, len(dati))
             try:
                 fl, suggerito, gia = imp.anteprima(c, f.name, dati)
             except FileNonRiconosciuto as e:
@@ -48,15 +48,29 @@ def importa():
             except Exception as e:
                 st.error("**%s**: errore di lettura (%s)" % (f.name, e))
                 continue
+            # report e scelte fatte per questo file si riconoscono dall'impronta del contenuto, non dalla
+            # posizione nell'elenco o dal nome: togliendo un file dall'elenco, conto e conferme degli altri non
+            # si spostano, e un file diverso con lo stesso nome non eredita il report del precedente
+            k = fl.hash_file[:16]
+            if k in visti:
+                st.info("**%s**: stesso contenuto di un file gia' in questo elenco, saltato." % f.name)
+                continue
+            visti.add(k)
+            chiave_rep = "report_%s" % k
             st.markdown("**%s** · %s · %d movimenti letti, %d righe scartate" % (
                 f.name, fl.profilo["nome"], len(fl.movimenti), len(fl.scartate)))
             for a in fl.avvisi:
                 st.warning(a)
             if chiave_rep in st.session_state:
+                for a in st.session_state[chiave_rep].get("avvisi") or []:
+                    if a not in fl.avvisi:              # avvisi nati con l'import (quelli del file sono qui sopra)
+                        st.warning(a)
                 _mostra_report(st.session_state[chiave_rep])
                 continue
             if gia:
-                st.info("Questo file risulta gia' importato: le righe gia' presenti verranno ignorate.")
+                dove = ", ".join(nome for _, nome in imp.conti_del_file(c, fl.hash_file))
+                st.info("Questo file risulta gia' importato nel conto %s: importandolo di nuovo nello stesso conto "
+                        "le righe gia' presenti vengono ignorate." % dove)
             # anche i conti registrati a mano in Conti e copertura: al primo file diventano importati
             conti = c.execute("SELECT id, nome, importato, tipo FROM conti WHERE chiuso_il IS NULL OR id = ? "
                               "ORDER BY importato DESC, nome", (suggerito or 0,)).fetchall()
@@ -64,18 +78,18 @@ def importa():
                     for r in conti}
             opzioni = list(nomi) + [0]
             indice = opzioni.index(suggerito) if suggerito in opzioni else len(opzioni) - 1
-            scelta = st.selectbox("Conto a cui appartiene il file", opzioni, index=indice, key="conto_%d" % i,
+            scelta = st.selectbox("Conto a cui appartiene il file", opzioni, index=indice, key="conto_%s" % k,
                                   format_func=lambda x: nomi.get(x, "Nuovo conto…"),
                                   help="I movimenti del file vengono registrati su questo conto. "
                                        "Proposto in base a IBAN o numero di conto letti nel file.")
             nuovo = {}
             if scelta == 0:
                 a, b, cc = st.columns(3)
-                nuovo["nome"] = a.text_input("Nome del conto", value=fl.profilo["banca"], key="nome_%d" % i)
+                nuovo["nome"] = a.text_input("Nome del conto", value=fl.profilo["banca"], key="nome_%s" % k)
                 tipi = list(TIPI_CONTO)
                 nuovo["tipo"] = b.selectbox("Tipo", tipi, index=tipi.index(fl.profilo.get("tipo_conto", "conto")),
-                                            format_func=TIPI_CONTO.get, key="tipo_%d" % i)
-                nuovo["perimetro"] = cc.selectbox("Perimetro", ["personale", "comune"], key="per_%d" % i,
+                                            format_func=TIPI_CONTO.get, key="tipo_%s" % k)
+                nuovo["perimetro"] = cc.selectbox("Perimetro", ["personale", "comune"], key="per_%s" % k,
                                                   format_func=lambda x: "Personale" if x == "personale" else "Conto comune")
                 if nuovo["tipo"] == "carta":
                     altri = {r["id"]: r["nome"] for r in c.execute("SELECT id, nome FROM conti WHERE tipo = 'conto'")}
@@ -89,17 +103,21 @@ def importa():
                         opz = [None] + list(altri)
                         nuovo["addebito"] = st.selectbox(
                             "Conto su cui viene addebitata la carta", opz, index=opz.index(prop[0]) if prop else 0,
-                            format_func=lambda x: altri.get(x, "Non indicato"), key="add_%d" % i,
+                            format_func=lambda x: altri.get(x, "Non indicato"), key="add_%s" % k,
                             help="Serve ad abbinare l'addebito mensile della carta sul conto alle singole spese della "
                                  "carta, cosi' non si contano due volte.")
             # un estratto di carta in un conto che non e' una carta (o il contrario) fa contare due volte le spese
             tipo_scelto = nuovo["tipo"] if scelta == 0 else next(r["tipo"] for r in conti if r["id"] == scelta)
             avviso = imp.avviso_tipo_conto(fl.profilo, tipo_scelto)
+            # lo stesso file gia' in un altro conto: la deduplica vale dentro un conto, qui i movimenti raddoppiano
+            altrove = imp.avviso_file_altrove(c, fl.hash_file, scelta or None)
             via_libera = True
-            if avviso:
-                st.warning(avviso)
-                via_libera = st.checkbox("Importa comunque in questo conto", key="forza_%d" % i)
-            if st.button("Importa", key="imp_%d" % i, type="primary", disabled=not via_libera):
+            for testo_avviso in (avviso, altrove):
+                if testo_avviso:
+                    st.warning(testo_avviso)
+            if avviso or altrove:
+                via_libera = st.checkbox("Importa comunque in questo conto", key="forza_%s" % k)
+            if st.button("Importa", key="imp_%s" % k, type="primary", disabled=not via_libera):
                 if scelta == 0:
                     if not nuovo["nome"].strip():
                         st.error("Indica il nome del conto.")
@@ -113,7 +131,13 @@ def importa():
                                             nuovo.get("addebito"))
                 prima = riepilogo(c)
                 with st.spinner("Import e ricalcolo…"):
-                    rep = imp.importa(c, scelta, f.name, dati)
+                    try:
+                        rep = imp.importa(c, scelta, f.name, dati)
+                    except Exception:
+                        if nuovo:                       # import non riuscito: il conto appena creato non resta vuoto
+                            c.execute("DELETE FROM conti WHERE id = ? AND NOT EXISTS (SELECT 1 FROM import_file "
+                                      "WHERE conto_id = ?)", (scelta, scelta))
+                        raise
                     dopo = esegui_ricalcolo()
                 rep["prima"], rep["dopo"] = prima, dopo
                 st.session_state[chiave_rep] = rep
@@ -376,15 +400,7 @@ def revisione():
         if not _addebiti_paypal(c):
             st.success("Nessun addebito PayPal da ricondurre al report PayPal.", icon=":material/done_all:")
     with t3:
-        altri = pd.DataFrame([dict(r) for r in c.execute(
-            "SELECT a.mov_id, a.data, co.nome AS conto, a.importo_cent, a.natura, a.l1, a.l2, a.proposta, a.motivo, "
-            "m.descrizione, m.tipo, a.chiave "
-            "FROM analisi a JOIN movimenti m ON m.id = a.mov_id JOIN conti co ON co.id = a.conto_id "
-            "LEFT JOIN trasferimenti t ON t.mov_id = a.mov_id "
-            "WHERE a.da_rivedere = 1 AND a.componente = 'principale' AND coalesce(a.motivo, '') <> ? "
-            "AND NOT (a.l2 IS NULL AND m.tipo IN ('pagamento_carta','addebito_sepa') AND coalesce(a.chiave, '') <> '') "
-            "AND coalesce(t.stato, '') NOT IN ('proposto_proprio','terzi','spesa_familiare') "
-            "AND coalesce(t.controparte_mov_id, '') = '' ORDER BY a.data DESC", [MOTIVO_PAYPAL])])
+        altri = pd.DataFrame(an.altri_da_rivedere(c, MOTIVO_PAYPAL))
         if altri.empty:
             st.success("Nessun altro movimento da rivedere.", icon=":material/done_all:")
         else:
@@ -608,11 +624,12 @@ def _conti_indicati(c):
         scelte = [righe[i] for i in (getattr(getattr(ev, "selection", None), "rows", []) or []) if i < len(righe)]
         if st.button("Togli i selezionati" if scelte else "Seleziona le righe da togliere", disabled=not scelte,
                      key="togli_indicati"):
-            for r in scelte:
-                if r["ambito"] == "b":
-                    c.execute("DELETE FROM destinazioni_conti WHERE beneficiario = ?", (r["rif"],))
-                else:
-                    c.execute("DELETE FROM destinazioni_movimenti WHERE mov_id = ?", (r["rif"],))
+            with transazione(c):
+                for r in scelte:
+                    if r["ambito"] == "b":
+                        c.execute("DELETE FROM destinazioni_conti WHERE beneficiario = ?", (r["rif"],))
+                    else:
+                        c.execute("DELETE FROM destinazioni_movimenti WHERE mov_id = ?", (r["rif"],))
             esegui_ricalcolo("Indicazioni tolte: i bonifici tornano da rivedere")
             st.rerun()
 

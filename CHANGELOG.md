@@ -5,6 +5,107 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.16.2 – 11 novembre 2026 · correzioni dalla revisione del codice
+
+Correzioni dei difetti trovati dalla revisione della 0.16.1 (due revisioni indipendenti, 36 segnalazioni).
+Ogni correzione ha il suo test: 150 test in tutto (erano 90).
+
+**Privacy verso Claude**
+- **Un solo punto di controllo** (`privacy.uscita_claude`) per tutto cio' che esce: coda, prove di confronto,
+  testo corretto a mano. Lo stesso controllo viene ripetuto subito prima della rete: un lotto diverso da
+  quello dell'anteprima non parte.
+- **Dati identificativi nel nome dell'esercente**: IBAN, codice fiscale, numero di carta, telefono ed email
+  si cercavano sulla chiave, dove le cifre sono gia' `#`, quindi non scattavano mai. Ora si cercano sui nomi
+  originali dei movimenti e, sulla chiave, nella forma mascherata (`RSSMRA#A#F#X`).
+- **Testo corretto a mano**: viene normalizzato come una chiave (cifre in `#`) e ricontrollato; svuotando la
+  cella torna la chiave dell'esercente. L'anteprima mostra esattamente cio' che parte.
+- **Tassonomia**: nuova colonna *Non inviare a Claude* in Regole e tassonomia. Il nome delle sottocategorie
+  spuntate non viene scritto nelle richieste a Claude. Di partenza nessuna e' esclusa. Il segno segue la voce
+  se la rinomini e finisce nell'export YAML (`non_inviare`).
+- **PayPal, "Pagamento da cellulare" senza oggetto**: e' denaro inviato a una persona, non una spesa presso un
+  esercente. Il nome non diventa piu' un esercente.
+- **Area salute**: elenco di parole molto piu' ampio (specialita' mediche, "dr", prelievi, ambulatori, alcuni
+  centri noti), perche' molti estratti non hanno il codice MCC.
+- **Ollama su un altro computer**: resta una tua scelta, ma ora Impostazioni e Classificazione automatica
+  avvisano che i nomi degli esercenti vanno a quel computer.
+
+**Carta di credito**
+- **Addebito mensile azzerato per errore**: righe di un estratto finite in un conto non di tipo Carta
+  azzeravano anche gli addebiti dei mesi dopo e quelli di altri conti. Ora ogni riga copre un solo addebito,
+  solo se la somma torna al centesimo, e una riga finita nel conto A non spiega un addebito del conto B.
+- **Estratto mancante o parziale**: senza un tratto esatto l'addebito prendeva le righe del ciclo successivo
+  e sfasava tutti i mesi dopo. Ora prima si abbinano tutti i tratti esatti, poi gli addebiti rimasti usano
+  solo le righe avanzate. Se le righe spiegano meno dell'addebito, la differenza conta come spesa "Varie" da
+  rivedere (componente "residuo") finche' non importi il resto.
+- **Stesso file su due conti**: la deduplica vale dentro un conto. L'import ora dice in quale conto il file e'
+  gia', chiede la spunta *Importa comunque* se il conto e' un altro, e le righe di carta rimaste in un conto
+  non di tipo Carta risultano da rivedere.
+
+**Import**
+- Le scelte fatte per un file (conto, *Importa comunque*) e il suo report sono legate al contenuto del file,
+  non alla posizione nell'elenco o al nome: togliendo un file le scelte non passano a un altro, e un file
+  diverso con lo stesso nome non mostra il report del precedente.
+- Due righe con lo stesso identificativo della banca nello stesso file: la seconda resta scartata, ma l'import
+  lo segnala.
+- Annullando l'import fatto per sbaglio su un conto registrato a mano, il conto torna senza formato e banca.
+- Fineco: aggiunte le causali piu' comuni (carta, prelievi, addebiti SEPA, stipendio, giroconto, titoli) e
+  l'esercente dei pagamenti con carta. **Da confermare con un estratto reale**: una dicitura che non
+  corrisponde lascia il movimento "altro", come prima.
+
+**PayPal**
+- La spesa del report coperta da un addebito in banca ora sta **sul conto che l'ha pagata**: resta nel
+  perimetro giusto (comune o personale) e si vede anche guardando il solo conto in banca.
+- **Rimborso riaccreditato sulla carta**: contava due volte (nel report e in banca). L'accredito in banca si
+  abbina all'uscita dal conto PayPal e i due diventano un passaggio tra i tuoi conti; resta il rimborso del
+  report. Un accredito PayPal senza uscita nel report, in un periodo coperto, va in revisione.
+- **Stesso pagamento ricondotto a mano a due addebiti**: il secondo sostituisce il primo, che torna da
+  controllare (prima sparivano entrambi dai conti).
+- **Ricariche**: per i pagamenti in valuta il confronto e' sull'importo in euro; la ricarica deve essere degli
+  stessi giorni del pagamento; uno storno senza nome e' un rimborso dell'esercente del pagamento, non una
+  ricarica; una ricarica piu' piccola del pagamento resta un'entrata da rivedere.
+
+**Trasferimenti, contributi, risparmio**
+- Abbinamento automatico solo con un indizio **per lato**: "giroconto a favore di MARIO ROSSI" non basta piu' ad
+  abbinare un bonifico qualunque dello stesso importo. Una coppia e' esclusa se l'IBAN di un lato porta a un
+  altro dei tuoi conti.
+- Versamento al conto comune (o dal comune) quando l'altro conto non copre ancora quella data: e' un
+  contributo, non un trasferimento interno. Guardando i due conti insieme si annulla.
+- Conto di tipo broker con i movimenti importati: il versamento e' un passaggio tra conti, il risparmio sono
+  gli acquisti di titoli (prima contava due volte).
+- **Natura e categoria coerenti** per ogni fonte: regole, conferme dell'esercente, decisioni senza natura.
+- I bonifici con terzi senza nome ne' IBAN compaiono in Revisione > Altri movimenti.
+
+**Portafoglio**
+- Quote e costo medio per conto e titolo; eventi dello stesso giorno nell'ordine dell'ora (senza ora: prima
+  acquisti, poi vendite); posizione di partenza con la data della migrazione ne indica il costo senza
+  raddoppiare le quote.
+- Prezzi e cambi salvati come testo decimale e calcoli in decimale, con arrotondamento commerciale.
+- Importato uno storico piu' vecchio, i prezzi mancanti vengono scaricati.
+
+**Database e sicurezza**
+- Il ricalcolo sta in una sola transazione di scrittura: due schede non si sovrascrivono le analisi.
+- Il backup tiene il blocco di scrittura durante la copia: se un'altra scheda sta scrivendo, rinuncia con un
+  messaggio invece di copiare dati a meta'.
+- Versione dello schema salvata nel database: un database usato con una versione piu' recente non si apre.
+- Per cambiare la passphrase serve quella attuale.
+- Scritture di piu' righe raccolte in transazioni; indici su `analisi`; export CSV preparato solo su richiesta.
+- Windows: la verifica della firma di Ollama non si rompe piu' con un apostrofo nel nome utente e controlla
+  l'intestatario del certificato; `pyvenv.cfg` letto in UTF-8.
+
+**Non corretto**
+- Il cookie di sessione resta leggibile da JavaScript: Streamlit non permette di impostare un cookie HttpOnly.
+- Dati personali nella storia del repository (escluso da questo pacchetto per scelta).
+
+**Aggiornando**
+- Estrai sopra la cartella e riavvia. Al primo accesso il database si aggiorna da solo (prezzi di mercato,
+  riconduzioni PayPal doppie). **Fai prima un backup**: il database aggiornato non e' fatto per tornare alla 0.16.1 (i prezzi di mercato
+  sono salvati in un altro formato).
+- I numeri possono cambiare: addebiti della carta prima azzerati tornano a contare; le spese PayPal passano
+  dal conto PayPal al conto che le ha pagate; alcuni trasferimenti prima abbinati da soli tornano da confermare.
+- La tassonomia esportata ha una voce in piu' (`non_inviare`).
+
+---
+
 ## 0.16.1 – 10 novembre 2026 · ricariche PayPal, carta di credito nel conto sbagliato
 
 **Correzioni**

@@ -9,13 +9,19 @@ import re
 from . import configurazione as cfg
 from .chiavi import contenimento
 from .db import leggi_impostazione, ora, transazione
-from .privacy import controlla
+from .privacy import categorie_in_uscita, controlla, uscita_claude
 
-def schema_risposta():
+def _voci(esterno=False):
+    """Le voci della tassonomia proposte al motore. Verso Claude (esterno) restano fuori le sottocategorie
+    segnate "non inviare a Claude" nella tassonomia; il modello locale le vede tutte."""
+    return categorie_in_uscita() if esterno else cfg.tassonomia().per_sezione("uscite")
+
+
+def schema_risposta(esterno=False):
     """Schema JSON della risposta, uguale per modello locale e Claude. Le sottocategorie sono un elenco
     chiuso: il motore non puo' inventarne. Compatibile con le risposte strutturate dell'API di Claude
     (additionalProperties false su ogni oggetto, nessun vincolo numerico)."""
-    voci = [cfg.etichetta(c) for c in cfg.tassonomia().per_sezione("uscite")]
+    voci = [cfg.etichetta(c) for c in _voci(esterno)]
     return {
         "type": "object",
         "properties": {
@@ -47,20 +53,16 @@ SISTEMA = (
 )
 
 
-def _elenco_categorie():
-    tax = cfg.tassonomia()
-    righe = []
-    for c in tax.per_sezione("uscite"):
-        righe.append(cfg.etichetta(c))
-    return "\n".join(righe)
+def _elenco_categorie(esterno=False):
+    return "\n".join(cfg.etichetta(c) for c in _voci(esterno))
 
 
-def richiesta(voci):
-    """voci: lista di dict {chiave, testo, paese, tipo}."""
+def richiesta(voci, esterno=False):
+    """voci: lista di dict {chiave, testo, paese, tipo}. esterno: la richiesta va a Claude."""
     items = [{"idx": i, "esercente": v["testo"], "paese": v.get("paese") or "", "tipo": v.get("tipo") or "pagamento"}
              for i, v in enumerate(voci)]
     utente = ("Categorie disponibili (categoria · sottocategoria):\n%s\n\nEsercenti da classificare:\n%s"
-              % (_elenco_categorie(), json.dumps(items, ensure_ascii=False)))
+              % (_elenco_categorie(esterno), json.dumps(items, ensure_ascii=False)))
     return SISTEMA, utente
 
 
@@ -176,17 +178,18 @@ def applica_prova(conn, prova_id, chiavi=None, chiudi=True):
 def chiudi_prova(conn, prova_id, rimetti_in_coda_claude=False):
     """La prova resta per il confronto ma non cambia nulla. Con rimetti_in_coda_claude le voci di una prova
     nata dalla coda tornano spuntate in coda, pronte per un altro modello."""
-    conn.execute("UPDATE prove SET stato = 'non_applicata', chiusa_il = ? WHERE id = ?", (ora(), prova_id))
-    if rimetti_in_coda_claude:
-        chiavi = [r["chiave"] for r in risultati_prova(conn, prova_id)]
-        with transazione(conn):
+    chiavi = [r["chiave"] for r in risultati_prova(conn, prova_id)] if rimetti_in_coda_claude else []
+    with transazione(conn):
+        conn.execute("UPDATE prove SET stato = 'non_applicata', chiusa_il = ? WHERE id = ?", (ora(), prova_id))
+        if chiavi:
             conn.executemany("UPDATE candidati_invio SET stato = 'approvato', aggiornato_il = ? WHERE chiave = ? "
                              "AND stato = 'inviato'", [(ora(), k) for k in chiavi])
 
 
 def elimina_prova(conn, prova_id):
-    conn.execute("DELETE FROM prove_risultati WHERE prova_id = ?", (prova_id,))
-    conn.execute("DELETE FROM prove WHERE id = ?", (prova_id,))
+    with transazione(conn):
+        conn.execute("DELETE FROM prove_risultati WHERE prova_id = ?", (prova_id,))
+        conn.execute("DELETE FROM prove WHERE id = ?", (prova_id,))
 
 
 def categoria_attuale(conn, chiavi=None):
@@ -390,8 +393,8 @@ def pulisci_coda(conn):
     via = [r[0] for r in conn.execute("SELECT chiave FROM candidati_invio WHERE stato <> 'inviato'") if r[0] not in ancora]
     with transazione(conn):
         conn.executemany("DELETE FROM candidati_invio WHERE chiave = ?", [(k,) for k in via])
-    # le voci "in attesa" della versione precedente valgono come da inviare: si approvano con il pulsante di invio
-    conn.execute("UPDATE candidati_invio SET stato = 'approvato' WHERE stato = 'in_attesa'")
+        # le voci "in attesa" della versione precedente valgono come da inviare: si approvano con il pulsante di invio
+        conn.execute("UPDATE candidati_invio SET stato = 'approvato' WHERE stato = 'in_attesa'")
     return len(via)
 
 
@@ -430,21 +433,23 @@ def prepara_candidati(conn, solo=None):
     """Mette in coda le chiavi non risolte (o a bassa confidenza) per Claude, con il controllo di sicurezza.
     Entrano gia' spuntate per l'invio: nulla parte finche' non premi il pulsante, dopo l'anteprima."""
     st = stima_coda(conn, solo)
-    for v, motivi in st["nuove"]:
-        conn.execute("INSERT INTO candidati_invio(chiave, testo, paese, direzione, stato, motivo, aggiornato_il) "
-                     "VALUES (?,?,?,?,?,?,?)", (v["chiave"], v["chiave"], v["paese"], "uscita",
-                                                "bloccato" if motivi else "approvato", ", ".join(motivi) or None, ora()))
+    with transazione(conn):
+        for v, motivi in st["nuove"]:
+            conn.execute("INSERT INTO candidati_invio(chiave, testo, paese, direzione, stato, motivo, aggiornato_il) "
+                         "VALUES (?,?,?,?,?,?,?)", (v["chiave"], v["chiave"], v["paese"], "uscita",
+                                                    "bloccato" if motivi else "approvato", ", ".join(motivi) or None, ora()))
     return len(st["nuove"])
 
 
 def rimetti_in_coda(conn, chiavi):
     paesi = {v["chiave"]: v["paese"] for v in chiavi_da_classificare(conn)}
-    for k in chiavi:
-        motivi = controlla(conn, k, chiave=k)
-        conn.execute("INSERT INTO candidati_invio(chiave, testo, paese, direzione, stato, motivo, aggiornato_il) "
-                     "VALUES (?,?,?,?,?,?,?) ON CONFLICT(chiave) DO UPDATE SET stato = excluded.stato, "
-                     "motivo = excluded.motivo, aggiornato_il = excluded.aggiornato_il",
-                     (k, k, paesi.get(k), "uscita", "bloccato" if motivi else "approvato", ", ".join(motivi) or None, ora()))
+    with transazione(conn):
+        for k in chiavi:
+            motivi = controlla(conn, k, chiave=k)
+            conn.execute("INSERT INTO candidati_invio(chiave, testo, paese, direzione, stato, motivo, aggiornato_il) "
+                         "VALUES (?,?,?,?,?,?,?) ON CONFLICT(chiave) DO UPDATE SET stato = excluded.stato, "
+                         "motivo = excluded.motivo, aggiornato_il = excluded.aggiornato_il",
+                         (k, k, paesi.get(k), "uscita", "bloccato" if motivi else "approvato", ", ".join(motivi) or None, ora()))
 
 
 def _portachiavi(funzione, *args, timeout=4):
@@ -495,24 +500,22 @@ def lotti_claude(conn, dimensione=50, scelte=None, solo=None):
     from .importa import titolari
     if not titolari(conn):
         return []
-    voci = []
     righe = scelte if scelte is not None else \
         conn.execute("SELECT * FROM candidati_invio WHERE stato = 'approvato' ORDER BY chiave").fetchall()
-    for r in righe:
-        if solo is not None and r["chiave"] not in solo:
-            continue
-        # ricontrollo: il testo puo' essere stato modificato, e l'esercente nel frattempo collocato nell'area
-        # solo locale (es. una proposta di farmacia dal modello locale)
-        motivi = controlla(conn, r["testo"], chiave=r["chiave"])
-        if motivi:
-            conn.execute("UPDATE candidati_invio SET stato='bloccato', motivo=? WHERE chiave=?",
-                         (", ".join(motivi), r["chiave"]))
-            continue
-        voci.append({"chiave": r["chiave"], "testo": r["testo"], "paese": r["paese"], "tipo": "pagamento"})
+    righe = [r for r in righe if solo is None or r["chiave"] in solo]
+    # punto unico di controllo (privacy.uscita_claude): il testo puo' essere stato modificato a mano, e
+    # l'esercente nel frattempo collocato nell'area solo locale (es. una proposta di farmacia dal modello
+    # locale). Il testo che parte e' quello normalizzato che torna da li', lo stesso dell'anteprima
+    voci, bloccate = uscita_claude(conn, [{"chiave": r["chiave"], "testo": r["testo"], "paese": r["paese"]}
+                                          for r in righe])
+    if bloccate:
+        with transazione(conn):
+            conn.executemany("UPDATE candidati_invio SET stato='bloccato', motivo=? WHERE chiave=?",
+                             [(", ".join(b["motivi"]), b["chiave"]) for b in bloccate])
     lotti = []
     for i in range(0, len(voci), dimensione):
         parte = voci[i:i + dimensione]
-        sistema, utente = richiesta(parte)
+        sistema, utente = richiesta(parte, esterno=True)
         lotti.append((parte, sistema, utente))
     return lotti
 
@@ -522,17 +525,23 @@ def payload_claude(conn, limite=50):
     lotti = lotti_claude(conn, limite)
     if lotti:
         return lotti[0]
-    sistema, utente = richiesta([])
+    sistema, utente = richiesta([], esterno=True)
     return [], sistema, utente
 
 
 def _invia_lotto(conn, client, modello, voci, sistema, utente, prova_id, segna_inviati=True):
+    # ultimo controllo prima della rete: il lotto deve essere esattamente quello uscito dal punto unico di
+    # controllo (stesse voci, stesso testo), altrimenti non parte
+    ammesse, bloccate = uscita_claude(conn, voci)
+    if bloccate or [(v["chiave"], v["testo"]) for v in ammesse] != [(v["chiave"], v["testo"]) for v in voci] \
+            or richiesta(ammesse, esterno=True) != (sistema, utente):
+        raise RuntimeError("il lotto non ha superato il controllo di sicurezza: nulla e' stato inviato")
     # risposta strutturata con schema JSON: funziona con tutti i modelli (Sonnet e Opus 5.5 rifiutano
     # invece l'uso forzato di uno strumento con tool_choice "tool")
     risposta = client.messages.create(
         model=modello, max_tokens=8192, system=sistema,
         messages=[{"role": "user", "content": utente}],
-        output_config={"format": {"type": "json_schema", "schema": schema_risposta()}})
+        output_config={"format": {"type": "json_schema", "schema": schema_risposta(esterno=True)}})
     testo = "".join(b.text for b in risposta.content if getattr(b, "type", "") == "text")
     if getattr(risposta, "stop_reason", None) == "max_tokens":
         raise RuntimeError("risposta di Claude troncata: riprova con meno voci")
@@ -542,12 +551,13 @@ def _invia_lotto(conn, client, modello, voci, sistema, utente, prova_id, segna_i
         raise RuntimeError("risposta di Claude non leggibile (%s)" % e)
     ris = valida(voci, dati, cfg.impostazioni()["modello_locale"]["contenimento_minimo"])
     _registra(conn, prova_id, ris)
-    conn.execute("INSERT INTO registro_invii(ts, motore, modello, richiesta, risposta, esito) VALUES (?,?,?,?,?,?)",
-                 (ora(), "claude", modello, utente, json.dumps(dati, ensure_ascii=False),
-                  "%d/%d classificati (prova %d)" % (len(ris), len(voci), prova_id)))
-    if segna_inviati:
-        for v in voci:
-            conn.execute("UPDATE candidati_invio SET stato='inviato', aggiornato_il=? WHERE chiave=?", (ora(), v["chiave"]))
+    with transazione(conn):
+        conn.execute("INSERT INTO registro_invii(ts, motore, modello, richiesta, risposta, esito) VALUES (?,?,?,?,?,?)",
+                     (ora(), "claude", modello, utente, json.dumps(dati, ensure_ascii=False),
+                      "%d/%d classificati (prova %d)" % (len(ris), len(voci), prova_id)))
+        if segna_inviati:
+            conn.executemany("UPDATE candidati_invio SET stato='inviato', aggiornato_il=? WHERE chiave=?",
+                             [(ora(), v["chiave"]) for v in voci])
     return ris
 
 

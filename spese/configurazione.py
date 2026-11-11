@@ -48,6 +48,7 @@ class Tassonomia:
     solo_locale: set
     l1_per_l2: dict                  # l2 -> [l1, ...]
     partenza: dict = None            # l2 -> l1 nella tassonomia di partenza (per le regole dei file di configurazione)
+    non_inviare: set = None          # {(l1, l2)} che non si scrivono nelle richieste a Claude
 
     def valida(self, l1, l2=None):
         if l2 is None and isinstance(l1, (tuple, list)):
@@ -132,7 +133,9 @@ def _partenza():
 def tassonomia() -> Tassonomia:
     t = _TASSONOMIA_UTENTE or _yaml("tassonomia.yaml")
     voci, sez, ordine, per_l2 = _costruisci(t)
-    return Tassonomia(voci, sez, ordine, set(t.get("solo_locale", [])), per_l2, _partenza())
+    escluse = {da_chiave_cat(k) for k in (t.get("non_inviare") or [])}
+    return Tassonomia(voci, sez, ordine, set(t.get("solo_locale", [])), per_l2, _partenza(),
+                      {c for c in escluse if c in sez})
 
 
 @lru_cache(maxsize=1)

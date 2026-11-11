@@ -38,6 +38,7 @@ tipi:
   ignora: ["Authorization", "Hold", "Void of Authorization"]
   ricarica: ["Bank Deposit to PP Account", "Card Deposit", "Add Funds"]
   prelievo: ["User Initiated Withdrawal", "Withdrawal", "Transfer to Bank"]
-  rimborso: ["Refund"]
+  rimborso: ["Refund", "Reversal", "Chargeback"]
+  persona_senza_oggetto: ["Mobile Payment"]
   esercente: ["Express Checkout", "PreApproved", "Pre-approved", "Website Payment", "Mobile Payment", "Subscription Payment",
               "Billing Agreement", "Debit Card Purchase", "Pay in 3", "Pay Later"]

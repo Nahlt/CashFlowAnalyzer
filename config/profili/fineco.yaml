@@ -40,6 +40,24 @@ tipi:
   "Interessi Attivi": interessi
   "Imposta bollo conto corrente": imposte
   "Imposta bollo dossier titoli": imposte
+  # 0.16.2 - causali da confermare con un estratto reale: sono le diciture piu' comuni della colonna Descrizione.
+  # Una dicitura che non corrisponde non fa danni: il movimento resta "altro", da rivedere, come prima.
+  "Pagamento Visa Debit": pagamento_carta
+  "Pagobancomat POS": pagamento_carta
+  "Pagamento Contactless": pagamento_carta
+  "FinecoPay": pagamento_carta
+  "Prelievo Bancomat": prelievo
+  "Prelievi Bancomat extra Gruppo": prelievo
+  "Prelievo Visa Debit": prelievo
+  "MaxiPrelievo": prelievo
+  "SEPA Direct Debit": addebito_sepa
+  "Sepa Direct Debit": addebito_sepa
+  "Addebito SEPA DD": addebito_sepa
+  "Stipendio": stipendio
+  "Emolumenti": stipendio
+  "Giroconto": giroconto
+  "Commissioni": commissione
+  "Compravendita Titoli": {uscita: acquisto_titoli, entrata: vendita_titoli}
   "*": altro
 
 # Fineco spezza la descrizione completa in pezzi a lunghezza fissa e li unisce con uno spazio, anche in mezzo
@@ -48,6 +66,11 @@ tipi:
 # torna; il nome della controparte con le parole dei titolari e dei familiari ricomposte).
 estrazione_senza_spazi: true
 estrazione:
+  pagamento_carta:
+    # da confermare con un estratto reale: "Pag. del 10/04/26 ora 12:30 presso: NOME ESERCENTE CITTA Carta N° ..."
+    # (le regole lavorano sul testo senza spazi; il nome torna con gli spazi originali, quindi una parola spezzata
+    # dalla banca puo' dare chiavi diverse allo stesso esercente)
+    - '(?i)presso:(?P<esercente>.+?)(?:CartaN|NessunaCommissione|Commissione:|$)'
   bonifico:
     # istantaneo in uscita: Beneficiario: X IBAN: IT.. Data Inserimento: ... Canale: ... Causale: ... TRN: ...
     - '^Beneficiario:(?P<controparte>.+?)(?:IBAN:|DataInserimento:|Canale:|Causale:|$)'

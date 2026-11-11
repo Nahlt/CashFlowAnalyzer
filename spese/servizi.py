@@ -70,18 +70,20 @@ def riapri_esercenti(conn, chiavi):
     classificare: tornano disponibili sia per il modello locale sia per la coda di Claude, anche se gia'
     inviati. Le risposte precedenti restano nel registro delle richieste. Il ricalcolo va lanciato dopo."""
     chiavi = [k for k in dict.fromkeys(chiavi) if k]
-    for i in range(0, len(chiavi), 500):
-        parte = chiavi[i:i + 500]
-        segni = ",".join("?" * len(parte))
-        conn.execute("DELETE FROM cache_esercenti WHERE chiave IN (%s)" % segni, parte)
-        conn.execute("DELETE FROM candidati_invio WHERE chiave IN (%s)" % segni, parte)
+    with transazione(conn):
+        for i in range(0, len(chiavi), 500):
+            parte = chiavi[i:i + 500]
+            segni = ",".join("?" * len(parte))
+            conn.execute("DELETE FROM cache_esercenti WHERE chiave IN (%s)" % segni, parte)
+            conn.execute("DELETE FROM candidati_invio WHERE chiave IN (%s)" % segni, parte)
     return len(chiavi)
 
 
 def decidi_destinazione(conn, beneficiario, esito):
-    conn.execute("INSERT INTO destinazioni VALUES (?,?,?) ON CONFLICT(beneficiario) DO UPDATE SET "
-                 "esito=excluded.esito, deciso_il=excluded.deciso_il", (beneficiario, esito, ora()))
-    conn.execute("DELETE FROM destinazioni_conti WHERE beneficiario = ?", (beneficiario,))
+    with transazione(conn):
+        conn.execute("INSERT INTO destinazioni VALUES (?,?,?) ON CONFLICT(beneficiario) DO UPDATE SET "
+                     "esito=excluded.esito, deciso_il=excluded.deciso_il", (beneficiario, esito, ora()))
+        conn.execute("DELETE FROM destinazioni_conti WHERE beneficiario = ?", (beneficiario,))
 
 
 def decidi_conto_destinazione(conn, conto_id, beneficiario=None, mov_ids=None):
@@ -100,9 +102,14 @@ def decidi_conto_destinazione(conn, conto_id, beneficiario=None, mov_ids=None):
 
 def riconduci_paypal(conn, addebito_id, paypal_id):
     """Addebito PayPal su un conto o una carta ricondotto a un pagamento del report PayPal (l'addebito diventa un
-    contenitore, resta la spesa del report). paypal_id None: l'addebito non e' nel report, e' una spesa normale."""
-    conn.execute("INSERT INTO abbinamenti_paypal VALUES (?,?,?) ON CONFLICT(addebito_id) DO UPDATE SET "
-                 "paypal_id=excluded.paypal_id, deciso_il=excluded.deciso_il", (addebito_id, paypal_id, ora()))
+    contenitore, resta la spesa del report). paypal_id None: l'addebito non e' nel report, e' una spesa normale.
+    Un pagamento del report copre un solo addebito: se era gia' ricondotto a un altro, quella scelta si toglie e
+    l'altro addebito torna da controllare."""
+    with transazione(conn):
+        if paypal_id is not None:
+            conn.execute("DELETE FROM abbinamenti_paypal WHERE paypal_id = ? AND addebito_id <> ?", (paypal_id, addebito_id))
+        conn.execute("INSERT INTO abbinamenti_paypal VALUES (?,?,?) ON CONFLICT(addebito_id) DO UPDATE SET "
+                     "paypal_id=excluded.paypal_id, deciso_il=excluded.deciso_il", (addebito_id, paypal_id, ora()))
 
 
 def togli_riconduzione_paypal(conn, addebito_id):
@@ -127,13 +134,18 @@ def aggiorna_conto(conn, conto_id, **campi):
         if errore and not invariato:       # un IBAN gia' salvato e non toccato non blocca le altre modifiche
             raise ValueError("IBAN non valido: %s" % errore)
         campi["iban"] = iban
-    for k, v in campi.items():
-        if k in ammessi:
-            conn.execute("UPDATE conti SET %s = ? WHERE id = ?" % k, (v if v != "" else None, conto_id))
+    with transazione(conn):
+        for k, v in campi.items():
+            if k in ammessi:
+                conn.execute("UPDATE conti SET %s = ? WHERE id = ?" % k, (v if v != "" else None, conto_id))
 
 
 def candidato(conn, chiave, stato=None, testo=None):
     if testo is not None:
+        # il testo corretto a mano si salva gia' normalizzato come una chiave (cifre -> #): e' quello che parte.
+        # Svuotato, torna la chiave dell'esercente
+        from .privacy import testo_in_uscita
+        testo = testo_in_uscita(testo) or chiave
         conn.execute("UPDATE candidati_invio SET testo=?, modificato=1, aggiornato_il=? WHERE chiave=?", (testo, ora(), chiave))
     if stato:
         conn.execute("UPDATE candidati_invio SET stato=?, aggiornato_il=? WHERE chiave=?", (stato, ora(), chiave))

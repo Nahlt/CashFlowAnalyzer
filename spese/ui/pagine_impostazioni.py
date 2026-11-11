@@ -9,9 +9,10 @@ from .. import analisi as an
 from .. import importa as imp
 from .. import llm, servizi, sessioni
 from ..iban import controlla as controlla_iban
-from ..db import backup, cambia_passphrase, leggi_impostazione, scrivi_impostazione
+from ..db import DatabaseOccupato, backup, cambia_passphrase, leggi_impostazione, scrivi_impostazione
 from ..percorsi import cartella_dati
-from .comune import chiave_tabella, conn, esegui_ricalcolo, ollama_non_raggiungibile, scarica_modello_locale, testo
+from .comune import (avviso_ollama_non_locale, chiave_tabella, conn, esegui_ricalcolo, ollama_non_raggiungibile,
+                     scarica_modello_locale, testo)
 from .pagine_dati import TIPI_CONTO
 
 
@@ -248,6 +249,7 @@ def impostazioni():
                 if leggi_impostazione(c, "ollama_modello", None) not in elenco:
                     scrivi_impostazione(c, "ollama_modello", elenco[0])
                 st.session_state["verifica_ollama"] = True
+    avviso_ollama_non_locale(llm.ollama_config(c)["url"])
     if st.session_state.get("verifica_ollama"):
         ok, info = llm.ollama_disponibile(c)
         if not ok:
@@ -294,21 +296,37 @@ def impostazioni():
 
     st.subheader("Export e backup")
     a, b, d = st.columns(3)
-    a.download_button("Scarica i dati di analisi (CSV)", servizi.export_csv(c), "spese_gold.csv", "text/csv",
-                      help="Livello gold per strumenti di BI. File in chiaro: conservalo con cura.")
+    # l'export si prepara solo quando lo chiedi: prima veniva rigenerato a ogni apertura della pagina
+    if a.button("Prepara i dati di analisi (CSV)", help="Livello gold per strumenti di BI. File in chiaro: "
+                                                        "conservalo con cura."):
+        st.session_state["export_csv"] = servizi.export_csv(c)
+    if st.session_state.get("export_csv") is not None:
+        a.download_button("Scarica spese_gold.csv", st.session_state["export_csv"], "spese_gold.csv", "text/csv",
+                          on_click=lambda: st.session_state.pop("export_csv", None))
     if b.button("Crea un backup cifrato"):
         dest = cartella_dati() / ("backup_%s.db" % datetime.now().strftime("%Y%m%d_%H%M%S"))
-        backup(c, dest)
-        st.success("Backup creato in %s (stessa passphrase)." % dest)
+        try:
+            backup(c, dest)
+        except DatabaseOccupato as e:
+            st.error("Backup non creato: %s." % e)
+        else:
+            st.success("Backup creato in %s (stessa passphrase)." % dest)
     if d.button("Ricalcola tutto"):
         r = esegui_ricalcolo("Ricalcolo completato")
         st.json(r)
     st.subheader("Passphrase del database")
     with st.form("pass"):
+        attuale = st.text_input("Passphrase attuale", type="password",
+                                help="Serve anche con la sessione aperta: chi trova il PC sbloccato non puo' "
+                                     "sostituire la passphrase e tenerti fuori dai tuoi dati.")
         n1 = st.text_input("Nuova passphrase", type="password")
         n2 = st.text_input("Ripeti", type="password")
         if st.form_submit_button("Cambia passphrase"):
-            if len(n1) < 8 or n1 != n2:
+            import hmac
+            in_uso = sessioni.passphrase() or ""
+            if not attuale or not hmac.compare_digest(attuale.encode("utf-8"), in_uso.encode("utf-8")):
+                st.error("La passphrase attuale non e' corretta.")
+            elif len(n1) < 8 or n1 != n2:
                 st.error("Le passphrase non coincidono o sono troppo corte (minimo 8 caratteri).")
             else:
                 try:

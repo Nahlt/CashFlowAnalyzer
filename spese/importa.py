@@ -69,6 +69,24 @@ def anteprima(conn, nome_file, dati: bytes):
     return fl, suggerito, gia > 0
 
 
+def conti_del_file(conn, hash_file):
+    """Conti in cui lo stesso file (stessa impronta) e' gia' importato: [(id, nome)]. La deduplica vale dentro un
+    conto: lo stesso file su un altro conto crea di nuovo tutti i movimenti."""
+    return [(r[0], r[1]) for r in conn.execute(
+        "SELECT DISTINCT c.id, c.nome FROM import_file f JOIN conti c ON c.id = f.conto_id WHERE f.hash_file = ? "
+        "ORDER BY c.nome", (hash_file,))]
+
+
+def avviso_file_altrove(conn, hash_file, conto_id):
+    """Avviso quando il file e' gia' importato in un conto diverso da quello scelto (None se non lo e')."""
+    altri = [nome for cid, nome in conti_del_file(conn, hash_file) if cid != conto_id]
+    if not altri:
+        return None
+    return ("Questo file e' gia' importato nel conto %s. Importandolo anche qui i suoi movimenti ci sarebbero due "
+            "volte, una per conto, e conterebbero due volte: se il conto giusto e' questo, annulla prima l'altro "
+            "import (Importa > File importati)." % ", ".join(altri))
+
+
 def nome_conto_esistente(conn, nome):
     """Id del conto con lo stesso nome (maiuscole e spazi a parte), o None."""
     r = conn.execute("SELECT id FROM conti WHERE lower(trim(nome)) = lower(trim(?))", (nome or "",)).fetchone()
@@ -163,20 +181,30 @@ def _saldo(testo):
 def importa(conn, conto_id, nome_file, dati: bytes):
     """Importa un file su un conto. Restituisce un report (dict)."""
     fl = leggi(nome_file, nomi_riservati(conn), dati)
-    conn.execute("BEGIN")
+    altrove = [nome for cid, nome in conti_del_file(conn, fl.hash_file) if cid != conto_id]
+    conn.execute("BEGIN IMMEDIATE")
     try:
-        # un conto registrato a mano (Conti e copertura) diventa importato al primo file: prende formato e banca
+        # un conto registrato a mano (Conti e copertura) diventa importato al primo file: prende formato e banca.
+        # Cosa ha riempito questo import resta scritto, per rimetterlo com'era se l'import viene annullato
+        prima = conn.execute("SELECT profilo, banca, importato FROM conti WHERE id = ?", (conto_id,)).fetchone()
+        riempiti = {}
+        if prima is not None:
+            riempiti = {k: True for k, vuoto in (("profilo", prima["profilo"] is None),
+                                                 ("banca", prima["banca"] is None and fl.profilo.get("banca")),
+                                                 ("importato", not prima["importato"])) if vuoto}
         conn.execute("UPDATE conti SET importato = 1, profilo = coalesce(profilo, ?), banca = coalesce(banca, ?) "
                      "WHERE id = ?", (fl.profilo["id"], fl.profilo.get("banca"), conto_id))
         conto = conn.execute("SELECT * FROM conti WHERE id = ?", (conto_id,)).fetchone()
         cur = conn.execute(
-            "INSERT INTO import_file(conto_id, nome_file, hash_file, profilo, importato_il, righe_dati, righe_scartate) "
-            "VALUES (?,?,?,?,?,?,?)",
-            (conto_id, nome_file, fl.hash_file, fl.profilo["id"], ora(), len(fl.movimenti), len(fl.scartate)))
+            "INSERT INTO import_file(conto_id, nome_file, hash_file, profilo, importato_il, righe_dati, righe_scartate, "
+            "conto_prima) VALUES (?,?,?,?,?,?,?,?)",
+            (conto_id, nome_file, fl.hash_file, fl.profilo["id"], ora(), len(fl.movimenti), len(fl.scartate),
+             json.dumps(riempiti) if riempiti else None))
         imp_id = cur.lastrowid
         occ = Counter()
         nuove = dup = 0
         date = []
+        nel_file, ripetuti = set(), []
         for m in fl.movimenti:
             firma = (m["data"], m.get("data_contabile"), m.get("importo_cent"), m.get("descrizione"))
             occ[firma] += 1
@@ -184,24 +212,35 @@ def importa(conn, conto_id, nome_file, dati: bytes):
             raw = conn.execute("INSERT INTO righe_raw(import_id, n_riga, contenuto, mov_id) VALUES (?,?,?,?)",
                                (imp_id, m["n_riga"], json.dumps(m["grezzo"], ensure_ascii=False), mid)).lastrowid
             date.append(m["data"])
+            if mid in nel_file and m.get("id_banca"):
+                ripetuti.append(m["n_riga"])        # stesso identificativo della banca due volte nello stesso file
+            nel_file.add(mid)
             if conn.execute("SELECT 1 FROM movimenti WHERE id = ?", (mid,)).fetchone():
                 dup += 1
                 continue
             conn.execute(
                 "INSERT INTO movimenti(id, conto_id, import_id, raw_id, data, data_contabile, data_valuta, data_registrazione, ora, "
                 "importo_cent, fee_cent, tax_cent, importo_orig, divisa_orig, cambio, codice, tipo, descrizione, esercente, "
-                "intermediario, chiave, paese, mcc, controparte_nome, controparte_iban, isin, nome_titolo, quantita, prezzo, ciclo_carta) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "intermediario, chiave, paese, mcc, controparte_nome, controparte_iban, isin, nome_titolo, quantita, prezzo, ciclo_carta, "
+                "avviso) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (mid, conto_id, imp_id, raw, m["data"], m.get("data_contabile"), m.get("data_valuta"), m.get("data_registrazione"),
                  m.get("ora"), m.get("importo_cent"), m.get("fee_cent", 0), m.get("tax_cent", 0), m.get("importo_orig"),
                  m.get("divisa_orig"), m.get("cambio"), m.get("codice"), m["tipo"], m.get("descrizione"), m.get("esercente"),
                  m.get("intermediario"), m.get("chiave"), m.get("paese"), m.get("mcc"), m.get("controparte_nome"),
                  m.get("controparte_iban"), m.get("isin"), m.get("nome_titolo"), m.get("quantita"), m.get("prezzo"),
-                 m.get("ciclo_carta")))
+                 m.get("ciclo_carta"), m.get("avviso")))
             nuove += 1
 
         md = fl.metadati
         avvisi = list(fl.avvisi)
+        if altrove:
+            avvisi.append("Lo stesso file e' gia' importato nel conto %s: i suoi movimenti ora sono in entrambi i "
+                          "conti e contano due volte. Annulla uno dei due import." % ", ".join(altrove))
+        if ripetuti:
+            avvisi.append("%d righe hanno lo stesso identificativo della banca di un'altra riga dello stesso file "
+                          "(righe %s): sono state lette come doppioni e non importate. Se sono movimenti diversi, "
+                          "il formato del file e' cambiato e il profilo va aggiornato."
+                          % (len(ripetuti), ", ".join(str(n) for n in ripetuti[:10]) + ("…" if len(ripetuti) > 10 else "")))
         titolare_aggiunto = aggiungi_titolare(conn, md.get("titolare") or "")
         quadratura = "non disponibile"
         # aggiorna anagrafica con i metadati se mancanti
@@ -287,6 +326,32 @@ def _ripulisci_nomi(conn, nomi):
     return n
 
 
+def _ripristina_conto(conn, conto_id, f):
+    """Annullato un import che aveva dato formato e banca a un conto registrato a mano: senza altri file il conto
+    torna com'era (altrimenti un report importato per sbaglio lo lascerebbe, per esempio, "PayPal" per sempre);
+    con altri file prende il formato del piu' vecchio rimasto, che eredita il compito di rimetterlo a posto."""
+    riempiti = json.loads(f["conto_prima"]) if f["conto_prima"] else {}
+    if not riempiti:
+        return
+    resto = conn.execute("SELECT id, profilo, conto_prima FROM import_file WHERE conto_id = ? ORDER BY id LIMIT 1",
+                         (conto_id,)).fetchone()
+    if resto is None:
+        if riempiti.get("profilo"):
+            conn.execute("UPDATE conti SET profilo = NULL WHERE id = ?", (conto_id,))
+        if riempiti.get("banca"):
+            conn.execute("UPDATE conti SET banca = NULL WHERE id = ?", (conto_id,))
+        if riempiti.get("importato"):
+            conn.execute("UPDATE conti SET importato = 0 WHERE id = ?", (conto_id,))
+        return
+    profilo = cfg.profili().get(resto["profilo"]) or {}
+    if riempiti.get("profilo"):
+        conn.execute("UPDATE conti SET profilo = ? WHERE id = ?", (resto["profilo"], conto_id))
+    if riempiti.get("banca"):
+        conn.execute("UPDATE conti SET banca = ? WHERE id = ?", (profilo.get("banca"), conto_id))
+    eredita = {**(json.loads(resto["conto_prima"]) if resto["conto_prima"] else {}), **riempiti}
+    conn.execute("UPDATE import_file SET conto_prima = ? WHERE id = ?", (json.dumps(eredita), resto["id"]))
+
+
 def elenco_import(conn):
     return [dict(r) for r in conn.execute(
         "SELECT f.id, f.importato_il, f.nome_file, c.nome AS conto, f.data_min, f.data_max, f.nuove, f.duplicate, "
@@ -323,6 +388,7 @@ def annulla_import(conn, import_id, elimina_conto=False):
         conn.execute("DELETE FROM saldi WHERE import_id = ?", (import_id,))
         conn.execute("DELETE FROM righe_raw WHERE import_id = ?", (import_id,))
         conn.execute("DELETE FROM import_file WHERE id = ?", (import_id,))
+        _ripristina_conto(conn, conto_id, f)
         # file importati prima della 0.1.1: le righe duplicate non sono collegate ai movimenti
         da_ricaricare = [r[0] for r in conn.execute(
             "SELECT DISTINCT f.nome_file FROM import_file f WHERE f.conto_id = ? AND f.data_max >= ? AND f.data_min <= ? "

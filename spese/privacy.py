@@ -2,6 +2,11 @@
 
 Verso l'esterno esce solo la chiave dell'esercente (cifre gia' sostituite da #), il paese e la
 direzione. Questo modulo blocca ogni testo che contenga dati identificativi o parole riservate.
+
+Tutto cio' che va verso Claude passa da un solo punto, `uscita_claude`: normalizza il testo (anche quello
+corretto a mano) come una chiave, lo controlla insieme ai nomi originali dell'esercente e restituisce le voci
+ammesse con il testo esatto che parte. L'elenco delle categorie inviato insieme viene da
+`categorie_in_uscita` (le sottocategorie segnate "non inviare" nella tassonomia restano fuori).
 """
 import re
 from functools import lru_cache
@@ -17,12 +22,30 @@ CONTROLLI = [
     ("email", re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")),
     ("telefono", re.compile(r"(\+|00)\d[\d ]{7,}")),
 ]
+# gli stessi dati dopo la normalizzazione della chiave (ogni gruppo di cifre e' diventato #): sulla chiave i
+# controlli qui sopra non possono piu' scattare
+CONTROLLI_MASCHERATI = [
+    ("codice fiscale", re.compile(r"\b[A-Z]{6}#[A-Z]#[A-Z]#[A-Z]\b", re.I)),
+    ("IBAN", re.compile(r"\b[A-Z]{2}#[A-Z]#(?![A-Z])", re.I)),
+    ("numero di carta", re.compile(r"#\s?[*xX]{4,}\s?#|[xX*]{6,}\s?#")),
+]
+# sui nomi originali dell'esercente (prima della normalizzazione) si cercano i dati identificativi veri e
+# propri; i codici di punto vendita ("GAR4857", "000123456") sono normali e spariscono con la chiave
+_SOLO_SUL_TESTO = {"sequenza di cifre"}
 
 SOLO_LOCALE = ["farmac", "parafarmac", "humanitas", "ospedal", "clinic", "medic", "dentist", "odontoiatr", "ortodon",
                "ottic", "optic", "psicolog", "psicoterap", "sanitar", "poliambulat", "fisioterap", "laboratorio analisi",
                "diagnostic", r"\basl\b", r"\bats\b", "pharma", "apotheke", "hospital", "veterinar",
                r"\bdott\b", "dottssa", "osteopat", "podolog", "ortoped", "pediatr", "ginecolog", "dermatolog",
-               "cardiolog", "oculist", "radiolog", "logoped"]
+               "cardiolog", "oculist", "radiolog", "logoped",
+               # 0.16.2: molti estratti non riportano il codice MCC, quindi conta solo il nome
+               r"\bdr\b", r"\bdssa\b", r"\bdottor", "irccs", "salute", "prelievi", r"\banalisi\b", "ambulator",
+               "policlin", "fisio", "kinesi", "riabilitaz", "terapi", "chirurg", "infermier", "ostetric",
+               "oncolog", "psichiatr", "urolog", "neurolog", "endocrin", "nutrizion", "dietolog", "dietist",
+               "androlog", "senolog", "ematolog", "reumatolog", "gastroenter", "pneumolog", "nefrolog",
+               "allergolog", "otorino", "geriatr", "odontotecn", "audioprotes", "amplifon", "ticket sanit",
+               "auxologico", "santagostino", "sant agostino", "unisalute", "synlab", "cerba", "lifebrain",
+               "multimedica", "san raffaele", "niguarda", "monzino", "galeazzi", "maugeri", r"\basst\b"]
 
 
 def parole_riservate(conn):
@@ -92,10 +115,25 @@ def area_riservata(conn, chiave):
     return False
 
 
+def nomi_originali(conn, chiave):
+    """I nomi dell'esercente come compaiono nei movimenti, prima della normalizzazione in chiave."""
+    if not chiave:
+        return []
+    return [r[0] for r in conn.execute("SELECT DISTINCT esercente FROM movimenti WHERE chiave = ? "
+                                       "AND esercente IS NOT NULL", (chiave,))]
+
+
 def controlla(conn, testo, chiave=None):
     """Restituisce l'elenco dei motivi di blocco (vuoto = inviabile). Con la chiave dell'esercente controlla
-    anche che non sia gia' collocato nell'area solo locale."""
-    motivi = [nome for nome, rx in CONTROLLI if rx.search(testo or "")]
+    anche i nomi originali dei suoi movimenti (dove le cifre ci sono ancora) e che non sia gia' collocato
+    nell'area solo locale."""
+    motivi = [nome for nome, rx in CONTROLLI + CONTROLLI_MASCHERATI if rx.search(testo or "")]
+    if chiave is not None:
+        for originale in nomi_originali(conn, chiave):
+            for nome, rx in CONTROLLI:
+                if nome not in _SOLO_SUL_TESTO and nome not in motivi and rx.search(originale):
+                    motivi.append(nome)
+    motivi = list(dict.fromkeys(motivi))
     nomi = nomi_riservati(conn) + [w for w in (leggi_impostazione(conn, "parole_sensibili", []) or []) if w.strip()]
     for n in nomi:
         if re.search(r"\b%s\b" % re.escape(n), testo or "", re.I):
@@ -109,3 +147,43 @@ def controlla(conn, testo, chiave=None):
         if chiave is not None and area_riservata(conn, chiave):
             motivi.append("area riservata (solo locale)")
     return motivi
+
+
+# ---------------------------------------------------------------------------
+# Punto unico di uscita verso Claude
+# ---------------------------------------------------------------------------
+def testo_in_uscita(testo):
+    """Il testo come esce: normalizzato come una chiave (maiuscole, ogni gruppo di cifre -> #, punteggiatura
+    -> spazio). Vale anche per il testo corretto a mano nell'anteprima."""
+    from .chiavi import chiave as normalizza
+    return normalizza(testo or "")
+
+
+def uscita_claude(conn, voci):
+    """Controllo unico di cio' che va verso Claude. voci: righe con chiave, testo (facoltativo: senza, vale la
+    chiave) e paese. Restituisce (ammesse, bloccate): le ammesse hanno il testo esatto che parte, le bloccate
+    {chiave, motivi}. Si controllano il testo normalizzato, i nomi originali dell'esercente e l'area solo locale."""
+    ammesse, bloccate = [], []
+
+    def scritto(x):
+        return x.strip() if isinstance(x, str) else ""      # None e le celle vuote delle tabelle (NaN) valgono vuoto
+    for v in voci:
+        k = v["chiave"]
+        testo = testo_in_uscita(scritto(v["testo"]) or k) or testo_in_uscita(k)
+        motivi = controlla(conn, testo, chiave=k)
+        paese = scritto(v["paese"]).upper()
+        if paese and not re.fullmatch(r"[A-Z]{2,3}", paese):
+            paese = ""                                  # il paese e' una sigla: qualunque altra cosa non esce
+        if motivi:
+            bloccate.append({"chiave": k, "motivi": motivi})
+        else:
+            ammesse.append({"chiave": k, "testo": testo, "paese": paese or None, "tipo": "pagamento"})
+    return ammesse, bloccate
+
+
+def categorie_in_uscita():
+    """Le voci della tassonomia (uscite) che si possono scrivere in una richiesta a Claude: tutte, tranne quelle
+    segnate "non inviare a Claude" in Regole e tassonomia."""
+    from . import configurazione as cfg
+    tax = cfg.tassonomia()
+    return [c for c in tax.per_sezione("uscite") if c not in (tax.non_inviare or set())]

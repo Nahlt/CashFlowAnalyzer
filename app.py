@@ -5,7 +5,7 @@ import streamlit as st
 
 from spese import AUTORE, VERSIONE, sessioni
 from spese import configurazione as cfg
-from spese.db import CIFRATO, PassphraseErrata, apri
+from spese.db import CIFRATO, PassphraseErrata, SchemaPiuRecente, apri
 from spese.percorsi import file_database
 
 st.set_page_config(page_title="CashFlow Analyzer", page_icon=":material/savings:", layout="wide")
@@ -142,6 +142,8 @@ def accesso():
                 st.rerun()
             except PassphraseErrata:
                 st.error("Passphrase errata.")
+            except SchemaPiuRecente as e:
+                st.error(str(e).capitalize() + ".")
     st.caption("Versione %s · database: %s" % (VERSIONE, file_database()))
 
 
