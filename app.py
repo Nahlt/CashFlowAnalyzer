@@ -183,7 +183,7 @@ elif sessioni.stato(st.context.cookies.get(COOKIE), DURATA) == "valida":
     # pagina ricaricata (o nuova scheda) con il codice della sessione: si riapre il database senza passphrase
     _riapri(st.context.cookies.get(COOKIE))
 
-from spese.ui import pagine_analisi, pagine_classificazione, pagine_dati, pagine_diagnostica, pagine_impostazioni  # noqa: E402
+from spese.ui import pagine_analisi, pagine_classificazione, pagine_dati, pagine_impostazioni  # noqa: E402
 
 # (gruppo, funzione, titolo, icona, indirizzo)
 PAGINE = [
@@ -198,9 +198,6 @@ PAGINE = [
     ("Configurazione", pagine_impostazioni.conti, "Conti e copertura", ":material/account_balance:", "conti"),
     ("Configurazione", pagine_classificazione.regole, "Regole e tassonomia", ":material/tune:", "regole"),
     ("Configurazione", pagine_impostazioni.impostazioni, "Impostazioni", ":material/settings:", "impostazioni"),
-    ("Configurazione", pagine_diagnostica.diagnostica, "Diagnostica", ":material/troubleshoot:", "diagnostica"),
-    # gruppo None: pagina raggiungibile da un collegamento, senza voce nel menu
-    (None, pagine_diagnostica.guida, "Guida alla diagnostica", ":material/menu_book:", "guida-diagnostica"),
 ]
 
 if "conn" not in st.session_state:
@@ -223,23 +220,20 @@ def sorveglia_sessione():
         st.caption("Senza azioni la sessione si chiude tra %d min." % (resto // 60 + 1))
 
 
-from spese import attributi, diagnostica, portafoglio  # noqa: E402
+from spese import attributi, portafoglio  # noqa: E402
 from spese.ui.comune import avviso_rivedere, mostra_filtri  # noqa: E402
 
 pagine = {}
-fuori_menu = []
 oggetti = []
 for k, (gruppo, funzione, titolo, icona, indirizzo) in enumerate(PAGINE):
     if indirizzo == "etichette" and not attributi.etichette_attive(st.session_state["conn"]):
         continue                                        # sezione spenta in Impostazioni
     if indirizzo == "portafoglio" and not portafoglio.attiva(st.session_state["conn"]):
         continue
-    if indirizzo == "diagnostica" and not diagnostica.attiva(st.session_state["conn"]):
-        continue                                        # modalita' di debug spenta
     pg = st.Page(funzione, title=titolo, icon=icona, url_path=indirizzo, default=(k == 0))
-    (pagine.setdefault(gruppo, []) if gruppo else fuori_menu).append(pg)
+    pagine.setdefault(gruppo, []).append(pg)
     oggetti.append((indirizzo, pg))
-corrente = st.navigation(dict(pagine, **({"": fuori_menu} if fuori_menu else {})), position="hidden")
+corrente = st.navigation(pagine, position="hidden")
 st.session_state["_pagine"] = dict(oggetti)          # per i clic sui grafici che portano a un'altra pagina
 CON_FILTRI = {"andamento", "ripartizione", "etichette", "movimenti", "portafoglio"}
 
