@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.17.1 – Manuale
+# CashFlow Analyzer 0.18.0 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -441,6 +441,22 @@ Ordine della catena di categorizzazione: tua decisione sul movimento, tue regole
 di movimento, esercenti confermati da te, regole forti, codice MCC, regole deboli, marchi, cache (modello
 locale, Claude), storico, somiglianza con esercenti gia' noti, proposta da confermare. Regole e marchi si
 cercano una volta per nome di esercente e poi si riusano finche' l'app resta aperta.
+
+## Diagnostica (modalita' di debug)
+
+Per trovare errori nei conteggi che compaiono solo con i dati veri. Si accende in **Impostazioni > Modalita' di
+debug** (spenta di partenza): compare la pagina **Diagnostica** sotto Configurazione.
+
+- **Esegui i controlli** verifica sul tuo database le regole che devono valere sempre: ogni movimento conta una
+  volta sola, i trasferimenti abbinati si annullano, natura e categoria sono coerenti, i totali delle pagine
+  coincidono, due ricalcoli danno lo stesso risultato; in piu' segnala probabili doppioni, storni contati come
+  entrate, suddivisioni ignorate, file che non quadrano e diciture della banca non riconosciute.
+- I casi trovati si vedono con i dati veri, che restano sul PC. Selezioni quelli da approfondire e premi
+  **Prepara il report**: il testo ha un riepilogo di soli conteggi e i casi scelti con gli importi veri, le date
+  spostate di alcuni anni e nomi, conti e IBAN sostituiti da etichette. Lo leggi nell'anteprima e lo scarichi.
+- La **transcodifica** (etichetta -> valore vero) e' un secondo file, per te: non va inviata.
+- Niente passa dalla rete. La guida completa e' in `DIAGNOSTICA.md` e nell'app, dal collegamento accanto
+  all'interruttore.
 
 ## Test
 

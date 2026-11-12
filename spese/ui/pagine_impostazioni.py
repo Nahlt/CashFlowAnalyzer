@@ -226,6 +226,18 @@ def impostazioni():
                    "Yahoo Finance: mai quote, importi, date o nomi. Ogni richiesta resta nel registro delle richieste "
                    "in Classificazione automatica.")
 
+    st.subheader("Modalita' di debug")
+    from .. import diagnostica as dg
+    from .pagine_diagnostica import IN_BREVE, collegamento_guida
+    debug = st.toggle("Diagnostica dei conteggi", value=dg.attiva(c), key="sez_" + dg.CHIAVE_ATTIVA,
+                      help="Aggiunge la pagina Diagnostica sotto Configurazione.")
+    if debug != dg.attiva(c):
+        scrivi_impostazione(c, dg.CHIAVE_ATTIVA, debug)
+        st.rerun()
+    st.caption(IN_BREVE + " Accesa, compare la pagina **Diagnostica** nel menu, sotto Configurazione; spenta, la "
+               "pagina sparisce e i dati non cambiano.")
+    collegamento_guida()
+
     st.subheader("Modello locale (Ollama)")
     oc = llm.ollama_config(c)
     if st.session_state.get("modello_installato"):

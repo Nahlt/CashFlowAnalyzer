@@ -5,6 +5,39 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.18.0 – 12 novembre 2026 · diagnostica dei conteggi sui dati veri
+
+**Novita'**
+- **Modalita' di debug** in Impostazioni (spenta di partenza), con una descrizione breve e il collegamento alla
+  guida. Accesa, aggiunge la pagina **Diagnostica** sotto Configurazione.
+- **Controlli di coerenza sui tuoi dati**: 15 controlli sulle regole che devono valere sempre, per trovare gli
+  errori che i test su dati inventati non possono vedere.
+  - *Errori* (difetti del programma): movimento contato in modo diverso dal suo importo; trasferimento abbinato
+    non simmetrico o che conta da un lato solo; natura e categoria in disaccordo; totali diversi tra Andamento
+    mensile e Dove vanno i soldi; due ricalcoli con risultati diversi.
+  - *Avvisi* (probabili errori nei conti): addebito della carta contato insieme alle sue righe; stessa spesa su
+    due conti; stesso movimento importato da due file; accredito che pareggia un addebito (storno o rimborso)
+    contato come entrata; suddivisione che non somma al movimento; file che non quadra con i saldi.
+  - *Informazioni*: addebiti della carta spiegati in parte o con le righe nel conto sbagliato; diciture della
+    banca non riconosciute, raggruppate.
+- **Report anonimizzato da inviare**, in due livelli. Il riepilogo ha solo conteggi (nessun importo, data o
+  nome). I casi che scegli tu (al massimo 30) hanno gli importi veri, le date spostate indietro di un numero
+  fisso di anni e, al posto di esercenti, controparti, conti, IBAN e identificativi, etichette stabili
+  ("ESERCENTE 12"). Delle descrizioni restano le sole parole della banca; le categorie dell'area solo locale e
+  quelle *Non inviare a Claude* non sono nominate. Il report si legge in anteprima e si scarica: non parte nulla
+  dalla rete.
+- **Transcodifica**: un secondo file (CSV), che resta sul PC, con il valore vero di ogni etichetta e la data
+  vera di ogni movimento. Le etichette restano le stesse da un report all'altro.
+- **Guida alla diagnostica**: `DIAGNOSTICA.md`, leggibile anche dentro l'app.
+
+**Aggiornando**
+- Estrai sopra la cartella e riavvia. Il database non cambia versione; la corrispondenza delle etichette si
+  salva tra le impostazioni, nel database cifrato, al primo report con dei casi.
+- I numeri delle analisi non cambiano: la diagnostica legge i dati e rifa' il ricalcolo.
+- 189 test (erano 171).
+
+---
+
 ## 0.17.1 – 11 novembre 2026 · salvataggi veloci, le tue conferme degli esercenti prevalgono
 
 **Correzioni**
