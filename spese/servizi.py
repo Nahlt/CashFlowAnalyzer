@@ -291,3 +291,32 @@ def spese_tramite_familiari(conn):
         r["familiare"] = chi(r["familiare"])
         r["causale"] = causale_bonifico(r["descrizione"], r["familiare"])
     return out
+
+
+def imposta_saldo(conn, conto_id, giorno, saldo_cent):
+    """Saldo a fine giornata inserito a mano (pagina Conti e copertura). Uno solo per conto e giorno: un nuovo
+    valore sostituisce il precedente. Il giorno non puo' essere nel futuro; il conto deve essere un conto
+    importato di cui si calcola il saldo (non una carta). Sta nella tabella `saldi` con tipo 'manuale' e senza
+    import: annullare un import non lo tocca."""
+    from datetime import date
+    from .disponibilita import conti_con_saldo
+    giorno = giorno if isinstance(giorno, str) else giorno.isoformat()
+    date.fromisoformat(giorno)
+    if giorno > date.today().isoformat():
+        raise ValueError("la data del saldo non puo' essere nel futuro")
+    if not isinstance(saldo_cent, int) or isinstance(saldo_cent, bool):
+        raise ValueError("il saldo va indicato in centesimi interi")
+    if conto_id not in {r["id"] for r in conti_con_saldo(conn)}:
+        raise ValueError("il saldo si imposta solo su un conto importato che non sia una carta")
+    with transazione(conn):
+        conn.execute("DELETE FROM saldi WHERE conto_id = ? AND data = ? AND tipo = 'manuale'", (conto_id, giorno))
+        conn.execute("INSERT INTO saldi (conto_id, data, saldo_cent, tipo, import_id) VALUES (?,?,?,'manuale',NULL)",
+                     (conto_id, giorno, saldo_cent))
+
+
+def elimina_saldo(conn, conto_id, giorno):
+    """Toglie il saldo inserito a mano in quel giorno; i saldi letti dagli estratti restano."""
+    giorno = giorno if isinstance(giorno, str) else giorno.isoformat()
+    with transazione(conn):
+        return conn.execute("DELETE FROM saldi WHERE conto_id = ? AND data = ? AND tipo = 'manuale'",
+                            (conto_id, giorno)).rowcount

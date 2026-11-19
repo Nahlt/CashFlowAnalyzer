@@ -35,7 +35,8 @@ def andamento():
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Entrate", euro(ent))
     c2.metric("Uscite (al netto dei rimborsi)", euro(usc))
-    c3.metric("Saldo netto", euro(netto))
+    c3.metric("Differenza entrate uscite", euro(netto),
+              help="Entrate meno uscite del periodo. Non e' il saldo dei conti, che trovi nella pagina Saldo dei conti.")
     c4.metric("Tasso di risparmio", ("%d%%" % round(100 * netto / ent)) if ent else "—")
     mesi = list(df["mese"])
     with st.container(key="scheda_and_linee"):
@@ -45,7 +46,7 @@ def andamento():
     if i is not None and 0 <= i < len(mesi):
         _vai_al_mese(mesi[i])
     with st.container(key="scheda_and_saldo"):
-        st.subheader("Saldo netto per mese")
+        st.subheader("Differenza entrate uscite per mese")
         i = grafici.mostra(grafici.barre_saldo(df), "and_saldo", 260, clic="x")
     if i is not None and 0 <= i < len(mesi):
         _vai_al_mese(mesi[i])
@@ -56,7 +57,7 @@ def andamento():
     with st.expander("Tabella dei valori"):
         t = pd.DataFrame({"Mese": [grafici.etichetta_mese(m) for m in df["mese"]],
                           "Entrate": [euro(v) for v in df["entrate"]], "Uscite": [euro(v) for v in df["uscite"]],
-                          "Saldo netto": [euro(v) for v in df["netto"]],
+                          "Differenza entrate uscite": [euro(v) for v in df["netto"]],
                           "Tasso di risparmio": ["—" if pd.isna(t) else "%d%%" % round(100 * t) for t in df["tasso"]],
                           "Risparmio": [euro(v) for v in df["risparmio"]]})
         st.dataframe(t, hide_index=True, width="stretch")

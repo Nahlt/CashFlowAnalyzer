@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.17.1 – Manuale
+# CashFlow Analyzer 0.19.0 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -97,6 +97,13 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
    conto di un familiare). L'IBAN si puo' scrivere con gli spazi: viene salvato senza spazi e in maiuscolo,
    dopo un controllo di paese, lunghezza e cifra di controllo; se non torna, nulla viene salvato.
    La lista di controllo mostra i mesi mancanti per conto.
+   In **Saldo dei conti** inserisci il saldo contabile di un conto a fine giornata di un giorno (oggi o una
+   data scelta): da li' la pagina *Saldo dei conti* calcola il saldo di ogni altro giorno con i movimenti
+   importati. La pagina mostra la data dell'ultimo movimento importato del conto: se il saldo e' piu' recente,
+   i saldi dei giorni prima restano sbagliati finche' non importi i movimenti mancanti (poi si correggono da
+   soli), quindi conviene usare il saldo dell'ultimo estratto. Un nuovo saldo nello stesso giorno sostituisce il
+   precedente. In *Saldi noti* trovi anche i saldi letti dagli estratti (ING, Credem, Fineco) e lo scarto tra uno
+   e il successivo; i saldi inseriti a mano si eliminano da li'. Le carte di credito non hanno saldo.
    Un conto aggiunto qui a mano compare poi nell'elenco dei conti in **Importa** (proposto in base a IBAN,
    banca o nome che contiene la banca) e al primo file diventa un conto importato.
    **Elimina un conto** lo toglie con i suoi movimenti, i file importati e le decisioni prese su quei movimenti;
@@ -138,12 +145,12 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
    Per rifare una classificazione venuta male, in fondo alla pagina (Strumenti) usa **Ritenta la classificazione**:
    filtri per motore, categoria o nome, selezioni gli esercenti e li rimetti tra quelli da classificare
    (tornano disponibili anche per Claude se erano gia' stati inviati).
-6. **Analisi**. In cima alla barra laterale scegli i **conti** da analizzare, anche una combinazione qualsiasi
+6. **Analisi movimenti**. In cima alla barra laterale scegli i **conti** da analizzare, anche una combinazione qualsiasi
    (es. Credit Agricole + Trade Republic); i pulsanti *Personale*, *Comune* e *Tutti* selezionano i
    conti corrispondenti. I versamenti dal conto personale al conto comune si annullano solo se sono scelti
    entrambi. Conti e periodo restano passando da una pagina all'altra.
-   - **Andamento mensile**: passando il mouse su un mese vedi le prime categorie di spesa; con un clic (anche sul
-     saldo netto) apri *Dove vanno i soldi* filtrato su quel mese, senza cambiare il periodo.
+   - **Andamento mensile**: passando il mouse su un mese vedi le prime categorie di spesa; con un clic (anche sulla
+     differenza entrate uscite) apri *Dove vanno i soldi* filtrato su quel mese, senza cambiare il periodo.
    - **Dove vanno i soldi**: in alto le categorie (clic per sceglierne una; in rosso *Da classificare*, le uscite
      ancora senza categoria) e, sotto, la loro tabella (comprimibile, chiusa all'inizio). Poi a sinistra le
      sottocategorie della categoria scelta (clic per filtrare, di nuovo per togliere) e a destra la spesa per mese
@@ -174,12 +181,27 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
    *Come conta* un movimento: secondo la categoria (la sua sezione dice se e' spesa, entrata o risparmio; una
    spesa con importo positivo e' un rimborso), oppure non conta, come trasferimento tra tuoi conti o escluso
    dalle analisi.
-7. **Regole e tassonomia** (sotto Configurazione): modifichi gli esercenti gia' classificati (sottocategoria e nome), le tue regole e
+   La **differenza entrate uscite** e' quello che resta delle entrate dopo le uscite nel periodo: non e' il saldo
+   dei conti, che si trova in *Analisi disponibilità*.
+7. **Analisi disponibilità**: la pagina **Saldo dei conti** mostra un conto alla volta (i filtri della barra
+   laterale qui non valgono) e il **Portafoglio** (vedi sotto).
+   - Il saldo e' quello a fine giornata, calcolato dal saldo noto piu' vicino (inserito in Conti e copertura o
+     letto da un estratto) piu' o meno i movimenti contabilizzati in mezzo, alla **data contabile**, con
+     commissioni e imposte. Contano tutti i movimenti, anche quelli esclusi dalle analisi.
+   - Vista **Giorno**: saldo a fine giornata, movimenti del giorno e differenza rispetto a 30 giorni prima; il
+     grafico mostra il saldo dei 30 giorni che finiscono con il giorno scelto.
+   - Vista **Periodo**: saldo a inizio periodo (prima dei movimenti del primo giorno), a fine periodo con la
+     variazione, e saldo minimo con la sua data. Il grafico ha il saldo (linea, asse a sinistra) e le uscite del
+     giorno (barre, asse a destra): tutto cio' che fa scendere il saldo, anche addebito della carta, bonifici
+     verso altri conti e acquisti di titoli.
+   - In basso i movimenti, dal piu' recente, con il saldo dopo ciascuno. Se due saldi noti non tornano tra loro
+     (manca un estratto) la pagina lo segnala e il grafico fa un salto in quel punto.
+8. **Regole e tassonomia** (sotto Configurazione): modifichi gli esercenti gia' classificati (sottocategoria e nome), le tue regole e
    la tassonomia. Le sottocategorie si aggiungono, rinominano, spostano ed eliminano; quelle *predefinite*,
    usate da regole e configurazioni del programma, si possono solo spostare. Le modifiche stanno nel database
    e restano anche dopo un aggiornamento del programma. "Esporta la tassonomia" scarica un `tassonomia.yaml` nello stesso
    formato di `config/tassonomia.yaml`.
-8. **Natura della spesa ed etichette** (sezioni facoltative, ognuna si accende o spegne in Impostazioni >
+9. **Natura della spesa ed etichette** (sezioni facoltative, ognuna si accende o spegne in Impostazioni >
    Sezioni facoltative).
    - *Natura della spesa*: ogni uscita e' necessaria, svago o superflua. Il valore viene dalla sottocategoria
      (Regole e tassonomia, scheda *Natura della spesa*; quelli di partenza stanno in `config/attributi.yaml`)
@@ -314,7 +336,7 @@ si tolgono in *Addebiti PayPal ricondotti a mano*. Sono gestiti il report in ita
 
 ## Portafoglio titoli
 
-Pagina **Portafoglio** sotto Analisi (sezione facoltativa: *Impostazioni > Sezioni facoltative*). Costo e
+Pagina **Portafoglio** sotto Analisi disponibilità (sezione facoltativa: *Impostazioni > Sezioni facoltative*). Costo e
 plusvalenze vengono solo dai movimenti con ISIN gia' importati (oggi Trade Republic).
 - **Costo medio ponderato**, come nel regime amministrato: gli acquisti aumentano quote e costo (prezzo piu'
   commissione); una vendita toglie il costo medio delle quote vendute e da' la plusvalenza o minusvalenza

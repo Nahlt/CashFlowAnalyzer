@@ -5,6 +5,44 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.19.0 – 19 novembre 2026 · saldo dei conti a ogni data
+
+**Novita'**
+- **Saldo di un conto a un giorno** (*Conti e copertura > Saldo dei conti*): inserisci il saldo contabile a fine
+  giornata, di oggi o di un giorno scelto. Da li' l'app calcola il saldo di ogni altro giorno con i movimenti
+  importati, alla data contabile (quella con cui la banca calcola il saldo), con commissioni e imposte. Contano
+  tutti i movimenti, anche quelli esclusi dalle analisi. La pagina mostra la data dell'ultimo movimento importato
+  del conto e avvisa se il saldo e' piu' recente: in quel caso i saldi dei giorni prima restano sbagliati finche'
+  non importi i movimenti mancanti, poi si correggono da soli.
+- **Saldi letti dagli estratti usati subito**: i saldi iniziale e finale di ING e il saldo alla data di Credem e
+  Fineco, gia' salvati agli import, valgono come saldi noti. Ogni giorno parte dal saldo noto piu' vicino; nello
+  stesso giorno vince quello inserito a mano. In *Saldi noti* trovi l'elenco con lo scarto tra un saldo e il
+  successivo: uno scarto vuol dire che in mezzo manca un estratto o un movimento.
+- **Nuova sezione del menu "Analisi disponibilità"** con la pagina **Saldo dei conti** e il **Portafoglio**
+  (spostato qui). Un conto alla volta:
+  - vista *Periodo*: saldo a inizio e a fine periodo con la variazione, saldo minimo con la sua data, grafico
+    del saldo a fine giornata (linea) e delle uscite del giorno (barre, su un secondo asse);
+  - vista *Giorno*: saldo a fine giornata, movimenti del giorno, differenza rispetto a 30 giorni prima, grafico
+    dei 30 giorni che finiscono con il giorno scelto;
+  - in basso i movimenti, dal piu' recente, con il saldo dopo ciascuno.
+- La sezione *Analisi* del menu si chiama ora **Analisi movimenti**.
+- Il saldo inserito a mano fa da riferimento anche per la quadratura del successivo import Credem o Fineco.
+
+**Correzioni**
+- *Andamento mensile*: "Saldo netto" diventa **"Differenza entrate uscite"** (indicatore, grafico, tabella),
+  per non confonderlo con il saldo dei conti. I valori non cambiano.
+
+**Aggiornando**
+- Estrai sopra la cartella e riavvia. Lo schema del database non cambia: i saldi inseriti a mano stanno nella
+  tabella dei saldi gia' esistente. Si puo' tornare alla 0.17.1 sullo stesso database; i saldi inseriti restano e
+  la 0.17.1 li usa solo per la quadratura degli import.
+- Annullare un import non cancella i saldi inseriti a mano; eliminare un conto si'.
+- Le carte di credito non hanno saldo; i conti non importati (deposito) non compaiono nella pagina.
+- Non contiene la diagnostica della 0.18.0, che verra' rifatta in una versione successiva.
+- 197 test (erano 171).
+
+---
+
 ## 0.17.1 – 11 novembre 2026 · salvataggi veloci, le tue conferme degli esercenti prevalgono
 
 **Correzioni**
