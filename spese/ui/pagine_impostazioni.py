@@ -6,9 +6,11 @@ import streamlit as st
 
 from .. import attributi as attr
 from .. import analisi as an
+from .. import disponibilita as dsp
 from .. import importa as imp
 from .. import llm, servizi, sessioni
 from ..iban import controlla as controlla_iban
+from ..numeri import euro
 from ..db import DatabaseOccupato, backup, cambia_passphrase, leggi_impostazione, scrivi_impostazione
 from ..percorsi import cartella_dati
 from .comune import (avviso_ollama_non_locale, chiave_tabella, conn, esegui_ricalcolo, ollama_non_raggiungibile,
@@ -109,6 +111,7 @@ def conti():
                     esegui_ricalcolo()
                     st.rerun()
     if not df.empty:
+        _saldi_conti(c)
         _elimina_conto(c, df)
     with st.expander("Aggiungi un conto (anche uno che non importi: conto deposito, broker, conto di un familiare)"):
         with st.form("conto_non_importato"):
@@ -143,6 +146,82 @@ def conti():
         def evidenzia(col):
             return ["background-color: rgba(235,104,52,0.18)" if (v == 0 and idx in ultimi) else "" for idx, v in col.items()]
         st.dataframe(t.style.apply(evidenzia, axis=0), width="stretch")
+
+
+def _saldi_conti(c):
+    """Saldo a fine giornata inserito a mano: da li' la pagina "Saldo dei conti" calcola il saldo di ogni altro
+    giorno con i movimenti importati. Sotto, i saldi noti di ogni conto (anche quelli letti dagli estratti), con lo
+    scarto tra uno e il successivo: uno scarto vuol dire che in mezzo manca qualcosa."""
+    st.subheader("Saldo dei conti")
+    elenco = dsp.conti_con_saldo(c)
+    if not elenco:
+        st.caption("Nessun conto importato di cui calcolare il saldo (le carte di credito sono escluse).")
+        return
+    nomi = {r["id"]: r["nome"] for r in elenco}
+    st.caption("Con il saldo di un giorno, la pagina *Saldo dei conti* calcola il saldo di ogni altro giorno dai "
+               "movimenti importati. Indica il **saldo contabile** a fine giornata, come nell'estratto conto o "
+               "nell'app della banca. Le carte di credito non hanno un saldo da impostare.")
+    with st.container(key="scheda_saldo_manuale"):
+        a, b, d = st.columns([2, 1, 1], vertical_alignment="bottom")
+        conto = a.selectbox("Conto", list(nomi), format_func=nomi.get, key="saldo_conto")
+        giorno = b.date_input("Saldo a fine giornata del", value=date.today(), max_value=date.today(),
+                              format="DD/MM/YYYY", key="saldo_giorno")
+        importo = d.text_input("Saldo in euro", placeholder="es. 1.234,56 oppure -50,00", key="saldo_importo")
+        ultimo = dsp.ultimo_movimento(c, conto)
+        if ultimo is None:
+            st.caption("Questo conto non ha ancora movimenti importati.")
+        else:
+            st.caption("Ultimo movimento importato di %s: contabilizzato il %s." % (nomi[conto], dsp.data_it(ultimo)))
+            if giorno.isoformat() > ultimo:
+                st.warning("Il saldo e' piu' recente dell'ultimo movimento importato. Finche' non importi i movimenti "
+                           "dopo il %s, i saldi dei giorni precedenti risultano sbagliati della loro somma (si "
+                           "correggono da soli quando li importi). Se puoi, usa il saldo contabile dell'ultimo estratto "
+                           "importato." % dsp.data_it(ultimo), icon=":material/warning:")
+        if st.button("Salva il saldo", key="saldo_salva"):
+            cent = dsp.importo_da_testo(importo)
+            if cent is None:
+                st.error("Scrivi il saldo come importo in euro, per esempio 1.234,56 oppure -50,00.")
+            else:
+                try:
+                    servizi.imposta_saldo(c, int(conto), giorno, cent)
+                except ValueError as e:
+                    st.error("Saldo non salvato: %s." % e)
+                else:
+                    st.session_state["conti_msg"] = "Saldo di %s al %s salvato: %s." % (
+                        nomi[conto], giorno.strftime("%d/%m/%Y"), euro(cent))
+                    st.session_state.pop("saldo_importo", None)
+                    st.rerun()
+    righe, manuali = [], []
+    for r in elenco:
+        s = dsp.Saldi(c, r["id"])
+        scarti = {q.giorno: x for _, q, x in s.scarti()}
+        for a_ in s.ancore:
+            x = scarti.get(a_.giorno)
+            righe.append({"Conto": r["nome"], "Fine giornata del": dsp.data_it(a_.giorno), "Saldo": euro(a_.saldo_cent),
+                          "Fonte": a_.fonte_estesa,
+                          "Rispetto al saldo precedente": "" if x is None else ("quadra" if x == 0 else
+                                                                                "scarto di %s" % euro(x))})
+            if a_.tipo == "manuale":
+                manuali.append((r["id"], a_.giorno, "%s · %s · %s" % (r["nome"], dsp.data_it(a_.giorno),
+                                                                    euro(a_.saldo_cent))))
+    if not righe:
+        st.caption("Nessun saldo noto: inseriscine uno qui sopra.")
+        return
+    with st.expander("Saldi noti (%d)" % len(righe)):
+        st.caption("Per ogni giorno la pagina *Saldo dei conti* parte dal saldo noto piu' vicino. Uno scarto tra due "
+                   "saldi vuol dire che tra le due date manca (o avanza) qualcosa: un estratto non importato, un "
+                   "movimento non ancora contabilizzato. Il saldo iniziale di un estratto vale a fine del giorno prima.")
+        st.dataframe(pd.DataFrame(righe), hide_index=True, width="stretch")
+        if manuali:
+            giro = st.session_state.get("saldo_elim_giro", 0)
+            scelta = st.selectbox("Elimina un saldo inserito a mano", range(len(manuali)),
+                                  format_func=lambda i: manuali[i][2], index=None, placeholder="Scegli un saldo",
+                                  key="saldo_elim_%d" % giro)
+            if scelta is not None and st.button("Elimina il saldo", key="saldo_elimina"):
+                servizi.elimina_saldo(c, manuali[scelta][0], manuali[scelta][1])
+                st.session_state["saldo_elim_giro"] = giro + 1
+                st.session_state["conti_msg"] = "Saldo eliminato."
+                st.rerun()
 
 
 def _elimina_conto(c, df):

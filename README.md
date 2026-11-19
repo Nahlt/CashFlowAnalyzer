@@ -19,7 +19,8 @@ I dati restano sul PC. Verso l'esterno possono uscire solo, e solo se lo scegli:
 | Classificazione | Tassonomia a due livelli modificabile; catena di regole, codici MCC, marchi (Name Suggestion Index), storico e somiglianza; modello locale (Ollama) o Claude con anteprima e risposte da confermare |
 | Abbinamenti | Trasferimenti tra i propri conti, contributi al conto comune, addebito mensile della carta di credito con le sue spese, addebiti PayPal con il report PayPal: ogni spesa conta una volta sola |
 | Revisione | Esercenti da classificare, bonifici e trasferimenti, addebiti PayPal da ricondurre, altri movimenti da rivedere |
-| Analisi | Andamento mensile, dove vanno i soldi, perimetri personale / comune / combinazioni di conti, etichette, natura della spesa |
+| Analisi movimenti | Andamento mensile, dove vanno i soldi, perimetri personale / comune / combinazioni di conti, etichette, natura della spesa |
+| Analisi disponibilità | Saldo di ogni conto a qualunque data, da un saldo inserito a mano o letto dagli estratti; andamento giorno per giorno con le uscite e i movimenti con il saldo dopo ciascuno |
 | Portafoglio | Costo medio ponderato, plusvalenze realizzate, dividendi; prezzi giornalieri da Yahoo Finance (facoltativi) con valore, rendimento e andamento nel tempo delle posizioni |
 
 ## Requisiti

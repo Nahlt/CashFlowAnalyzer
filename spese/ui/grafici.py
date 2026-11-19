@@ -115,12 +115,12 @@ def barre_saldo(df):
     o = _base(legenda=False)
     o["xAxis"] = _asse_mesi(list(df["mese"]))
     o["yAxis"] = _asse_valori()
-    o["series"] = [{"type": "bar", "name": "Saldo netto", "barMaxWidth": 28, "data": [
+    o["series"] = [{"type": "bar", "name": "Differenza entrate uscite", "barMaxWidth": 28, "data": [
         {"value": round(v / 100, 2), "itemStyle": {"color": BLU if v >= 0 else ARANCIO,
                                                      "borderRadius": [4, 4, 0, 0] if v >= 0 else [0, 0, 4, 4]}}
         for v in df["netto"]]}]
     o["tooltip"]["formatter"] = JsCode(
-        "function(p){ var v = p[0].value; return '<b>' + p[0].name + '</b><br>Saldo netto: ' + Number(v).toLocaleString("
+        "function(p){ var v = p[0].value; return '<b>' + p[0].name + '</b><br>Differenza entrate uscite: ' + Number(v).toLocaleString("
         "'it-IT', {minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always'}) + ' €<div style=\"font-size:11px;opacity:.65;"
         "margin-top:4px\">Clic per aprire il dettaglio del mese</div>'; }")
     return o
@@ -251,3 +251,57 @@ def linee_tempo(serie, percento=False, gradino=False):
         o["series"][0]["markLine"] = {"silent": True, "symbol": "none", "label": {"show": False},
                                       "lineStyle": {"color": GRIGIO, "type": "solid", "width": 1}, "data": [{"yAxis": 0}]}
     return o
+
+
+GIORNO_ASSE = JsCode("function(v){ var d = new Date(v); var m = ['gen','feb','mar','apr','mag','giu','lug','ago','set',"
+                     "'ott','nov','dic']; return d.getDate() + ' ' + m[d.getMonth()] + (d.getMonth() === 0 && "
+                     "d.getDate() === 1 ? ' ' + d.getFullYear() : ''); }")
+GIORNO_SUGGERIMENTO = JsCode(
+    "function(p){ var f = function(v){ return Number(v).toLocaleString('it-IT', {minimumFractionDigits: 2, "
+    "maximumFractionDigits: 2, useGrouping: 'always'}) + ' €'; }; var d = new Date(p[0].value[0]);"
+    "var h = '<b>' + d.toLocaleDateString('it-IT', {weekday: 'short', day: 'numeric', month: 'long', year: 'numeric'})"
+    " + '</b><br>'; p.forEach(function(s){ if (s.value[1] != null) h += s.marker + s.seriesName + ': <b>' + "
+    "f(s.value[1]) + '</b><br>'; }); return h; }")
+
+
+def saldo_e_uscite(df, giorno_evidenziato=None):
+    """Saldo a fine giornata (linea blu, asse a sinistra) e uscite del giorno (barre arancio, asse a destra) per la
+    pagina "Saldo dei conti". Eccezione alla regola dell'asse unico: saldo e uscite hanno ordini di grandezza
+    diversi (migliaia contro decine di euro) e con un asse solo le barre sparirebbero. df: colonne giorno, saldo,
+    uscite (centesimi). giorno_evidenziato: il giorno scelto in modalita' giorno, segnato con una linea verticale."""
+    o = _base()
+    o["tooltip"] = {"trigger": "axis", "formatter": GIORNO_SUGGERIMENTO, "axisPointer": {"type": "line"},
+                    "confine": True}
+    giorni = list(df["giorno"])
+    lunga = len(giorni) > 92
+    o["xAxis"] = {"type": "time", "axisLabel": {"formatter": DATA_ASSE if lunga else GIORNO_ASSE, "hideOverlap": True},
+                  "axisTick": {"show": False}, "splitLine": {"show": False}}
+    o["yAxis"] = [{"type": "value", "scale": True, "axisLabel": {"formatter": ASSE_EURO},
+                   "splitLine": {"lineStyle": {"opacity": 0.5}}},
+                  {"type": "value", "axisLabel": {"formatter": ASSE_EURO}, "splitLine": {"show": False}}]
+    o["dataZoom"] = [{"type": "inside", "filterMode": "none"}]
+    # gradino a meta' tra due giorni: il saldo cambia nel giorno della barra delle uscite, non in quello dopo
+    saldo = {"type": "line", "name": "Saldo a fine giornata", "yAxisIndex": 0, "step": "middle",
+             "data": [[g, None if pd_nullo(v) else round(v / 100, 2)] for g, v in zip(giorni, df["saldo"])],
+             "showSymbol": False, "symbol": "circle", "symbolSize": 8, "z": 3,
+             "lineStyle": {"width": 2, "color": BLU}, "itemStyle": {"color": BLU},
+             "areaStyle": {"color": BLU, "opacity": 0.06}}
+    if giorno_evidenziato:
+        saldo["markLine"] = {"silent": True, "symbol": "none", "label": {"show": False},
+                             "lineStyle": {"color": GRIGIO, "type": "dashed", "width": 1},
+                             "data": [{"xAxis": giorno_evidenziato}]}
+        saldo["markPoint"] = {"symbol": "circle", "symbolSize": 10, "label": {"show": False},
+                              "itemStyle": {"color": BLU, "borderColor": "#fff", "borderWidth": 2},
+                              "data": [{"coord": [giorno_evidenziato, v[1]]} for v in saldo["data"]
+                                       if v[0] == giorno_evidenziato and v[1] is not None]}
+    uscite = {"type": "bar", "name": "Uscite del giorno", "yAxisIndex": 1, "barMaxWidth": 12 if lunga else 18,
+              "data": [[g, round(v / 100, 2) if v else None] for g, v in zip(giorni, df["uscite"])],
+              "itemStyle": {"color": ARANCIO, "opacity": 0.75, "borderRadius": [3, 3, 0, 0]}}
+    o["series"] = [uscite, saldo]
+    o["legend"]["data"] = ["Saldo a fine giornata", "Uscite del giorno"]
+    return o
+
+
+def pd_nullo(v):
+    """None o NaN (pandas porta i None delle colonne intere a NaN)."""
+    return v is None or v != v

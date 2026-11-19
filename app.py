@@ -183,14 +183,17 @@ elif sessioni.stato(st.context.cookies.get(COOKIE), DURATA) == "valida":
     # pagina ricaricata (o nuova scheda) con il codice della sessione: si riapre il database senza passphrase
     _riapri(st.context.cookies.get(COOKIE))
 
-from spese.ui import pagine_analisi, pagine_classificazione, pagine_dati, pagine_impostazioni  # noqa: E402
+from spese.ui import (pagine_analisi, pagine_classificazione, pagine_dati, pagine_disponibilita,  # noqa: E402
+                      pagine_impostazioni)
 
 # (gruppo, funzione, titolo, icona, indirizzo)
 PAGINE = [
-    ("Analisi", pagine_analisi.andamento, "Andamento mensile", ":material/show_chart:", "andamento"),
-    ("Analisi", pagine_analisi.ripartizione, "Dove vanno i soldi", ":material/bar_chart:", "ripartizione"),
-    ("Analisi", pagine_analisi.etichette, "Etichette", ":material/sell:", "etichette"),
-    ("Analisi", pagine_analisi.portafoglio, "Portafoglio", ":material/account_balance_wallet:", "portafoglio"),
+    ("Analisi movimenti", pagine_analisi.andamento, "Andamento mensile", ":material/show_chart:", "andamento"),
+    ("Analisi movimenti", pagine_analisi.ripartizione, "Dove vanno i soldi", ":material/bar_chart:", "ripartizione"),
+    ("Analisi movimenti", pagine_analisi.etichette, "Etichette", ":material/sell:", "etichette"),
+    ("Analisi disponibilità", pagine_disponibilita.saldo_conti, "Saldo dei conti", ":material/savings:", "disponibilita"),
+    ("Analisi disponibilità", pagine_analisi.portafoglio, "Portafoglio", ":material/account_balance_wallet:",
+     "portafoglio"),
     ("Dati", pagine_dati.importa, "Importa", ":material/upload_file:", "importa"),
     ("Dati", pagine_dati.revisione, "Revisione", ":material/rule:", "revisione"),
     ("Dati", pagine_dati.movimenti, "Movimenti", ":material/list:", "movimenti"),
