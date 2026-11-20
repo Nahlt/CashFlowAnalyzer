@@ -5,6 +5,39 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.19.1 – 20 novembre 2026 · periodo proposto all'apertura, ora dei movimenti, revisione piu' pulita
+
+**Novita'**
+- **Periodo proposto all'apertura** (*Impostazioni > Periodo delle analisi*): intero periodo (di partenza, come
+  prima), mese in corso, mese scorso, ultimi 3 mesi, ultimi 6 mesi, anno in corso, un anno (ultimi 12 mesi), due
+  anni. Mese scorso e ultimi mesi sono mesi interi fino al mese scorso; la casella **Aggiungi mese in corso** li
+  porta fino a oggi. Il periodo si calcola rispetto a oggi e si restringe ai movimenti presenti; se non ce n'e'
+  nessuno si apre l'ultimo mese con movimenti, e il filtro lo dice. Vale anche per la vista Periodo di *Saldo dei
+  conti* (che prima proponeva gli ultimi 90 giorni). Poi il periodo si cambia come sempre dai filtri.
+- **Colonna Ora** accanto alla data in Movimenti, Dove vanno i soldi, Revisione (dettagli dei bonifici, altri
+  movimenti, spese tramite i familiari, ricerca dei pagamenti PayPal), Etichette e Saldo dei conti, dove la banca
+  la riporta: pagamenti con carta di ING, Credem e Crédit Agricole, tutti i movimenti PayPal e Trade Republic.
+  In Movimenti, a parita' di giorno, prima il movimento piu' tardo.
+- **Fineco**: l'ora si legge anche dalla descrizione quando c'e' ("Pag. del ... ora 12:30", "Ins: ... 14:35:12",
+  "Data Inserimento: ... 09:05"), anche per i movimenti gia' importati. Diciture da confermare su estratti reali:
+  se non ci sono, la colonna resta vuota come prima.
+
+**Correzioni**
+- **Revisione > Bonifici e trasferimenti chiedeva anche i movimenti gia' decisi**: un bonifico segnato *Escluso
+  dalle analisi* in Movimenti restava tra i bonifici con altre persone (non ha mai una categoria), mentre il
+  contatore del menu non lo contava. Ora un movimento con una tua decisione non compare nelle coppie proposte (basta
+  la decisione su uno dei due lati), tra i bonifici a tuo nome senza contropartita e tra quelli con altre persone.
+  Tra le spese pagate tramite un familiare spariscono quelli decisi senza categoria (esclusi, trasferimenti
+  interni); quelli con una categoria restano, per poterla cambiare. I numeri delle analisi non cambiano.
+- Impostazioni > Sezioni facoltative: gli aiuti di Portafoglio ed Etichette indicano le nuove sezioni del menu.
+
+**Aggiornando**
+- Estrai sopra la cartella e riavvia. Lo schema del database non cambia; il periodo scelto e' una normale
+  impostazione. Al primo avvio l'ora dei movimenti Fineco che la riportano viene completata dal ricalcolo.
+- 222 test (erano 197).
+
+---
+
 ## 0.19.0 – 19 novembre 2026 · saldo dei conti a ogni data
 
 **Novita'**

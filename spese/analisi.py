@@ -1,5 +1,6 @@
 """Query per le viste di analisi. Entrate = natura entrata; uscite = uscite al netto dei rimborsi."""
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 
 import pandas as pd
 
@@ -166,9 +167,10 @@ def movimenti(conn, f: Filtri, l1=None, l2=None, testo=None, solo_rivedere=False
     extra = (" AND " + " AND ".join(cond)) if cond else ""
     return _df(conn, f"""
         SELECT a.mov_id, a.data, c.nome AS conto, a.componente, a.importo_cent, a.natura, a.l1, a.l2, a.fonte,
-               a.da_rivedere, a.motivo, a.proposta, a.attributo, a.chiave, m.tipo, m.esercente, m.controparte_nome, m.descrizione
+               a.da_rivedere, a.motivo, a.proposta, a.attributo, a.chiave, m.tipo, m.esercente, m.controparte_nome, m.descrizione,
+               m.ora
         FROM analisi a JOIN movimenti m ON m.id = a.mov_id JOIN conti c ON c.id = a.conto_id
-        WHERE {w}{extra} ORDER BY a.data DESC, a.id DESC LIMIT {int(limite)}""", par)
+        WHERE {w}{extra} ORDER BY a.data DESC, m.ora DESC, a.id DESC LIMIT {int(limite)}""", par)
 
 
 def copertura(conn, mesi=12):
@@ -218,7 +220,7 @@ def etichetta_movimenti(conn, f: Filtri, etichetta_id):
     w, par = f.where()
     return _df(conn, f"""
         SELECT a.data, c.nome AS conto, coalesce(m.esercente, m.controparte_nome, m.descrizione) AS voce,
-               a.importo_cent, a.natura, a.l1, a.l2, a.attributo
+               a.importo_cent, a.natura, a.l1, a.l2, a.attributo, m.ora
         FROM analisi a JOIN etichette_movimento em ON em.mov_id = a.mov_id
         JOIN movimenti m ON m.id = a.mov_id JOIN conti c ON c.id = a.conto_id
         WHERE {w} AND em.etichetta_id = ? ORDER BY a.data, a.id""", par + [etichetta_id])
@@ -253,7 +255,7 @@ def altri_da_rivedere(conn, motivo_paypal):
     IBAN: senza un beneficiario la scheda dei bonifici non puo' raggrupparli, e resterebbero invisibili."""
     return [dict(r) for r in conn.execute(
         "SELECT a.mov_id, a.data, co.nome AS conto, a.importo_cent, a.natura, a.l1, a.l2, a.proposta, a.motivo, "
-        "m.descrizione, m.tipo, a.chiave "
+        "m.descrizione, m.tipo, a.chiave, m.ora "
         "FROM analisi a JOIN movimenti m ON m.id = a.mov_id JOIN conti co ON co.id = a.conto_id "
         "LEFT JOIN trasferimenti t ON t.mov_id = a.mov_id "
         "WHERE a.da_rivedere = 1 AND a.componente = 'principale' AND coalesce(a.motivo, '') <> ? "
@@ -261,3 +263,49 @@ def altri_da_rivedere(conn, motivo_paypal):
         "AND coalesce(t.stato, '') NOT IN ('proposto_proprio','spesa_familiare') "
         "AND NOT (coalesce(t.stato, '') = 'terzi' AND coalesce(a.chiave, '') <> '') "
         "AND coalesce(t.controparte_mov_id, '') = '' ORDER BY a.data DESC", [motivo_paypal])]
+
+
+# --- periodo proposto all'apertura (Impostazioni > Periodo delle analisi) -----------------------------------
+CHIAVE_PERIODO = "periodo_predefinito"
+PERIODI = {"intero": "Intero periodo", "mese_corrente": "Mese in corso", "mese_scorso": "Mese scorso",
+           "3_mesi": "Ultimi 3 mesi", "6_mesi": "Ultimi 6 mesi", "anno_corrente": "Anno in corso",
+           "12_mesi": "Un anno (ultimi 12 mesi)", "24_mesi": "Due anni (ultimi 24 mesi)"}
+# voci fatte di mesi interi fino al mese scorso: a queste si puo' aggiungere il mese in corso
+MESI_INTERI = {"mese_scorso": 1, "3_mesi": 3, "6_mesi": 6, "12_mesi": 12, "24_mesi": 24}
+
+
+def leggi_periodo_predefinito(conn):
+    """(voce, aggiungi_mese_in_corso); voce sconosciuta o assente = intero periodo (il comportamento di sempre)."""
+    from .db import leggi_impostazione
+    v = leggi_impostazione(conn, CHIAVE_PERIODO, None) or {}
+    voce = v.get("voce") if isinstance(v, dict) else None
+    return (voce if voce in PERIODI else "intero"), bool(isinstance(v, dict) and v.get("mese_in_corso"))
+
+
+def _primo_del_mese(d, mesi_prima=0):
+    n = d.year * 12 + d.month - 1 - mesi_prima
+    return date(n // 12, n % 12 + 1, 1)
+
+
+def periodo_predefinito(voce, mese_in_corso, oggi, dmin, dmax):
+    """Periodo (da, a, nota) per la voce scelta, calcolato rispetto a oggi e ristretto ai dati presenti (dmin-dmax).
+    "Ultimi N mesi" sono N mesi interi fino al mese scorso: il mese in corso di solito e' ancora a meta' (gli
+    estratti si importano una volta al mese) e abbasserebbe le medie; con mese_in_corso si arriva a oggi.
+    Se nel periodo non c'e' nessun dato si mostra l'ultimo mese con movimenti, e la nota lo dice."""
+    dmin = date.fromisoformat(dmin) if isinstance(dmin, str) else dmin
+    dmax = date.fromisoformat(dmax) if isinstance(dmax, str) else dmax
+    oggi = date.fromisoformat(oggi) if isinstance(oggi, str) else oggi
+    if voce == "mese_corrente":
+        da, a = _primo_del_mese(oggi), oggi
+    elif voce == "anno_corrente":
+        da, a = date(oggi.year, 1, 1), oggi
+    elif voce in MESI_INTERI:
+        da = _primo_del_mese(oggi, MESI_INTERI[voce])
+        a = oggi if mese_in_corso else _primo_del_mese(oggi) - timedelta(days=1)
+    else:
+        return dmin, dmax, None
+    da, a = max(da, dmin), min(a, dmax)
+    if da > a:
+        da = max(_primo_del_mese(dmax), dmin)
+        return da, dmax, "Nessun movimento in \"%s\": mostro l'ultimo mese con movimenti." % PERIODI[voce].lower()
+    return da, a, None

@@ -164,7 +164,7 @@ def movimenti_con_saldo(conn, conto_id, da, a, saldi=None):
     fine giornata e' esatto; dentro lo stesso giorno l'ordine e' quello del file importato."""
     saldi = saldi or Saldi(conn, conto_id)
     righe = conn.execute(
-        "SELECT m.id, %s AS data_contabile, m.data, m.descrizione, "
+        "SELECT m.id, %s AS data_contabile, m.data, m.ora, m.descrizione, "
         "coalesce(m.esercente, m.controparte_nome) AS esercente, m.tipo, %s AS importo_cent, "
         "(SELECT a.natura FROM analisi a WHERE a.mov_id = m.id ORDER BY a.id LIMIT 1) AS natura, "
         "(SELECT a.l1 FROM analisi a WHERE a.mov_id = m.id ORDER BY a.id LIMIT 1) AS l1, "
@@ -173,7 +173,7 @@ def movimenti_con_saldo(conn, conto_id, da, a, saldi=None):
         "ORDER BY %s, coalesce(m.raw_id, 0), m.rowid" % (DATA_CONTABILE, IMPORTO, DATA_CONTABILE, DATA_CONTABILE),
         (conto_id, _giorno(da), _giorno(a))).fetchall()
     df = pd.DataFrame([dict(r) for r in righe],
-                      columns=["id", "data_contabile", "data", "descrizione", "esercente", "tipo", "importo_cent",
+                      columns=["id", "data_contabile", "data", "ora", "descrizione", "esercente", "tipo", "importo_cent",
                                "natura", "l1", "l2"])
     if df.empty:
         df["saldo_dopo"] = []

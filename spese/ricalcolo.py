@@ -714,6 +714,8 @@ def _ricalcola(conn):
     tipi, comp_l2 = tm["tipi"], tm["componenti"]
     from .paypal import riallinea_ricariche
     riallinea_ricariche(conn)              # ricariche PayPal importate come entrate prima della 0.16.1
+    from .importa import completa_ore
+    completa_ore(conn)                     # ora scritta nella descrizione (Fineco), per i movimenti gia' importati
     ctx = Contesto(conn)
     movs = [dict(r) for r in conn.execute("SELECT * FROM movimenti ORDER BY data, id")]
     tr = abbina_trasferimenti(ctx, movs)

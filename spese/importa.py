@@ -326,6 +326,28 @@ def _ripulisci_nomi(conn, nomi):
     return n
 
 
+def completa_ore(conn):
+    """Ora letta dalla descrizione per i movimenti importati prima che il profilo avesse le regole `estrazione_ora`
+    (o con una regola nuova). Idempotente: tocca solo i movimenti senza ora; la richiama il ricalcolo.
+    Restituisce il numero di movimenti completati."""
+    from .lettore import ora_da_descrizione
+    profili, n = cfg.profili(), 0
+    for conto in conn.execute("SELECT id, profilo FROM conti WHERE profilo IS NOT NULL").fetchall():
+        profilo = profili.get(conto["profilo"]) or {}
+        if not profilo.get("estrazione_ora"):
+            continue
+        nuove = []
+        for m in conn.execute("SELECT id, descrizione FROM movimenti WHERE conto_id = ? AND ora IS NULL "
+                              "AND descrizione IS NOT NULL", (conto["id"],)).fetchall():
+            ora_letta = ora_da_descrizione(profilo, m["descrizione"])
+            if ora_letta:
+                nuove.append((ora_letta, m["id"]))
+        if nuove:
+            conn.executemany("UPDATE movimenti SET ora = ? WHERE id = ? AND ora IS NULL", nuove)
+            n += len(nuove)
+    return n
+
+
 def _ripristina_conto(conn, conto_id, f):
     """Annullato un import che aveva dato formato e banca a un conto registrato a mano: senza altri file il conto
     torna com'era (altrimenti un report importato per sbaglio lo lascerebbe, per esempio, "PayPal" per sempre);

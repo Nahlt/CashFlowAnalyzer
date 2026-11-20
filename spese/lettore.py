@@ -135,6 +135,29 @@ def cerca_senza_spazi(rx, testo):
     return out
 
 
+ORA_VALIDA = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
+
+
+def ora_da_descrizione(profilo, descr):
+    """Ora dell'operazione scritta nella descrizione, con le regole `estrazione_ora` del profilo (valgono per
+    qualunque tipo di movimento): 'HH:MM' o None. Serve per le banche che non hanno una colonna dell'ora ma a
+    volte la scrivono nel testo (Fineco: "Pag. del 10/04/26 ora 12:30", "Ins: 20/11/2026 14:35:12")."""
+    regole = profilo.get("estrazione_ora") or []
+    if not regole or not descr:
+        return None
+    for regola in regole:
+        rx = re.compile(regola)
+        if profilo.get("estrazione_senza_spazi"):
+            g = cerca_senza_spazi(rx, descr)
+        else:
+            x = rx.search(descr)
+            g = x.groupdict() if x else None
+        ora = re.sub(r"\s+", "", (g or {}).get("ora") or "")
+        if ORA_VALIDA.fullmatch(ora):
+            return ora
+    return None
+
+
 def _ricomponi_nome(nome, parole):
     """'MARIO RO SSI' -> 'MARIO ROSSI': riunisce i pezzi consecutivi (fino a tre) che insieme formano una parola
     dei nomi noti (titolari e familiari) e da soli no. Serve a riconoscere i bonifici a tuo nome."""
@@ -320,7 +343,7 @@ def leggi(percorso, titolari=(), dati: bytes = None) -> FileLetto:
                 m["intermediario"] = inter
                 m["esercente"] = re.sub(r"null$", "", esercente).strip() or None
                 m["chiave"] = chiave(m["esercente"])
-            m["ora"] = ora_op
+            m["ora"] = ora_op or ora_da_descrizione(profilo, descr)
             m["data"] = d_op or m["data_registrazione"] or m["data_contabile"] or m["data_valuta"]
             if not m["data"]:
                 raise FormatoNonValido("data mancante")

@@ -280,12 +280,16 @@ def spese_tramite_familiari(conn):
                 migliore = (trovate, n)
         return migliore[1] if migliore else (testo or "")
     out = [dict(r) for r in conn.execute(
-        "SELECT m.id AS mov_id, m.data, co.nome AS conto, m.controparte_nome AS familiare, m.importo_cent, m.descrizione, "
+        "SELECT m.id AS mov_id, m.data, m.ora, co.nome AS conto, m.controparte_nome AS familiare, m.importo_cent, "
+        "m.descrizione, "
         "t.beneficiario, a.l1, a.l2, a.natura, a.fonte, a.proposta, "
         "(SELECT count(*) FROM ripartizioni r WHERE r.mov_id = m.id) AS parti "
         "FROM trasferimenti t JOIN movimenti m ON m.id = t.mov_id JOIN conti co ON co.id = m.conto_id "
         "LEFT JOIN analisi a ON a.mov_id = m.id AND a.componente = 'principale' "
-        "WHERE t.stato = 'spesa_familiare' ORDER BY m.data DESC")]
+        "WHERE t.stato = 'spesa_familiare' "
+        # deciso a mano senza categoria (escluso dalle analisi, trasferimento interno): non e' piu' da classificare;
+        # quelli con una categoria restano, per poterla cambiare
+        "AND NOT (m.id IN (SELECT mov_id FROM decisioni) AND a.l2 IS NULL) ORDER BY m.data DESC")]
     for r in out:
         r["controparte"] = r["familiare"]
         r["familiare"] = chi(r["familiare"])

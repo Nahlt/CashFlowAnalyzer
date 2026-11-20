@@ -4,6 +4,7 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 
+from .. import analisi as an
 from .. import disponibilita as dsp
 from ..numeri import euro
 from . import grafici
@@ -11,7 +12,6 @@ from .comune import NATURE, _ricorda, _tieni, conn, intestazione, testo
 
 MODI = {"giorno": "Giorno", "periodo": "Periodo"}
 GIORNI_CONTESTO = 30          # in modalita' giorno: grafico e confronto sui 30 giorni che finiscono col giorno scelto
-GIORNI_PERIODO = 90           # periodo proposto all'apertura
 
 
 def _con_segno(cent):
@@ -58,7 +58,10 @@ def saldo_conti():
         da = a_ = giorno.isoformat()
     else:
         if not _intervallo_valido(st.session_state.get("disp_periodo"), d0, oggi):
-            st.session_state["disp_periodo"] = (max(d0, oggi - timedelta(days=GIORNI_PERIODO - 1)), oggi)
+            # il periodo scelto in Impostazioni, ristretto ai giorni di cui si conosce il saldo (fino a oggi)
+            voce, mese_in_corso = an.leggi_periodo_predefinito(c)
+            p0, p1, _ = an.periodo_predefinito(voce, mese_in_corso, oggi, d0, oggi)
+            st.session_state["disp_periodo"] = (p0, p1)
         sel = d.date_input("Periodo", min_value=d0, max_value=oggi, format="DD/MM/YYYY", key="disp_periodo")
         if not (isinstance(sel, (list, tuple)) and len(sel) == 2):
             st.caption("Scegli anche la data di fine del periodo.")
@@ -155,6 +158,7 @@ def _movimenti(c, s, conto, da, a, modo):
     vista = pd.DataFrame({
         "Contabilizzato": [dsp.data_it(x) for x in df["data_contabile"]],
         "Operazione": [dsp.data_it(x) for x in df["data"]],
+        "Ora": [testo(x) for x in df["ora"]],
         "Esercente o controparte": [testo(x) for x in df["esercente"]],
         "Importo": [euro(int(v)) for v in df["importo_cent"]],
         "Saldo dopo": [euro(None if grafici.pd_nullo(v) else int(v)) for v in df["saldo_dopo"]],

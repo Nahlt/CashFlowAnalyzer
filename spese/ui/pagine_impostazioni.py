@@ -13,8 +13,8 @@ from ..iban import controlla as controlla_iban
 from ..numeri import euro
 from ..db import DatabaseOccupato, backup, cambia_passphrase, leggi_impostazione, scrivi_impostazione
 from ..percorsi import cartella_dati
-from .comune import (avviso_ollama_non_locale, chiave_tabella, conn, esegui_ricalcolo, ollama_non_raggiungibile,
-                     scarica_modello_locale, testo)
+from .comune import (avviso_ollama_non_locale, chiave_tabella, conn, dimentica_periodo, esegui_ricalcolo,
+                     ollama_non_raggiungibile, scarica_modello_locale, testo)
 from .pagine_dati import TIPI_CONTO
 
 
@@ -146,6 +146,29 @@ def conti():
         def evidenzia(col):
             return ["background-color: rgba(235,104,52,0.18)" if (v == 0 and idx in ultimi) else "" for idx, v in col.items()]
         st.dataframe(t.style.apply(evidenzia, axis=0), width="stretch")
+
+
+def _periodo_predefinito(c):
+    """Periodo con cui si aprono i filtri delle analisi (e la vista Periodo di Saldo dei conti). E' solo il punto di
+    partenza: il periodo si cambia come sempre dai filtri."""
+    st.subheader("Periodo delle analisi")
+    voce, mese_in_corso = an.leggi_periodo_predefinito(c)
+    a, b = st.columns([2, 1], vertical_alignment="bottom")
+    nuova = a.selectbox("Periodo proposto all'apertura", list(an.PERIODI), index=list(an.PERIODI).index(voce),
+                        format_func=an.PERIODI.get, key="imp_periodo")
+    con_mese = b.checkbox("Aggiungi mese in corso", value=mese_in_corso, key="imp_periodo_mese",
+                          disabled=nuova not in an.MESI_INTERI,
+                          help="Mese scorso e ultimi mesi sono mesi interi, fino al mese scorso: il mese in corso di "
+                               "solito e' ancora a meta' e abbasserebbe le medie. Spunta per arrivare fino a oggi.")
+    st.caption("Il periodo si calcola rispetto a oggi e si restringe ai movimenti presenti; poi si cambia come sempre "
+               "dai filtri. Vale anche per la vista Periodo di *Saldo dei conti*.")
+    con_mese = bool(con_mese and nuova in an.MESI_INTERI)
+    if (nuova, con_mese) != (voce, mese_in_corso and voce in an.MESI_INTERI):
+        scrivi_impostazione(c, an.CHIAVE_PERIODO, {"voce": nuova, "mese_in_corso": con_mese})
+        dimentica_periodo()
+        for k in ("disp_periodo", "_tieni_disp_periodo"):
+            st.session_state.pop(k, None)
+        st.toast("Periodo proposto: %s%s" % (an.PERIODI[nuova], " con il mese in corso" if con_mese else ""))
 
 
 def _saldi_conti(c):
@@ -284,9 +307,9 @@ def impostazioni():
                "inseriti restano nel database e ricompaiono riaccendendola.")
     from .. import mercato
     from .. import portafoglio as pf
-    voci = [("Portafoglio titoli", "Pagina Portafoglio sotto Analisi: posizioni, costo medio, plusvalenze realizzate "
-             "e, con i prezzi di mercato, valore e rendimenti.", pf.CHIAVE_ATTIVA, pf.attiva(c)),
-            ("Etichette", "Etichette libere sui movimenti (es. un viaggio) e pagina Etichette sotto Analisi.",
+    voci = [("Portafoglio titoli", "Pagina Portafoglio sotto Analisi disponibilità: posizioni, costo medio, plusvalenze "
+             "realizzate e, con i prezzi di mercato, valore e rendimenti.", pf.CHIAVE_ATTIVA, pf.attiva(c)),
+            ("Etichette", "Etichette libere sui movimenti (es. un viaggio) e pagina Etichette sotto Analisi movimenti.",
              "sezione_etichette", attr.etichette_attive(c)),
             ("Natura della spesa", "Necessaria, svago o superflua per ogni uscita: colonne, grafico in Dove vanno i "
              "soldi e scheda in Regole e tassonomia.", "sezione_natura", attr.natura_attiva(c))]
@@ -304,6 +327,8 @@ def impostazioni():
         st.caption("Con i prezzi di mercato esce dal PC solo l'elenco dei titoli (codici ISIN e simboli di borsa) verso "
                    "Yahoo Finance: mai quote, importi, date o nomi. Ogni richiesta resta nel registro delle richieste "
                    "in Classificazione automatica.")
+
+    _periodo_predefinito(c)
 
     st.subheader("Modello locale (Ollama)")
     oc = llm.ollama_config(c)

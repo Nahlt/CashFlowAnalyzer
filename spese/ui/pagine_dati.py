@@ -255,6 +255,11 @@ def _scegli_categoria(etichetta, key, proposta=None, sezioni=("uscite", "entrate
     return st.selectbox(etichetta, opz, index=idx, format_func=etichetta_cat, key=key, placeholder="Scegli la categoria")
 
 
+# Revisione dei bonifici: un movimento su cui hai gia' deciso (anche "Escluso dalle analisi") non si chiede piu',
+# come nel ricalcolo, dove una tua decisione chiude la revisione
+NON_DECISO = "t.mov_id NOT IN (SELECT mov_id FROM decisioni)"
+
+
 def revisione():
     st.title("Revisione")
     st.caption("Tutti i conti e i perimetri. Ogni decisione si applica subito e ricalcola le analisi.")
@@ -272,7 +277,9 @@ def revisione():
             "m2.data AS data2, cb.nome AS conto2 FROM trasferimenti t JOIN movimenti m ON m.id = t.mov_id "
             "JOIN movimenti m2 ON m2.id = t.controparte_mov_id JOIN conti ca ON ca.id = m.conto_id "
             "JOIN conti cb ON cb.id = m2.conto_id WHERE t.stato NOT IN ('abbinato','contributo') "
-            "AND t.controparte_mov_id IS NOT NULL AND m.importo_cent < 0").fetchall()
+            "AND t.controparte_mov_id IS NOT NULL AND m.importo_cent < 0 "
+            "AND t.mov_id NOT IN (SELECT mov_id FROM decisioni) "
+            "AND t.controparte_mov_id NOT IN (SELECT mov_id FROM decisioni)").fetchall()
         if coppie:
             st.subheader("Possibili trasferimenti tra tuoi conti")
             for k, r in enumerate(coppie):
@@ -296,7 +303,8 @@ def revisione():
             "sum(m.importo_cent > 0) AS n_in, coalesce(sum(CASE WHEN m.importo_cent > 0 THEN m.importo_cent END), 0) AS tot_in, "
             "group_concat(DISTINCT co.nome) AS conti "
             "FROM trasferimenti t JOIN movimenti m ON m.id = t.mov_id JOIN conti co ON co.id = m.conto_id "
-            "WHERE t.stato = 'proposto_proprio' AND t.beneficiario IS NOT NULL GROUP BY t.beneficiario ORDER BY n DESC").fetchall()
+            "WHERE t.stato = 'proposto_proprio' AND t.beneficiario IS NOT NULL AND " + NON_DECISO +
+            " GROUP BY t.beneficiario ORDER BY n DESC").fetchall()
         if prop:
             st.subheader("Trasferimenti a tuo nome senza contropartita")
             st.caption("Bonifici da o verso un conto intestato a te che non risulta tra quelli caricati. Una risposta "
@@ -320,7 +328,8 @@ def revisione():
                     with st.expander("Dettaglio dei %d movimenti" % r["n"]):
                         scelti = _tabella_movimenti(
                             c, "m.id IN (SELECT mov_id FROM trasferimenti WHERE beneficiario = ? AND stato = "
-                               "'proposto_proprio')", [r["beneficiario"]], "det_pp_%d" % k, selezione=True)
+                               "'proposto_proprio') AND " + NON_DECISO.replace("t.mov_id", "m.id"),
+                            [r["beneficiario"]], "det_pp_%d" % k, selezione=True)
                         st.caption("Seleziona delle righe per indicare il conto solo per quei movimenti (es. se a tuo "
                                    "nome hai piu' conti e i bonifici vanno a conti diversi).")
                     scelta = st.radio("Che conto c'e' dall'altra parte?", list(esiti), format_func=esiti.get,
@@ -362,7 +371,7 @@ def revisione():
             "coalesce(sum(CASE WHEN a.importo_cent > 0 THEN a.importo_cent END), 0) AS tot_in, "
             "min(a.perimetro) AS per_min, max(a.perimetro) AS per_max, group_concat(DISTINCT co.nome) AS conti "
             "FROM analisi a JOIN movimenti m ON m.id = a.mov_id JOIN conti co ON co.id = a.conto_id "
-            "JOIN trasferimenti t ON t.mov_id = a.mov_id WHERE t.stato = 'terzi' AND a.l2 IS NULL "
+            "JOIN trasferimenti t ON t.mov_id = a.mov_id WHERE t.stato = 'terzi' AND a.l2 IS NULL AND " + NON_DECISO + " "
             "AND a.componente = 'principale' GROUP BY a.chiave ORDER BY n DESC").fetchall()
         if terzi:
             st.subheader("Bonifici con altre persone o aziende")
@@ -386,7 +395,8 @@ def revisione():
                         proposta = "Contributo ricevuto" if r["per_min"] == r["per_max"] == "comune" else "Altre entrate"
                     with st.expander("Dettaglio dei %d movimenti" % r["n"]):
                         _tabella_movimenti(c, "a.chiave = ? AND a.l2 IS NULL AND m.id IN (SELECT mov_id FROM trasferimenti "
-                                              "WHERE stato = 'terzi')", [r["chiave"]], "det_tz_%d" % k)
+                                              "WHERE stato = 'terzi') AND " + NON_DECISO.replace("t.mov_id", "m.id"),
+                                           [r["chiave"]], "det_tz_%d" % k)
                     cat = _scegli_categoria("Categoria", "terzi_%d_%s" % (k, r["chiave"]), iniziale=proposta)
                     if cat and st.button("Applica", key="aterzi_%d" % k):
                         servizi.crea_regola(c, r["chiave"], cat, "chiave", "esatto")
@@ -408,7 +418,7 @@ def revisione():
             # categoria da confermare: quella gia' presente, altrimenti la proposta
             attuale = [(a1, a2) if isinstance(a2, str) else _cat_da_proposta(p)
                        for a1, a2, p in zip(altri["l1"], altri["l2"], altri["proposta"])]
-            vista = pd.DataFrame({"Data": altri["data"], "Conto": altri["conto"],
+            vista = pd.DataFrame({"Data": altri["data"], "Ora": altri["ora"].fillna(""), "Conto": altri["conto"],
                                   "Importo": [euro(v) for v in altri["importo_cent"]],
                                   "Conta come": [NATURE.get(n, n) for n in altri["natura"]],
                                   "Categoria": [etichetta_cat(x) if x and isinstance(a2, str) else ""
@@ -445,7 +455,7 @@ def revisione():
 
 
 DETTAGLIO_SQL = (
-    "SELECT m.id AS mov_id, m.data, co.nome AS conto, m.importo_cent, m.tipo, m.controparte_nome, m.controparte_iban, "
+    "SELECT m.id AS mov_id, m.data, m.ora, co.nome AS conto, m.importo_cent, m.tipo, m.controparte_nome, m.controparte_iban, "
     "m.esercente, m.descrizione, f.nome_file, f.importato_il, a.natura, a.l1, a.l2, a.chiave, "
     "(d.mov_id IS NOT NULL AND d.l2 IS NOT NULL) AS scelta_sul_movimento "
     "FROM movimenti m JOIN conti co ON co.id = m.conto_id LEFT JOIN import_file f ON f.id = m.import_id "
@@ -542,7 +552,8 @@ def _addebiti_paypal(c):
                 st.caption("Nessuna uscita nel report PayPal con questi criteri.")
             else:
                 tv = pd.DataFrame({
-                    "Data": [_data_it(x["data"]) for x in trovati], "Nome": [x["nome"] or "" for x in trovati],
+                    "Data": [_data_it(x["data"]) for x in trovati], "Ora": [x.get("ora") or "" for x in trovati],
+                    "Nome": [x["nome"] or "" for x in trovati],
                     "Importo": [euro(x["importo_cent"]) for x in trovati],
                     "Differenza": ["" if not x["differenza"] else euro(x["differenza"]) for x in trovati],
                     "Giorni": [x["giorni"] for x in trovati],
@@ -638,14 +649,15 @@ def _tabella_movimenti(c, condizione, parametri, chiave, selezione=False):
     """Tabella con i riferimenti di ogni movimento: data, conto, importo, controparte, IBAN, descrizione
     completa e file da cui arriva. Serve a decidere sapendo di quali movimenti si tratta. Con selezione=True le
     righe si selezionano e si restituiscono gli id dei movimenti scelti."""
-    det = pd.DataFrame([dict(r) for r in c.execute(DETTAGLIO_SQL + "WHERE " + condizione + " ORDER BY m.data DESC",
+    det = pd.DataFrame([dict(r) for r in c.execute(DETTAGLIO_SQL + "WHERE " + condizione + " ORDER BY m.data DESC, m.ora DESC",
                                                    parametri)])
     if det.empty:
         st.caption("Nessun movimento.")
         return []
     extra = {"on_select": "rerun", "selection_mode": "multi-row"} if selezione else {}
     ev = st.dataframe(pd.DataFrame({
-        "Data": det["data"], "Conto": det["conto"], "Importo": [euro(v) for v in det["importo_cent"]],
+        "Data": det["data"], "Ora": det["ora"].fillna(""), "Conto": det["conto"],
+        "Importo": [euro(v) for v in det["importo_cent"]],
         "Controparte": det["controparte_nome"].fillna(det["esercente"]).fillna(""),
         "IBAN controparte": det["controparte_iban"].fillna(""), "Descrizione": det["descrizione"].fillna(""),
         "Ora conta come": [NATURE.get(n, n or "") + ((" · " + etichetta_cat((a, l))) if isinstance(l, str) else "")
@@ -720,7 +732,7 @@ def _spese_familiari(c):
     giro = st.session_state.get("fam_giro", 0)
     scelti = pd.DataFrame()
     if not f.empty:
-        vista = pd.DataFrame({"Data": f["data"], "Familiare": f["familiare"].fillna(""),
+        vista = pd.DataFrame({"Data": f["data"], "Ora": f["ora"].fillna(""), "Familiare": f["familiare"].fillna(""),
                               "Importo": [euro(v) for v in f["importo_cent"]], "Causale": f["causale"].fillna(""),
                               "Categoria": f["stato"], "Proposta": f["proposta"]})
         sel = st.dataframe(vista, hide_index=True, width="stretch", on_select="rerun", selection_mode="multi-row",
@@ -1001,7 +1013,7 @@ def _esercenti_da_classificare(c):
 def _movimenti_con_eccezioni(c, condizione, parametri, giro):
     """Movimenti degli esercenti selezionati. Se ne selezioni alcuni puoi dare a loro una categoria diversa da
     quella dell'esercente (una spesa con un'altra giustificazione): la scelta sul movimento vale sempre di piu'."""
-    det = pd.DataFrame([dict(r) for r in c.execute(DETTAGLIO_SQL + "WHERE " + condizione + " ORDER BY m.data DESC",
+    det = pd.DataFrame([dict(r) for r in c.execute(DETTAGLIO_SQL + "WHERE " + condizione + " ORDER BY m.data DESC, m.ora DESC",
                                                    parametri)])
     if det.empty:
         st.caption("Nessun movimento.")
@@ -1009,7 +1021,7 @@ def _movimenti_con_eccezioni(c, condizione, parametri, giro):
     st.caption("Per dare a uno o piu' movimenti una categoria diversa da quella dell'esercente, selezionali qui: "
                "la scelta sul singolo movimento prevale sulla categoria dell'esercente, anche in futuro.")
     vista = pd.DataFrame({
-        "Data": det["data"], "Conto": det["conto"], "Esercente": det["chiave"].fillna(""),
+        "Data": det["data"], "Ora": det["ora"].fillna(""), "Conto": det["conto"], "Esercente": det["chiave"].fillna(""),
         "Importo": [euro(v) for v in det["importo_cent"]],
         "Categoria": [("%s (scelta sul movimento)" % l if s else l) if isinstance(l, str) else ""
                       for l, s in zip([etichetta_cat((a, b)) if isinstance(b, str) else None
@@ -1120,7 +1132,7 @@ def tabella_movimenti(df, prefisso, altezza=520, restringi="restringi periodo o 
                       **{"Conta come": [NATURE.get(n, n) for n in df["natura"]]},
                       Rivedere=["sì" if x else "" for x in df["da_rivedere"]],
                       Motivo=[testo(mo) if x else "" for x, mo in zip(df["da_rivedere"], df["motivo"])])
-    colonne = ["data", "conto", "esercente", "controparte_nome", "Importo", "Conta come", "l1", "l2", "fonte", "Rivedere",
+    colonne = ["data", "ora", "conto", "esercente", "controparte_nome", "Importo", "Conta come", "l1", "l2", "fonte", "Rivedere",
                "Motivo", "descrizione"]
     if nat_on:
         valori = attr.valori()
@@ -1137,7 +1149,7 @@ def tabella_movimenti(df, prefisso, altezza=520, restringi="restringi periodo o 
                + (" Seleziona piu' righe per assegnare %s a tutte insieme." % cosa if prova else ""))
     giro = st.session_state.get(prefisso + "_giro", 0)
     vista[colonne] = vista[colonne].astype(object).where(vista[colonne].notna(), "")     # niente "None" nelle celle vuote
-    sel = st.dataframe(vista[colonne].rename(columns={"data": "Data", "conto": "Conto", "esercente": "Esercente",
+    sel = st.dataframe(vista[colonne].rename(columns={"data": "Data", "ora": "Ora", "conto": "Conto", "esercente": "Esercente",
                                                       "controparte_nome": "Controparte", "l1": "Categoria",
                                                       "l2": "Sottocategoria", "fonte": "Fonte",
                                                       "descrizione": "Descrizione"}),

@@ -297,7 +297,8 @@ def etichette():
             mv = an.etichetta_movimenti(c, f, int(scelta))
             if not mv.empty:
                 valori = attr.valori()
-                st.dataframe(pd.DataFrame({"Data": mv["data"], "Conto": mv["conto"], "Voce": mv["voce"],
+                st.dataframe(pd.DataFrame({"Data": mv["data"], "Ora": mv["ora"].fillna(""), "Conto": mv["conto"],
+                                           "Voce": mv["voce"],
                                            "Importo": [euro(v) for v in mv["importo_cent"]],
                                            "Categoria": [etichetta_cat((a, b)) if isinstance(b, str) else ""
                                                          for a, b in zip(mv["l1"], mv["l2"])],

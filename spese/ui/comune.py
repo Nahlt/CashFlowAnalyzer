@@ -5,7 +5,7 @@ import time
 import streamlit as st
 
 from .. import configurazione as cfg
-from ..analisi import PERIMETRI, Filtri, periodo_disponibile
+from ..analisi import PERIMETRI, Filtri, leggi_periodo_predefinito, periodo_disponibile, periodo_predefinito
 from ..numeri import euro
 from ..ricalcolo import ricalcola
 
@@ -49,6 +49,12 @@ def _ricorda(chiave):
     widget quando una pagina non lo mostra (es. Importa): una copia a parte lo fa ritrovare tornando indietro."""
     if chiave not in st.session_state and "_tieni_" + chiave in st.session_state:
         st.session_state[chiave] = st.session_state["_tieni_" + chiave]
+
+
+def dimentica_periodo():
+    """Il periodo dei filtri torna quello predefinito alla prossima pagina (dopo averlo cambiato in Impostazioni)."""
+    for k in ("f_periodo", "_tieni_f_periodo"):
+        st.session_state.pop(k, None)
 
 
 def _tieni(chiave):
@@ -109,9 +115,18 @@ def mostra_filtri(con_conti=True) -> Filtri:
         v = st.session_state.get(k)
         if isinstance(v, (list, tuple)) and not all(d0 <= x <= d1 for x in v):
             del st.session_state[k]                    # periodo fuori dai dati dei conti scelti
-        extra = {} if k in st.session_state else {"value": (d0, d1)}
+        extra = {}
+        if k not in st.session_state:
+            # all'apertura (o se il periodo non vale piu' per i conti scelti): il periodo scelto in Impostazioni
+            voce, mese_in_corso = leggi_periodo_predefinito(c)
+            p0, p1, nota = periodo_predefinito(voce, mese_in_corso, date.today(), d0, d1)
+            extra = {"value": (p0, p1)}
+            st.session_state["f_periodo_nota"] = ((p0, p1), nota)
         sel = st.date_input("Periodo", min_value=d0, max_value=d1, format="DD/MM/YYYY", key=k, **extra)
         _tieni(k)
+        nota = st.session_state.get("f_periodo_nota")
+        if nota and nota[1] and isinstance(sel, (list, tuple)) and tuple(sel) == nota[0]:
+            st.caption(nota[1])
         if isinstance(sel, (list, tuple)) and len(sel) == 2:
             da, a = sel[0].isoformat(), sel[1].isoformat()
     f = Filtri(perimetro or "composto", da, a, list(scelti) if scelti else [])

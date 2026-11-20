@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.19.0 – Manuale
+# CashFlow Analyzer 0.19.1 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -114,7 +114,9 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
    nome senza IBAN della controparte puoi indicare un tuo **conto gia' censito**: per tutti i movimenti di quel
    beneficiario o solo per quelli selezionati nel dettaglio; l'app cerca la contropartita su quel conto come se
    il bonifico ne riportasse l'IBAN. Le indicazioni date si rivedono e si tolgono in *Conti indicati a mano per
-   i bonifici*, in fondo alla stessa scheda. Negli esercenti
+   i bonifici*, in fondo alla stessa scheda. Un bonifico su cui hai gia' deciso in **Movimenti** (per esempio
+   *Escluso dalle analisi*) non compare piu' nella scheda; tra le spese pagate tramite un familiare restano quelli
+   con una categoria, per poterla cambiare. Negli esercenti
    puoi cercare per nome (anche scritto come appare in Movimenti, con cifre e punteggiatura), filtrare per caricamento (file importato), selezionarne piu' di uno e applicare la
    stessa categoria a tutti; sotto compaiono i movimenti degli esercenti selezionati. Selezionando uno o piu'
    di quei movimenti puoi dargli una categoria diversa da quella dell'esercente (stesso negozio, spesa con
@@ -148,7 +150,12 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
 6. **Analisi movimenti**. In cima alla barra laterale scegli i **conti** da analizzare, anche una combinazione qualsiasi
    (es. Credit Agricole + Trade Republic); i pulsanti *Personale*, *Comune* e *Tutti* selezionano i
    conti corrispondenti. I versamenti dal conto personale al conto comune si annullano solo se sono scelti
-   entrambi. Conti e periodo restano passando da una pagina all'altra.
+   entrambi. Conti e periodo restano passando da una pagina all'altra. All'apertura il periodo e' quello scelto
+   in *Impostazioni > Periodo delle analisi*: intero periodo (di partenza), mese in corso, mese scorso, ultimi 3 o
+   6 mesi, anno in corso, un anno (ultimi 12 mesi), due anni. Mese scorso e ultimi mesi sono mesi interi fino al
+   mese scorso; con *Aggiungi mese in corso* arrivano a oggi. Il periodo si restringe ai movimenti presenti: se non
+   ce n'e' nessuno (per esempio il mese in corso prima di importarlo) si apre l'ultimo mese con movimenti e il
+   filtro lo dice. Poi si cambia come sempre dal filtro.
    - **Andamento mensile**: passando il mouse su un mese vedi le prime categorie di spesa; con un clic (anche sulla
      differenza entrate uscite) apri *Dove vanno i soldi* filtrato su quel mese, senza cambiare il periodo.
    - **Dove vanno i soldi**: in alto le categorie (clic per sceglierne una; in rosso *Da classificare*, le uscite
@@ -172,7 +179,10 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
      internet mentre usi l'app), con animazioni di apertura e di aggiornamento.
    - Aspetto "chiaro a schede": colori e carattere in `.streamlit/config.toml` (sezione `[theme]`), il resto in
      cima ad `app.py`. Il carattere Inter sta in `static/fonts/` e viene servito dall'app stessa.
-   In **Movimenti** la colonna *Descrizione* riporta il testo originale del movimento (per PayPal il tipo di
+   In **Movimenti** la colonna *Ora* riporta l'ora dell'operazione dove la banca la scrive (pagamenti con carta
+   di ING, Credem e Crédit Agricole, tutti i movimenti PayPal e Trade Republic, i movimenti Fineco che la
+   riportano nella descrizione): serve a ritrovare l'operazione. La stessa colonna c'e' nelle tabelle di Revisione,
+   Etichette e Saldo dei conti. La colonna *Descrizione* riporta il testo originale del movimento (per PayPal il tipo di
    operazione, il nome e l'oggetto); la colonna *Motivo* dice perche' un movimento e' da rivedere (categoria da assegnare o da
    confermare, trasferimento senza contropartita, addebito della carta senza estratto, prelievo da
    giustificare...). Una tua decisione sul movimento chiude sempre la revisione. Per un pagamento con carta o un
@@ -190,7 +200,7 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
      commissioni e imposte. Contano tutti i movimenti, anche quelli esclusi dalle analisi.
    - Vista **Giorno**: saldo a fine giornata, movimenti del giorno e differenza rispetto a 30 giorni prima; il
      grafico mostra il saldo dei 30 giorni che finiscono con il giorno scelto.
-   - Vista **Periodo**: saldo a inizio periodo (prima dei movimenti del primo giorno), a fine periodo con la
+   - Vista **Periodo** (all'apertura il periodo scelto in Impostazioni, fino a oggi): saldo a inizio periodo (prima dei movimenti del primo giorno), a fine periodo con la
      variazione, e saldo minimo con la sua data. Il grafico ha il saldo (linea, asse a sinistra) e le uscite del
      giorno (barre, asse a destra): tutto cio' che fa scendere il saldo, anche addebito della carta, bonifici
      verso altri conti e acquisti di titoli.

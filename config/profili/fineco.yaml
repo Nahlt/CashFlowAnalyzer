@@ -65,6 +65,12 @@ tipi:
 # i valori trovati tornano con gli spazi originali (l'IBAN senza spazi, tenuto solo se la cifra di controllo
 # torna; il nome della controparte con le parole dei titolari e dei familiari ricomposte).
 estrazione_senza_spazi: true
+# ora dell'operazione, per qualunque tipo di movimento, quando la descrizione la riporta (da confermare con un
+# estratto reale): "Pag. del 10/04/26 ora 12:30" (carta), "Ins: 20/11/2026 14:35:12" (SEPA), "Data Inserimento:
+# 20/11/2026 14:35" (istantanei). Senza ora la colonna resta vuota, come prima.
+estrazione_ora:
+  - '(?i)\d{2}ora(?P<ora>\d{2}:\d{2})'
+  - '(?i)(?:Ins:|DataInserimento:)\d{2}/\d{2}/\d{2,4}(?P<ora>\d{2}:\d{2})'
 estrazione:
   pagamento_carta:
     # da confermare con un estratto reale: "Pag. del 10/04/26 ora 12:30 presso: NOME ESERCENTE CITTA Carta N° ..."
