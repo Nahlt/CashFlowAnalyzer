@@ -258,13 +258,16 @@ def causale_bonifico(descrizione, nome=None):
         if ultimo:
             t = t[ultimo:]
     t = re.sub(r"(?i)^.*?\bA (?:DEBITO|CREDITO)(?: A FAVORE DI)?\b", "", t) if not nome else t
+    t = re.sub(r"(?i)\bDESCR\.?\s*OPERAZIONE\b\s*(?:SCT\s*:)?", " ", t)   # Credit Agricole: "DESCR.OPERAZIONE SCT:..."
     t = re.sub(r"(?i)\bRIF\b[.=:]?", " ", t)
     t = re.sub(r"\S*\d\S*", " ", t)                  # codici di riferimento e numeri di operazione
     return re.sub(r"\s+", " ", t).strip(" *-.,;")
 
 
 def spese_tramite_familiari(conn):
-    """Bonifici dal conto comune ai familiari, uno per riga, con la categoria attuale e le eventuali parti.
+    """Bonifici con i familiari, uno per riga, con la categoria attuale e le eventuali parti: dal conto comune a
+    un familiare (spese domiciliate sul suo conto) e tra un familiare e un tuo conto personale, nei due sensi.
+    'perimetro' dice da quale conto: le proposte e i gruppi ripetuti valgono solo per il conto comune.
     'familiare' e' il nome indicato in Impostazioni: negli estratti la causale e' spesso attaccata al nome del
     destinatario ('Mario Rossi rata auto'), quindi il testo grezzo non basta a raggruppare."""
     from .db import leggi_impostazione
@@ -280,7 +283,8 @@ def spese_tramite_familiari(conn):
                 migliore = (trovate, n)
         return migliore[1] if migliore else (testo or "")
     out = [dict(r) for r in conn.execute(
-        "SELECT m.id AS mov_id, m.data, m.ora, co.nome AS conto, m.controparte_nome AS familiare, m.importo_cent, "
+        "SELECT m.id AS mov_id, m.data, m.ora, co.nome AS conto, co.perimetro, m.controparte_nome AS familiare, "
+        "m.importo_cent, "
         "m.descrizione, "
         "t.beneficiario, a.l1, a.l2, a.natura, a.fonte, a.proposta, "
         "(SELECT count(*) FROM ripartizioni r WHERE r.mov_id = m.id) AS parti "

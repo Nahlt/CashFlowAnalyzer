@@ -680,6 +680,19 @@ def _opzioni_spesa():
     return [RESTITUISCE] + opzioni_categorie(("uscite",))
 
 
+def _opzioni_familiari(righe):
+    """Categorie proponibili per i bonifici con i familiari scelti. Dal conto comune: spese e restituzione di
+    contributo. Da un familiare su un tuo conto personale: entrate (un regalo) o spese, che diventano un rimborso
+    di quella spesa. Verso un familiare da un conto personale: spese. Con bonifici di tipo diverso, le spese."""
+    tipi = {"comune" if r["perimetro"] == "comune" else ("entrata" if r["importo_cent"] > 0 else "uscita")
+            for _, r in righe.iterrows()}
+    if tipi == {"comune"}:
+        return _opzioni_spesa()
+    if tipi == {"entrata"}:
+        return opzioni_categorie(("entrate", "uscite"))
+    return opzioni_categorie(("uscite",))
+
+
 def _etichetta_spesa(v):
     if v == RESTITUISCE:
         return "Restituzione di contributo (riduce i contributi ricevuti)"
@@ -691,59 +704,86 @@ def _stato_spesa(r):
         return "Suddiviso in %d parti" % r["parti"]
     if r["natura"] == "entrata" and r["l2"] == servizi.RESTITUZIONE:
         return "Restituzione di contributo"
-    return etichetta_cat((r["l1"], r["l2"])) if isinstance(r["l2"], str) else ""
+    if not isinstance(r["l2"], str):
+        return ""
+    rimborso = r["importo_cent"] > 0 and r["natura"] in ("uscita", "rimborso")   # un familiare ti restituisce una spesa
+    return etichetta_cat((r["l1"], r["l2"])) + (" (rimborso)" if rimborso else "")
 
 
 def _spese_familiari(c):
-    """Bonifici dal conto comune ai familiari: spese domiciliate sul loro conto, da categorizzare per causale."""
+    """Bonifici con i familiari, da categorizzare per causale uno per uno (o con una regola sulla causale): dal
+    conto comune a un familiare (spese domiciliate sul suo conto) e tra un familiare e un tuo conto personale.
+    Le proposte (stesso familiare e stesso importo di uno gia' classificato) e i gruppi ripetuti valgono solo per
+    il conto comune: sui conti personali le causali sono tutte diverse e un importo uguale non dice niente."""
     righe = servizi.spese_tramite_familiari(c)
     if not righe:
         return False
-    st.subheader("Spese pagate tramite un familiare")
-    st.caption("Bonifici dal conto comune a un familiare il cui conto non analizzi: rimborsano spese domiciliate sul "
-               "suo conto (rata dell'auto, assicurazione...) e contano come uscite. Scegli la categoria per uno o piu' "
-               "bonifici, suddividi un bonifico che copre piu' spese, oppure segnalo come restituzione di contributo. "
-               "Per quelli che si ripetono usa una regola sulla causale.")
+    st.subheader("Bonifici con i familiari")
+    st.caption("Dal conto comune a un familiare il cui conto non analizzi: rimborsano spese domiciliate sul suo conto "
+               "(rata dell'auto, assicurazione...) e contano come uscite; si possono segnare come restituzione di "
+               "contributo. Tra un familiare e un tuo conto personale (prestito, regalo, rimborso di una spesa...): "
+               "per un bonifico ricevuto scegli un'entrata, oppure la categoria della spesa che ti rimborsa. Seleziona "
+               "uno o piu' bonifici: la categoria vale solo per quelli scelti. Per le causali che si ripetono usa una "
+               "regola sulla causale.")
     df = pd.DataFrame(righe)
     df["stato"] = [_stato_spesa(r) for r in righe]
     df["da_fare"] = df["stato"] == ""
-    # proposta: stesso familiare e stesso importo di un bonifico gia' classificato
+    df["comune"] = df["perimetro"] == "comune"
+    # proposta (solo conto comune): stesso familiare e stesso importo di un bonifico gia' classificato
     note = {}
     for r in righe:
-        if r["l2"] and not r["parti"] and r["fonte"] in ("utente", "regola utente"):
+        if r["perimetro"] == "comune" and r["l2"] and not r["parti"] and r["fonte"] in ("utente", "regola utente"):
             note.setdefault((r["familiare"], r["importo_cent"]), ((r["l1"], r["l2"]), r["natura"], r["data"]))
     proposte = []
     for _, r in df.iterrows():
-        nota = note.get((r["familiare"], r["importo_cent"])) if r["da_fare"] else None
+        nota = note.get((r["familiare"], r["importo_cent"])) if r["da_fare"] and r["comune"] else None
         proposte.append("%s (come il %s)" % ("Restituzione di contributo" if nota[1] == "entrata" else etichetta_cat(nota[0]),
                                              nota[2])
                         if nota else "")
     df["proposta"] = proposte
     a, b, d = st.columns([1, 1, 2])
-    solo = a.toggle("Solo da classificare", value=bool(df["da_fare"].any()), key="fam_solo")
-    senza_prop = b.toggle("Solo senza proposta", key="fam_senza_prop")
+    # sezione di revisione: all'apertura solo quello che resta da fare
+    solo = a.toggle("Solo da classificare", value=True, key="fam_solo")
+    senza_prop = b.toggle("Solo senza proposta", value=True, key="fam_senza_prop")
     d.caption("%d bonifici, %d da classificare" % (len(df), int(df["da_fare"].sum())))
     f = (df[df["da_fare"]] if solo else df)
+    nascoste = f[f["proposta"] != ""] if senza_prop else f.iloc[0:0]
     if senza_prop:
         f = f[f["proposta"] == ""]
     f = f.reset_index(drop=True)
-    if f.empty:
-        st.success("Tutti i bonifici ai familiari hanno una categoria.", icon=":material/done_all:")
     giro = st.session_state.get("fam_giro", 0)
+
+    def fatto(messaggio):
+        st.session_state["fam_giro"] = giro + 1
+        esegui_ricalcolo(messaggio)
+        st.rerun()
+
+    if not nascoste.empty:
+        x, y = st.columns([3, 1], vertical_alignment="center")
+        x.caption("%d bonifici del conto comune hanno una proposta (stesso familiare e stesso importo di uno gia' "
+                  "classificato) e sono nascosti: spegni *Solo senza proposta* per vederli." % len(nascoste))
+        if y.button("Conferma le %d proposte" % len(nascoste), key="fam_conf_tutte_%d" % giro):
+            with transazione(c):
+                for _, r in nascoste.iterrows():
+                    cat, nat, _ = note[(r["familiare"], r["importo_cent"])]
+                    if nat == "entrata":
+                        servizi.decidi_restituzione(c, r["mov_id"])
+                    else:
+                        servizi.decidi_movimento(c, r["mov_id"], cat)
+            fatto("%d proposte confermate" % len(nascoste))
+    if f.empty:
+        st.success("Tutti i bonifici con i familiari hanno una categoria." if nascoste.empty else
+                   "Nessun bonifico da classificare senza proposta.", icon=":material/done_all:")
     scelti = pd.DataFrame()
     if not f.empty:
-        vista = pd.DataFrame({"Data": f["data"], "Ora": f["ora"].fillna(""), "Familiare": f["familiare"].fillna(""),
+        vista = pd.DataFrame({"Data": f["data"], "Ora": f["ora"].fillna(""), "Conto": f["conto"],
+                              "Familiare": f["familiare"].fillna(""),
                               "Importo": [euro(v) for v in f["importo_cent"]], "Causale": f["causale"].fillna(""),
                               "Categoria": f["stato"], "Proposta": f["proposta"]})
         sel = st.dataframe(vista, hide_index=True, width="stretch", on_select="rerun", selection_mode="multi-row",
                            key=chiave_tabella("fam_sel_%d_%d_%d" % (giro, int(solo), int(senza_prop)), f["mov_id"]), height=min(420, 38 + 35 * len(vista)))
         if sel and sel.selection.rows:
             scelti = f.iloc[sel.selection.rows]
-
-    def fatto(messaggio):
-        st.session_state["fam_giro"] = giro + 1
-        esegui_ricalcolo(messaggio)
-        st.rerun()
 
     if not scelti.empty:
         n = len(scelti)
@@ -760,7 +800,7 @@ def _spese_familiari(c):
                         else:
                             servizi.decidi_movimento(c, mid, cat)
                 fatto("%d proposte confermate" % len(da_note))
-        opzioni = _opzioni_spesa()
+        opzioni = _opzioni_familiari(scelti)
         proposte = {p for p in scelti["proposta"]}
         iniziale = None
         if len(proposte) == 1 and next(iter(proposte)):
@@ -769,6 +809,9 @@ def _spese_familiari(c):
             iniziale = RESTITUISCE if nat == "entrata" else cat_n
         with st.form("fam_cat_%d" % giro):
             st.markdown("**%d bonifici selezionati** · %s" % (n, euro(int(scelti["importo_cent"].sum()))))
+            if set(scelti["importo_cent"] > 0) == {True} and not scelti["comune"].any():
+                st.caption("Bonifici ricevuti: con un'entrata contano come entrate; con una categoria di spesa "
+                           "diventano un rimborso e riducono quella spesa.")
             scelta = st.selectbox("Categoria", opzioni, format_func=_etichetta_spesa, placeholder="Scegli la categoria",
                                   index=opzioni.index(iniziale) if iniziale in opzioni else None,
                                   key="fam_l2_%d_%s" % (giro, abs(hash(tuple(scelti["mov_id"]))) % 10 ** 8))
@@ -792,26 +835,26 @@ def _spese_familiari(c):
                         servizi.annulla_decisione(c, mid)
                 fatto("Categoria tolta")
         if n == 1:
-            _suddivisione(c, scelti.iloc[0], giro, fatto)
+            _suddivisione(c, scelti.iloc[0], giro, fatto, opzioni)
         with st.expander("Dettaglio dei bonifici selezionati", expanded=False):
             ids = list(scelti["mov_id"])
             _tabella_movimenti(c, "m.id IN (%s)" % ",".join("?" * len(ids)), ids, "fam_det_%d" % giro)
 
-    _ricorrenze_familiari(c, df, giro, fatto)
+    _ricorrenze_familiari(c, df[df["comune"]], giro, fatto)       # solo conto comune: vedi sopra
     _regola_causale(c, giro, fatto)
     return True
 
 
-def _suddivisione(c, r, giro, fatto):
+def _suddivisione(c, r, giro, fatto, opzioni=None):
     """Un bonifico che copre piu' spese: parti con importo, categoria e causale, che devono fare il totale."""
     mid, totale = r["mov_id"], int(r["importo_cent"])
     esistenti = servizi.ripartizione(c, mid)
     with st.expander("Suddividi questo bonifico in piu' spese" + (" (gia' suddiviso)" if esistenti else ""),
                      expanded=bool(esistenti)):
-        st.caption("Bonifico di %s. Indica le parti: la somma deve essere esattamente il totale." % euro(-totale))
+        st.caption("Bonifico di %s. Indica le parti: la somma deve essere esattamente il totale." % euro(abs(totale)))
         quante = st.number_input("Numero di parti", min_value=2, max_value=8, value=max(2, len(esistenti)),
                                  key="fam_np_%s" % mid)
-        opzioni = _opzioni_spesa()
+        opzioni = opzioni or _opzioni_spesa()
         with st.form("fam_split_%s_%d" % (mid, giro)):
             parti = []
             for i in range(int(quante)):

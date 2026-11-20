@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.19.1 – Manuale
+# CashFlow Analyzer 0.19.2 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -115,8 +115,8 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
    beneficiario o solo per quelli selezionati nel dettaglio; l'app cerca la contropartita su quel conto come se
    il bonifico ne riportasse l'IBAN. Le indicazioni date si rivedono e si tolgono in *Conti indicati a mano per
    i bonifici*, in fondo alla stessa scheda. Un bonifico su cui hai gia' deciso in **Movimenti** (per esempio
-   *Escluso dalle analisi*) non compare piu' nella scheda; tra le spese pagate tramite un familiare restano quelli
-   con una categoria, per poterla cambiare. Negli esercenti
+   *Escluso dalle analisi*) non compare piu' nella scheda; tra i bonifici con i familiari restano quelli con una
+   categoria, per poterla cambiare. Negli esercenti
    puoi cercare per nome (anche scritto come appare in Movimenti, con cifre e punteggiatura), filtrare per caricamento (file importato), selezionarne piu' di uno e applicare la
    stessa categoria a tutti; sotto compaiono i movimenti degli esercenti selezionati. Selezionando uno o piu'
    di quei movimenti puoi dargli una categoria diversa da quella dell'esercente (stesso negozio, spesa con
@@ -126,12 +126,22 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
    salvate: nessun modello viene interpellato finche' non lo chiedi in Classificazione automatica. Per i bonifici e i
    trasferimenti ogni voce ha il dettaglio dei movimenti (data, conto, importo, controparte, IBAN, descrizione,
    file di provenienza).
-   I bonifici dal conto comune a un **familiare** (indicato in Impostazioni) il cui conto non analizzi
-   contano come spese: rimborsano spese domiciliate sul suo conto. Nella sezione *Spese pagate tramite un
-   familiare* scegli la categoria per uno o piu' bonifici (si vede la causale), applichi una categoria a un
-   gruppo che si ripete, crei una regola sulla causale per quelli futuri, **suddividi** un bonifico in piu'
-   parti (importo, categoria e causale per parte, la somma deve fare il totale) oppure lo segni come
-   **restituzione di contributo**, che riduce i contributi ricevuti invece di aumentare le spese.
+   I bonifici dal conto comune a un **familiare** (indicato in Impostazioni, una persona per riga; maiuscole,
+   spazi e ordine di nome e cognome non contano) il cui conto non analizzi contano come spese: rimborsano spese
+   domiciliate sul suo conto. Nella sezione *Bonifici con i familiari* scegli la categoria per uno o piu'
+   bonifici selezionati (si vede la causale), applichi una categoria a un gruppo che si ripete, crei una regola
+   sulla causale per quelli futuri, **suddividi** un bonifico in piu' parti (importo, categoria e causale per
+   parte, la somma deve fare il totale) oppure lo segni come **restituzione di contributo**, che riduce i
+   contributi ricevuti invece di aumentare le spese.
+   Nella stessa sezione ci sono i bonifici tra un familiare e i tuoi **conti personali**, nei due sensi (prestiti,
+   regali, rimborsi di spese...). Le causali sono tutte diverse, quindi si classificano a mano: la categoria vale
+   solo per i bonifici selezionati, l'app non la impara dal nome e non propone categorie per importi uguali. Per
+   un bonifico ricevuto scegli un'entrata (per esempio *Regali ricevuti*) oppure la categoria della spesa che ti
+   rimborsa: Giulia ti restituisce 150 € del supermercato, con *Alimentari > Supermercato* le spese alimentari
+   scendono di 150 € e le entrate non salgono. Finche' non e' classificato conta come entrata (o uscita).
+   All'apertura si vedono solo i bonifici da classificare senza proposta; quelli del conto comune con una
+   proposta (stesso familiare e stesso importo di uno gia' classificato) si confermano tutti con **Conferma le N
+   proposte**, oppure si vedono spegnendo *Solo senza proposta*.
 5. **Classificazione automatica**: scegli con cosa iniziare.
    - *Prima il modello locale*: non esce nulla dal PC; le voci rimaste incerte vanno poi nella coda per Claude.
      Sul mini PC servono alcuni minuti ogni 20 esercenti.

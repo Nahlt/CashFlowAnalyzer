@@ -223,6 +223,11 @@ def abbina_trasferimenti(ctx, movs):
             # suo conto (rata dell'auto, assicurazione...). E' un'uscita vera; la categoria viene dalla causale
             # (decisione sul movimento, regola sulla descrizione o suddivisione in parti)
             e.update(stato="spesa_familiare", natura="uscita", senza_storico=True)
+        elif not comune and cd is None and ctx.nome_familiare(m["controparte_nome"]):
+            # bonifico tra un familiare e un tuo conto personale (prestito, regalo, rimborso di una spesa...): le
+            # causali sono tutte diverse, quindi si classifica a mano uno per uno (o con una regola sulla causale),
+            # senza imparare una categoria dal nome. Finche' non e' classificato conta come entrata o uscita
+            e.update(stato="spesa_familiare", natura="uscita" if uscita else "entrata", senza_storico=True)
         elif scelta == "non_caricato":
             e.update(stato="da_verificare", natura="trasferimento_interno")
         elif scelta == "non_tracciato":

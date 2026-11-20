@@ -5,6 +5,33 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.19.2 – 20 novembre 2026 · bonifici con i familiari anche sui conti personali
+
+**Novita'**
+- **Bonifici tra un familiare e i tuoi conti personali** (in entrata e in uscita: prestiti, regali, rimborsi di
+  spese...): prima finivano tra i bonifici con altre persone, dove la categoria si sceglie per tutto il gruppo e
+  vale anche per i bonifici futuri. Ora sono nella sezione **Bonifici con i familiari** (prima *Spese pagate
+  tramite un familiare*), con la colonna Conto: si classificano a mano, selezionandone uno o piu', e la categoria
+  vale solo per quelli scelti. L'app non impara dal nome e non propone categorie per importi uguali; per le
+  causali che si ripetono c'e' la regola sulla causale. Per un bonifico ricevuto si sceglie un'entrata (un
+  regalo) oppure la categoria della spesa che ti rimborsa, che cosi' si riduce: 150 € restituiti per il
+  supermercato con *Alimentari > Supermercato* abbassano le spese alimentari di 150 € invece di aumentare le
+  entrate. Finche' non sono classificati contano come prima (entrata o uscita): i numeri non cambiano.
+- In quella sezione **"Solo da classificare" e "Solo senza proposta" sono accesi all'apertura**. I bonifici del
+  conto comune con una proposta nascosti dallo switch si confermano tutti con **Conferma le N proposte**.
+
+**Correzioni**
+- Causale dei bonifici Credit Agricole senza "DESCR.OPERAZIONE SCT:" (es. "PRESTITO CASA").
+
+**Aggiornando**
+- Estrai sopra la cartella e riavvia. Lo schema del database non cambia; al primo avvio il ricalcolo sposta i
+  bonifici con i familiari sui conti personali nella nuova sezione.
+- I nomi dei familiari si confrontano senza badare a maiuscole, spazi e ordine di nome e cognome: una riga per
+  persona basta.
+- 229 test (erano 222).
+
+---
+
 ## 0.19.1 – 20 novembre 2026 · periodo proposto all'apertura, ora dei movimenti, revisione piu' pulita
 
 **Novita'**
