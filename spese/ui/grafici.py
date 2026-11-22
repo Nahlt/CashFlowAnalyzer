@@ -21,6 +21,9 @@ ROSSO_TENUE = "#f2a7a6"      # la stessa, quando e' scelta un'altra voce
 
 EURO = JsCode("function(v){ if (v == null || isNaN(v)) return ''; return Number(v).toLocaleString('it-IT', "
               "{minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always'}) + ' €'; }")
+EURO_PRIMO = JsCode("function(v){ if (Array.isArray(v)) v = v[0]; if (v == null || isNaN(v)) return ''; "
+                    "return Number(v).toLocaleString('it-IT', {minimumFractionDigits: 2, maximumFractionDigits: 2, "
+                    "useGrouping: 'always'}) + ' €'; }")
 EURO_TONDO = JsCode("function(v){ return Math.round(Number(v)).toLocaleString('it-IT', {useGrouping: 'always'}) + ' €'; }")
 ASSE_EURO = JsCode("function(v){ var a = Math.abs(v); if (a >= 1000) return (v / 1000).toLocaleString('it-IT', "
                    "{maximumFractionDigits: 1}) + 'k €'; return v.toLocaleString('it-IT', {useGrouping: 'always'}) + ' €'; }")
@@ -133,11 +136,12 @@ def _colore_barra(voce, selezionata, rosse):
     return BLU if acceso else TENUE
 
 
-def barre_orizzontali(voci, valori_cent, selezionata=None, etichette_sopra=False, rosse=()):
+def barre_orizzontali(voci, valori_cent, selezionata=None, etichette_sopra=False, rosse=(), budget=None):
     """Barre orizzontali su una traccia grigia, la piu' grande in alto. Restituisce (opzioni,
     voci_nell_ordine_dell_asse): l'indice di un clic si riferisce alla seconda lista.
     etichette_sopra: il nome sopra la barra invece che a sinistra (per le colonne strette).
-    rosse: voci disegnate in rosso invece che in blu (es. "Da classificare")."""
+    rosse: voci disegnate in rosso invece che in blu (es. "Da classificare").
+    budget: {voce: importo in centesimi} disegnato come un segno verticale sulla barra della voce."""
     coppie = list(zip(voci, valori_cent))[::-1]          # ECharts disegna la prima categoria in basso
     ordine = [v for v, _ in coppie]
     o = _base(legenda=False, griglia={"right": 70, "left": 4 if etichette_sopra else 8, "top": 18 if etichette_sopra else 6})
@@ -158,12 +162,20 @@ def barre_orizzontali(voci, valori_cent, selezionata=None, etichette_sopra=False
         for v, c in coppie],
         "label": {"show": True, "position": "right", "formatter": JsCode(
             "function(p){ return Math.round(p.value).toLocaleString('it-IT', {useGrouping: 'always'}) + ' €'; }")}}]
+    if budget:
+        punti = [[round(budget[v] / 100, 2), mostrate[i]] for i, v in enumerate(ordine) if budget.get(v)]
+        if punti:
+            o["series"].append({"type": "scatter", "name": "Budget del mese", "data": punti, "symbol": "rect",
+                                "symbolSize": [3, 16 if not etichette_sopra else 12], "z": 5,
+                                "itemStyle": {"color": "#2d3644"}, "tooltip": {"valueFormatter": EURO_PRIMO}})
+            o["xAxis"]["max"] = JsCode("function(v){ return v.max * 1.05; }")
     return o, ordine
 
 
-def serie_mensile(mesi, valori_cent, mese_evidenziato=None):
+def serie_mensile(mesi, valori_cent, mese_evidenziato=None, budget_cent=None):
     """Spesa del mese (barre) e media mobile a 3 mesi (linea grigia). Si disegna con mostra(..., clic="x"):
-    l'indice restituito e' quello del mese in `mesi`."""
+    l'indice restituito e' quello del mese in `mesi`. budget_cent: importo del budget della voce per ogni mese
+    (None nei mesi prima del suo inizio), disegnato come linea a gradini."""
     v = [round(x / 100, 2) for x in valori_cent]
     media = [round(sum(v[max(0, i - 2):i + 1]) / len(v[max(0, i - 2):i + 1]), 2) for i in range(len(v))]
     o = _base()
@@ -176,10 +188,17 @@ def serie_mensile(mesi, valori_cent, mese_evidenziato=None):
          "itemStyle": {"color": BLU}},
         {"type": "line", "name": "Media mobile 3 mesi", "data": media, "symbol": "none", "smooth": False,
          "lineStyle": {"width": 2, "color": GRIGIO}, "itemStyle": {"color": GRIGIO}}]
+    if budget_cent and any(b is not None for b in budget_cent):
+        # a gradini; con un mese solo una linea non si vede: un segno orizzontale sul mese
+        uno = sum(1 for b in budget_cent if b is not None) == 1
+        o["series"].append({"type": "line", "name": "Budget", "step": "middle", "symbol": "rect" if uno else "none",
+                            "symbolSize": [22, 2], "showSymbol": uno, "connectNulls": False,
+                            "data": [None if b is None else round(b / 100, 2) for b in budget_cent],
+                            "lineStyle": {"width": 2, "type": "dashed", "color": ROSSO}, "itemStyle": {"color": ROSSO}})
     o["tooltip"]["formatter"] = JsCode(
         "function(p){ var f = function(v){ return Number(v).toLocaleString('it-IT', {minimumFractionDigits: 2, "
         "maximumFractionDigits: 2, useGrouping: 'always'}) + ' €'; }; var h = '<b>' + p[0].name + '</b><br>';"
-        "p.forEach(function(s){ h += s.marker + s.seriesName + ': <b>' + f(s.value) + '</b><br>'; });"
+        "p.forEach(function(s){ if (s.value == null) return; h += s.marker + s.seriesName + ': <b>' + f(s.value) + '</b><br>'; });"
         "var t = p[0].name === %s ? 'Clic per togliere il filtro sul mese' : 'Clic per vedere solo questo mese';"
         "return h + '<div style=\"font-size:11px;opacity:.65;margin-top:4px\">' + t + '</div>'; }"
         % json.dumps(etichetta_mese(mese_evidenziato) if mese_evidenziato else None))
@@ -305,3 +324,85 @@ def saldo_e_uscite(df, giorno_evidenziato=None):
 def pd_nullo(v):
     """None o NaN (pandas porta i None delle colonne intere a NaN)."""
     return v is None or v != v
+
+
+# ---------------------------------------------------------------- budget
+
+AMBRA = "#eda100"            # budget a rischio (previsto oltre il budget)
+AMBRA_TESTO = "#8a5a00"
+ROSSO_TESTO = "#b3261e"
+COLORI_STATO = {"in_linea": BLU, "a_rischio": AMBRA, "superato": ROSSO}
+TRATTEGGIO = {"symbol": "rect", "dashArrayX": [1, 0], "dashArrayY": [3, 3], "rotation": -0.785}
+
+
+def barre_budget(righe):
+    """Saturazione dei budget in percentuale: barra piena per lo speso, tratteggiata e piu' chiara per il
+    previsto fino a fine mese, linea al 100%. Colore, etichetta e testo dicono lo stato (in linea, a rischio,
+    superato). righe: [{nome, sotto (bool), stato, saturazione, saturazione_prevista, info (html del riquadro)}]
+    dall'alto in basso. Si disegna con mostra(..., clic="y"): l'indice e' quello di `righe`."""
+    r = list(righe)[::-1]
+    massimo = max([100] + [x["saturazione"] or 0 for x in r] + [x["saturazione_prevista"] or 0 for x in r])
+    o = _base(legenda=False, griglia={"right": 150, "top": 24})
+    o["xAxis"] = {"type": "value", "min": 0, "max": max(120, int(massimo * 1.08 // 10 + 1) * 10),
+                  "axisLabel": {"formatter": "{value}%"}, "splitLine": {"lineStyle": {"opacity": 0.4}}}
+    o["yAxis"] = {"type": "category", "axisTick": {"show": False}, "axisLine": {"show": False},
+                  "data": [("   › " + x["nome"].split(" › ", 1)[1]) if x["sotto"] else x["nome"] for x in r],
+                  "axisLabel": {"width": 190, "overflow": "truncate", "color": "#2d3644"}}
+    o["tooltip"] = {"trigger": "axis", "axisPointer": {"type": "shadow"}, "confine": True, "formatter": JsCode(
+        "function(p){ return p[0].data.info + '<div style=\"font-size:11px;opacity:.65;margin-top:4px\">"
+        "Clic per il dettaglio del mese</div>'; }")}
+    speso, previsto = [], []
+    for x in r:
+        colore = COLORI_STATO[x["stato"]]
+        s_ = x["saturazione"] or 0
+        p_ = x["saturazione_prevista"]
+        if x["stato"] == "superato":
+            testo = "%d%% superato" % s_
+        elif x["stato"] == "a_rischio":
+            testo = "%d%% → %d%% a rischio" % (s_, p_)
+        else:
+            testo = "%d%%" % s_ + (" → %d%%" % p_ if p_ is not None else "")
+        colore_testo = {"superato": ROSSO_TESTO, "a_rischio": AMBRA_TESTO}.get(x["stato"], "#2d3644")
+        speso.append({"value": s_, "info": x["info"], "itemStyle": {"color": colore,
+                      "borderRadius": [0, 4, 4, 0] if p_ is None or p_ <= s_ else 0}})
+        previsto.append({"value": max(0, (p_ or 0) - s_), "info": x["info"],
+                         "itemStyle": {"color": colore + "73", "borderRadius": [0, 4, 4, 0],
+                                       "decal": {**TRATTEGGIO, "color": "rgba(255,255,255,0.6)"}},
+                         "label": {"show": True, "position": "right", "formatter": testo, "color": colore_testo,
+                                   "fontWeight": 600 if x["stato"] != "in_linea" else 400}})
+    o["series"] = [
+        {"type": "bar", "name": "Speso", "stack": "b", "barMaxWidth": 16, "data": speso,
+         "markLine": {"silent": True, "symbol": "none", "data": [{"xAxis": 100}],
+                      "lineStyle": {"color": "#5f5e5a", "type": "dashed", "width": 1.5},
+                      "label": {"formatter": "100%", "position": "end", "color": "#5f5e5a"}}},
+        {"type": "bar", "name": "Previsto", "stack": "b", "barMaxWidth": 16, "data": previsto}]
+    return o
+
+
+def cumulato_budget(giorni, reale, stimato, tipico, importo_cent, segni=()):
+    """Spesa cumulata del mese giorno per giorno: speso (linea piena), speso + previsto (tratteggiata), curva
+    tipica dei mesi passati (grigia), budget (linea rossa). segni: [(giorno, testo)] fin dove arrivano i dati
+    di ciascun conto. Valori in centesimi."""
+    e = lambda v: None if v is None else round(v / 100, 2)
+    o = _base()
+    o["xAxis"] = {"type": "category", "data": [str(d) for d in range(1, giorni + 1)], "boundaryGap": False,
+                  "axisTick": {"show": False}}
+    o["yAxis"] = _asse_valori()
+    o["tooltip"] = {"trigger": "axis", "valueFormatter": EURO, "axisPointer": {"type": "line"}}
+    o["series"] = []
+    if tipico:
+        o["series"].append({"type": "line", "name": "Curva tipica", "data": [e(v) for v in tipico], "symbol": "none",
+                            "lineStyle": {"width": 2, "color": "#b4b2a9"}, "itemStyle": {"color": "#b4b2a9"}})
+    o["series"].append({"type": "line", "name": "Speso", "data": [e(v) for v in reale], "symbol": "none",
+                        "lineStyle": {"width": 2.5, "color": BLU}, "itemStyle": {"color": BLU},
+                        "markLine": {"silent": True, "symbol": "none", "label": {"position": "insideEndTop"},
+                                     "lineStyle": {"color": GRIGIO, "type": "dotted"},
+                                     "data": [{"xAxis": str(g), "label": {"formatter": t, "color": GRIGIO}}
+                                              for g, t in segni]}})
+    if stimato:
+        o["series"].append({"type": "line", "name": "Speso + previsto", "data": [e(v) for v in stimato],
+                            "symbol": "none", "lineStyle": {"width": 2.5, "type": "dashed", "color": AMBRA},
+                            "itemStyle": {"color": AMBRA}})
+    o["series"].append({"type": "line", "name": "Budget", "data": [e(importo_cent)] * giorni, "symbol": "none",
+                        "lineStyle": {"width": 1.5, "color": ROSSO}, "itemStyle": {"color": ROSSO}})
+    return o

@@ -197,7 +197,7 @@ def test_menu_analisi_movimenti_e_disponibilita():
     gruppi = {}
     for gruppo, indirizzo in voci:
         gruppi.setdefault(gruppo, []).append(indirizzo)
-    assert gruppi["Analisi movimenti"] == ["andamento", "ripartizione", "etichette"]
+    assert gruppi["Analisi movimenti"] == ["andamento", "ripartizione", "budget", "etichette"]   # Budget dalla 0.21.0
     assert gruppi["Analisi disponibilità"] == ["disponibilita", "portafoglio"]
     assert "Analisi" not in gruppi
     assert voci[0] == ("Analisi movimenti", "andamento")             # resta la pagina di apertura

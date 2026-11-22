@@ -183,13 +183,14 @@ elif sessioni.stato(st.context.cookies.get(COOKIE), DURATA) == "valida":
     # pagina ricaricata (o nuova scheda) con il codice della sessione: si riapre il database senza passphrase
     _riapri(st.context.cookies.get(COOKIE))
 
-from spese.ui import (pagine_analisi, pagine_classificazione, pagine_dati, pagine_disponibilita,  # noqa: E402
-                      pagine_impostazioni)
+from spese.ui import (pagine_analisi, pagine_budget, pagine_classificazione, pagine_dati,  # noqa: E402
+                      pagine_disponibilita, pagine_impostazioni)
 
 # (gruppo, funzione, titolo, icona, indirizzo)
 PAGINE = [
     ("Analisi movimenti", pagine_analisi.andamento, "Andamento mensile", ":material/show_chart:", "andamento"),
     ("Analisi movimenti", pagine_analisi.ripartizione, "Dove vanno i soldi", ":material/bar_chart:", "ripartizione"),
+    ("Analisi movimenti", pagine_budget.budget, "Budget", ":material/savings:", "budget"),
     ("Analisi movimenti", pagine_analisi.etichette, "Etichette", ":material/sell:", "etichette"),
     ("Analisi disponibilità", pagine_disponibilita.saldo_conti, "Saldo dei conti", ":material/savings:", "disponibilita"),
     ("Analisi disponibilità", pagine_analisi.portafoglio, "Portafoglio", ":material/account_balance_wallet:",

@@ -272,9 +272,11 @@ def importa(conn, conto_id, nome_file, dati: bytes):
                               else "NON quadra rispetto al saldo del %s" % prec[0])
             else:
                 quadratura = "saldo registrato: si verifica dal prossimo import"
-        conn.execute("UPDATE import_file SET nuove=?, duplicate=?, data_min=?, data_max=?, quadratura=?, avvisi=? WHERE id=?",
+        coperto_al, coperto_da = copertura_file(fl.profilo, md, nome_file, ora(), max(date, default=None))
+        conn.execute("UPDATE import_file SET nuove=?, duplicate=?, data_min=?, data_max=?, quadratura=?, avvisi=?, "
+                     "coperto_al=?, coperto_da=? WHERE id=?",
                      (nuove, dup, min(date, default=None), max(date, default=None), quadratura,
-                      json.dumps(avvisi, ensure_ascii=False), imp_id))
+                      json.dumps(avvisi, ensure_ascii=False), coperto_al, coperto_da, imp_id))
         conn.execute("COMMIT")
     except Exception:
         conn.execute("ROLLBACK")
@@ -324,6 +326,107 @@ def _ripulisci_nomi(conn, nomi):
     conn.execute("DELETE FROM candidati_invio WHERE stato <> 'inviato' AND chiave NOT IN "
                  "(SELECT chiave FROM movimenti WHERE chiave IS NOT NULL)")
     return n
+
+
+# un file caricato molto dopo l'ultimo movimento che contiene e' probabilmente un estratto vecchio (es. un report
+# PayPal recuperato): la data di caricamento non dice fin dove arriva, vale l'ultimo movimento
+GIORNI_CARICAMENTO = 31
+
+FONTI_COPERTURA = {"periodo": "fine del periodo del file", "nome_file": "data nel nome del file",
+                   "caricamento": "data di caricamento", "movimenti": "ultimo movimento del file"}
+
+
+def _giorno_nome_file(profilo, nome_file):
+    """Data di estrazione scritta nel nome del file (es. Fineco_movements_20261120.xlsx), con la regola
+    `data_nome_file` del profilo: un'espressione con il gruppo `data` in formato AAAAMMGG."""
+    from datetime import datetime
+    rx = profilo.get("data_nome_file")
+    if not rx or not nome_file:
+        return None
+    m = re.search(rx, str(nome_file).replace("\\", "/").rsplit("/", 1)[-1])
+    if not m:
+        return None
+    try:
+        return datetime.strptime(m.group("data"), "%Y%m%d").date().isoformat()
+    except ValueError:
+        return None
+
+
+def copertura_file(profilo, metadati, nome_file, importato_il, data_max, giorno_saldo=None):
+    """Fino a che giorno il file riporta i movimenti del conto, e da dove lo si ricava: (giorno, fonte).
+    Serve ai budget: dopo quel giorno la spesa del conto si stima. In ordine: la fine del periodo scritta nel
+    file (o la data del saldo), la data nel nome del file, la data di caricamento; quest'ultima solo se il file
+    arriva fino a GIORNI_CARICAMENTO giorni prima, altrimenti l'ultimo movimento. Mai oltre il giorno del
+    caricamento (un periodo che finisce a fine mese non copre i giorni ancora da venire) ne' prima
+    dell'ultimo movimento. giorno_saldo: la fine del periodo gia' ricavata (import fatti prima della 0.21)."""
+    from datetime import date
+    caricato = (importato_il or "")[:10] or None
+    giorno, fonte = None, None
+    md = metadati or {}
+    for campo in ("periodo_a", "data_saldo"):
+        if md.get(campo):
+            try:
+                giorno = a_data(md[campo], "%d/%m/%Y")[0]
+            except (FormatoNonValido, TypeError, ValueError):
+                giorno = None
+            if giorno:
+                fonte = "periodo"
+                break
+    if not giorno and giorno_saldo:
+        giorno, fonte = giorno_saldo, "periodo"
+    if not giorno:
+        giorno = _giorno_nome_file(profilo or {}, nome_file)
+        fonte = "nome_file" if giorno else None
+    if not giorno and caricato:
+        if data_max and (date.fromisoformat(caricato) - date.fromisoformat(data_max)).days > GIORNI_CARICAMENTO:
+            giorno, fonte = data_max, "movimenti"
+        else:
+            giorno, fonte = caricato, "caricamento"
+    if not giorno:
+        return data_max, ("movimenti" if data_max else None)
+    if caricato and giorno > caricato:
+        giorno = caricato
+    if data_max and giorno < data_max:
+        giorno = data_max
+    return giorno, fonte
+
+
+def completa_coperture(conn):
+    """Copertura degli import fatti prima della 0.21, che non la salvavano. Idempotente: tocca solo gli import
+    senza copertura; la richiama il ricalcolo. La fine del periodo si ritrova nei saldi salvati con l'import,
+    se il profilo la legge dal file (per gli altri il saldo finale ha la data dell'ultimo movimento)."""
+    profili = cfg.profili()
+    righe = conn.execute("SELECT id, profilo, nome_file, importato_il, data_max FROM import_file "
+                         "WHERE coperto_al IS NULL").fetchall()
+    if not righe:
+        return 0
+    nuove = []
+    for r in righe:
+        profilo = profili.get(r["profilo"]) or {}
+        dal_file = profilo.get("periodo") or {"periodo_a", "data_saldo"} & set((profilo.get("metadati") or {}).values())
+        giorno_saldo = None
+        if dal_file:
+            s = conn.execute("SELECT max(data) FROM saldi WHERE import_id = ? AND tipo IN ('finale', 'alla_data')",
+                             (r["id"],)).fetchone()
+            giorno_saldo = s[0] if s else None
+        g, f = copertura_file(profilo, {}, r["nome_file"], r["importato_il"], r["data_max"], giorno_saldo)
+        if g:
+            nuove.append((g, f, r["id"]))
+    if nuove:
+        with transazione(conn):
+            conn.executemany("UPDATE import_file SET coperto_al = ?, coperto_da = ? WHERE id = ? AND coperto_al IS NULL",
+                             nuove)
+    return len(nuove)
+
+
+def coperture(conn):
+    """{conto_id: (giorno, fonte)}: fin dove arrivano i movimenti di ogni conto importato, dal suo import che
+    arriva piu' avanti."""
+    out = {}
+    for r in conn.execute("SELECT conto_id, coperto_al, coperto_da FROM import_file WHERE coperto_al IS NOT NULL "
+                          "ORDER BY conto_id, coperto_al"):
+        out[r["conto_id"]] = (r["coperto_al"], r["coperto_da"])
+    return out
 
 
 def completa_ore(conn):

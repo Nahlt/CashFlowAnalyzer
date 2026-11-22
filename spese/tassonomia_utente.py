@@ -103,10 +103,10 @@ def righe(conn):
 
 
 def utilizzo(conn) -> dict:
-    """{(l1, l2): quante conferme di esercenti, regole, decisioni e suddivisioni la usano}."""
+    """{(l1, l2): quante conferme di esercenti, regole, decisioni, suddivisioni e budget la usano}."""
     completa_categorie(conn)
     uso = {}
-    for tab in ("cache_esercenti", "regole_utente", "decisioni", "ripartizioni"):
+    for tab in ("cache_esercenti", "regole_utente", "decisioni", "ripartizioni", "budget"):
         for l1, l2, n in conn.execute("SELECT l1, l2, count(*) FROM %s WHERE l2 IS NOT NULL GROUP BY l1, l2" % tab):
             uso[(l1, l2)] = uso.get((l1, l2), 0) + n
     return uso
@@ -131,10 +131,44 @@ def completa_categorie(conn):
                 conn.execute("UPDATE %s SET l1 = ? WHERE l1 IS NULL AND l2 = ?" % tab, (l1, l2))
 
 
+def _segui_budget(conn, vecchia, nuova):
+    """I budget della sottocategoria vecchia passano alla nuova; dove la nuova ha gia' un budget nello stesso
+    perimetro (unione di due sottocategorie) resta quello e l'altro si toglie: due storici diversi non si
+    mescolano."""
+    for (perimetro,) in conn.execute("SELECT DISTINCT perimetro FROM budget WHERE l1 = ? AND l2 = ?", vecchia).fetchall():
+        if conn.execute("SELECT 1 FROM budget WHERE l1 = ? AND l2 = ? AND perimetro = ?", (*nuova, perimetro)).fetchone():
+            conn.execute("DELETE FROM budget WHERE l1 = ? AND l2 = ? AND perimetro = ?", (*vecchia, perimetro))
+        else:
+            conn.execute("UPDATE budget SET l1 = ?, l2 = ? WHERE l1 = ? AND l2 = ? AND perimetro = ?",
+                         (*nuova, *vecchia, perimetro))
+
+
+def _segui_budget_categorie(conn, prima, t, rinomine):
+    """I budget di un'intera categoria seguono la categoria rinominata: quando tutte le sue sottocategorie sono
+    finite sotto un'unica categoria con un altro nome."""
+    nuove_l1 = {l1 for s in SEZIONI for l1 in t[s]}
+    for (l1,) in conn.execute("SELECT DISTINCT l1 FROM budget WHERE l2 IS NULL").fetchall():
+        if l1 in nuove_l1:
+            continue
+        destinazioni = {rinomine.get(k, cfg.da_chiave_cat(k))[0] for k, r in prima.items() if r["l1"] == l1}
+        destinazioni &= nuove_l1
+        if len(destinazioni) != 1:
+            continue
+        nuova = destinazioni.pop()
+        for (perimetro,) in conn.execute("SELECT DISTINCT perimetro FROM budget WHERE l1 = ? AND l2 IS NULL",
+                                         (l1,)).fetchall():
+            if not conn.execute("SELECT 1 FROM budget WHERE l1 = ? AND l2 IS NULL AND perimetro = ?",
+                                (nuova, perimetro)).fetchone():
+                conn.execute("UPDATE budget SET l1 = ? WHERE l1 = ? AND l2 IS NULL AND perimetro = ?",
+                             (nuova, l1, perimetro))
+
+
 def _rinomina_dati(conn, vecchia, nuova):
-    """vecchia, nuova: (l1, l2). Conferme, regole, decisioni, suddivisioni, prove e natura della spesa seguono."""
+    """vecchia, nuova: (l1, l2). Conferme, regole, decisioni, suddivisioni, prove, budget e natura della spesa
+    seguono."""
     for tab in TABELLE_CON_CATEGORIA:
         conn.execute("UPDATE %s SET l1 = ?, l2 = ? WHERE l1 = ? AND l2 = ?" % tab, (*nuova, *vecchia))
+    _segui_budget(conn, tuple(vecchia), tuple(nuova))
     mod = leggi_impostazione(conn, "attributo_l2", {}) or {}
     k_old, k_new = cfg.chiave_cat(vecchia), cfg.chiave_cat(nuova)
     if k_old in mod:
@@ -230,6 +264,7 @@ def salva(conn, nuove_righe):
             _rinomina_dati(conn, cfg.da_chiave_cat(orig), tmp)
         for orig, tmp in provvisori.items():
             _rinomina_dati(conn, tmp, rinomine[orig])
+        _segui_budget_categorie(conn, prima, t, rinomine)
         scrivi_impostazione(conn, CHIAVE, nuova)
         conn.execute("COMMIT")
     except Exception:

@@ -328,3 +328,80 @@ def elimina_saldo(conn, conto_id, giorno):
     with transazione(conn):
         return conn.execute("DELETE FROM saldi WHERE conto_id = ? AND data = ? AND tipo = 'manuale'",
                             (conto_id, giorno)).rowcount
+
+
+# ---------------------------------------------------------------- budget mensili
+# I budget non entrano nel ricalcolo (si confrontano con le analisi quando si apre la pagina): salvarli non
+# richiede di ricalcolare.
+
+def _voce_budget(cat, perimetro):
+    from .budget import PERIMETRI_BUDGET, valida_voce
+    if perimetro not in PERIMETRI_BUDGET:
+        raise ValueError("perimetro non valido")
+    l1, l2 = cat if isinstance(cat, (tuple, list)) else (cat, None)
+    return valida_voce(l1, l2)
+
+
+def _importo_budget(importo_cent):
+    if not isinstance(importo_cent, int) or isinstance(importo_cent, bool) or importo_cent <= 0:
+        raise ValueError("l'importo del budget va indicato in centesimi interi, sopra zero")
+    return importo_cent
+
+
+def _righe_budget(conn, l1, l2, perimetro):
+    return conn.execute("SELECT dal_mese FROM budget WHERE l1 = ? AND coalesce(l2, '') = ? AND perimetro = ? "
+                        "ORDER BY dal_mese", (l1, l2 or "", perimetro)).fetchall()
+
+
+def aggiungi_budget(conn, cat, perimetro, importo_cent, dal_mese):
+    """Nuovo budget mensile. cat: categoria di spesa, o (categoria, sottocategoria). Un budget per voce e
+    perimetro: se c'e' gia', si cambia l'importo con cambia_importo_budget."""
+    from .budget import valida_mese
+    l1, l2 = _voce_budget(cat, perimetro)
+    _importo_budget(importo_cent)
+    valida_mese(dal_mese)
+    if _righe_budget(conn, l1, l2, perimetro):
+        raise ValueError("questo budget esiste gia': cambia il suo importo")
+    with transazione(conn):
+        conn.execute("INSERT INTO budget(l1, l2, perimetro, dal_mese, importo_cent, creato_il) VALUES (?,?,?,?,?,?)",
+                     (l1, l2, perimetro, dal_mese, importo_cent, ora()))
+
+
+def cambia_importo_budget(conn, cat, perimetro, importo_cent, dal_mese):
+    """Nuovo importo valido dal mese indicato (i mesi prima restano con l'importo di allora). Lo stesso mese
+    gia' presente si sovrascrive; un mese prima dell'inizio diventa il nuovo inizio. Le voci della categoria
+    non piu' presente nella tassonomia si possono solo eliminare."""
+    from .budget import valida_mese
+    l1, l2 = cat if isinstance(cat, (tuple, list)) else (cat, None)
+    if perimetro not in ("personale", "comune", "tutti") or not _righe_budget(conn, l1, l2, perimetro):
+        raise ValueError("budget non trovato")
+    _voce_budget((l1, l2), perimetro)
+    _importo_budget(importo_cent)
+    valida_mese(dal_mese)
+    with transazione(conn):
+        conn.execute("DELETE FROM budget WHERE l1 = ? AND coalesce(l2, '') = ? AND perimetro = ? AND dal_mese = ?",
+                     (l1, l2 or "", perimetro, dal_mese))
+        conn.execute("INSERT INTO budget(l1, l2, perimetro, dal_mese, importo_cent, creato_il) VALUES (?,?,?,?,?,?)",
+                     (l1, l2 or None, perimetro, dal_mese, importo_cent, ora()))
+
+
+def togli_cambio_budget(conn, cat, perimetro, dal_mese):
+    """Toglie un cambio d'importo: da quel mese vale di nuovo l'importo precedente. Il primo importo non si
+    toglie da solo (si elimina il budget)."""
+    l1, l2 = cat if isinstance(cat, (tuple, list)) else (cat, None)
+    righe = [r["dal_mese"] for r in _righe_budget(conn, l1, l2, perimetro)]
+    if dal_mese not in righe:
+        raise ValueError("cambio non trovato")
+    if len(righe) == 1:
+        raise ValueError("e' l'unico importo del budget: per toglierlo elimina il budget")
+    with transazione(conn):
+        conn.execute("DELETE FROM budget WHERE l1 = ? AND coalesce(l2, '') = ? AND perimetro = ? AND dal_mese = ?",
+                     (l1, l2 or "", perimetro, dal_mese))
+
+
+def elimina_budget(conn, cat, perimetro):
+    """Elimina il budget con tutti i suoi importi (anche lo storico)."""
+    l1, l2 = cat if isinstance(cat, (tuple, list)) else (cat, None)
+    with transazione(conn):
+        return conn.execute("DELETE FROM budget WHERE l1 = ? AND coalesce(l2, '') = ? AND perimetro = ?",
+                            (l1, l2 or "", perimetro)).rowcount

@@ -44,7 +44,9 @@ CREATE TABLE IF NOT EXISTS import_file (
     nome_file TEXT, hash_file TEXT, profilo TEXT, importato_il TEXT,
     righe_dati INTEGER, righe_scartate INTEGER, nuove INTEGER, duplicate INTEGER,
     data_min TEXT, data_max TEXT, quadratura TEXT, avvisi TEXT,
-    conto_prima TEXT                    -- cosa questo import ha riempito nel conto (formato, banca): JSON
+    conto_prima TEXT,                   -- cosa questo import ha riempito nel conto (formato, banca): JSON
+    coperto_al TEXT,                    -- fino a che giorno il file riporta i movimenti del conto (budget)
+    coperto_da TEXT                     -- da dove viene quel giorno: periodo, nome_file, caricamento, movimenti
 );
 
 CREATE TABLE IF NOT EXISTS righe_raw (
@@ -189,6 +191,18 @@ CREATE TABLE IF NOT EXISTS cambi_mercato (
     PRIMARY KEY (valuta, data)
 );
 
+-- budget mensili: una riga per importo, valido dal mese indicato fino al successivo cambio (l2 vuota = tutta la
+-- categoria). Il budget e' la terna (l1, l2, perimetro)
+CREATE TABLE IF NOT EXISTS budget (
+    id INTEGER PRIMARY KEY,
+    l1 TEXT NOT NULL, l2 TEXT,
+    perimetro TEXT NOT NULL CHECK (perimetro IN ('personale','comune','tutti')),
+    dal_mese TEXT NOT NULL,             -- AAAA-MM
+    importo_cent INTEGER NOT NULL CHECK (importo_cent > 0),
+    creato_il TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_budget ON budget(l1, coalesce(l2, ''), perimetro, dal_mese);
+
 -- livello derivato: ricostruito a ogni ricalcolo
 CREATE TABLE IF NOT EXISTS analisi (
     id INTEGER PRIMARY KEY,
@@ -214,9 +228,10 @@ CREATE TABLE IF NOT EXISTS contenitori (
 
 
 # Versione dello schema, salvata nel database (PRAGMA user_version). Cresce a ogni modifica che richiede una
-# migrazione: 2 = prezzi e cambi come testo decimale, un pagamento PayPal ricondotto a un solo addebito (0.16.2).
+# migrazione: 2 = prezzi e cambi come testo decimale, un pagamento PayPal ricondotto a un solo addebito (0.16.2);
+# 3 = budget mensili e copertura degli import (0.21.0).
 # Un database con una versione piu' alta viene da un programma piu' recente: non si apre, per non rovinarlo.
-VERSIONE_SCHEMA = 2
+VERSIONE_SCHEMA = 3
 
 
 class PassphraseErrata(Exception):
@@ -284,8 +299,10 @@ def _migra(conn):
                 conn.execute("ALTER TABLE %s ADD COLUMN %s %s" % (tabella, nome, tipo))
     if "avviso" not in {r[1] for r in conn.execute("PRAGMA table_info(movimenti)")}:
         conn.execute("ALTER TABLE movimenti ADD COLUMN avviso TEXT")
-    if "conto_prima" not in {r[1] for r in conn.execute("PRAGMA table_info(import_file)")}:
-        conn.execute("ALTER TABLE import_file ADD COLUMN conto_prima TEXT")
+    colonne_import = {r[1] for r in conn.execute("PRAGMA table_info(import_file)")}
+    for nome in ("conto_prima", "coperto_al", "coperto_da"):
+        if nome not in colonne_import:
+            conn.execute("ALTER TABLE import_file ADD COLUMN %s TEXT" % nome)
     conn.execute("CREATE INDEX IF NOT EXISTS ix_raw_mov ON righe_raw(mov_id)")
     _migra_mercato(conn)
     # un pagamento del report PayPal copre un solo addebito: se era stato ricondotto a mano a due (fino alla

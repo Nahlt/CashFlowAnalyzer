@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.19.2 – Manuale
+# CashFlow Analyzer 0.21.0 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -185,6 +185,11 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
        esattamente quelli che compongono la barra. La tabella e' la stessa della pagina Movimenti e funziona
        allo stesso modo: selezionando una riga la classifichi (anche per tutto l'esercente), selezionandone
        piu' d'una assegni etichette e natura della spesa. Dopo il salvataggio i grafici si aggiornano.
+     - **Budget**: se la voce scelta ha un budget nel perimetro scelto (*Personale*, *Comune* o *Tutti*, non una
+       scelta di singoli conti), la spesa per mese mostra il budget come linea rossa tratteggiata; con un mese
+       filtrato le barre delle categorie e delle sottocategorie hanno un segno all'importo del budget. Qui i
+       rimborsi contano nel mese in cui arrivano, nella pagina Budget nel mese della spesa (vedi sotto).
+   - **Budget**: vedi la sezione *Budget mensili*.
    - I grafici sono ECharts (componente `streamlit-echarts`, incluso nel pacchetto: nulla viene scaricato da
      internet mentre usi l'app), con animazioni di apertura e di aggiornamento.
    - Aspetto "chiaro a schede": colori e carattere in `.streamlit/config.toml` (sezione `[theme]`), il resto in
@@ -402,6 +407,56 @@ plusvalenze vengono solo dai movimenti con ISIN gia' importati (oggi Trade Repub
 - Quote e costo medio si calcolano per conto: se lo stesso titolo sta su due conti, la vendita delle quote di
   uno usa il costo di quel conto. Nello stesso giorno gli eventi seguono l'ora dell'operazione.
 - Le altre analisi non cambiano: la vendita resta "Rientro dal risparmio" per intero.
+
+## Budget mensili
+
+Pagina **Budget** sotto Analisi movimenti. Un budget e' l'importo che vuoi spendere ogni mese per una categoria di
+spesa (es. Alimentari) o per una sua sottocategoria (es. Alimentari › Supermercato), su un perimetro di conti. Non
+serve metterne uno per ogni categoria: la pagina parte vuota e mostra solo quelli che aggiungi. I filtri della
+barra laterale qui non si usano: si sceglie il **mese** in cima alla pagina (all'apertura il mese in corso).
+
+- **Aggiungi un budget**: categoria, sottocategoria (o *Tutta la categoria*), perimetro, importo al mese e mese
+  da cui vale. Il perimetro dice su quali conti si conta la spesa: *Personale* (i conti personali), *Comune* (il
+  conto comune) o *Tutti* (tutti i conti; i versamenti dal conto personale al conto comune si annullano). La
+  stessa voce puo' avere un budget per perimetro.
+- **Cosa conta**: le uscite della voce nel perimetro, al netto dei rimborsi. *Da classificare* non entra in
+  nessun budget: la pagina dice quanto vale nel mese e porta alla Revisione.
+  - Un **rimborso di un esercente** conta nel mese della spesa che restituisce: la spesa piu' vicina dello stesso
+    esercente e della stessa categoria, fino a 90 giorni prima e non piu' piccola del rimborso. Esempio: compri a
+    settembre e il rimborso arriva a ottobre: settembre, a posteriori, scende; ottobre non cambia. Un reso nello
+    stesso mese libera budget in quel mese.
+  - Un **rimborso da una persona** (un bonifico classificato con una categoria di spesa, es. i 150 euro per il
+    supermercato) conta nel giorno in cui arriva.
+  - Un rimborso di un esercente di cui l'app non trova la spesa **non conta** e compare in *Rimborsi non
+    attribuiti a una spesa*.
+- **Previsione a fine mese**, conto per conto: lo speso fino al giorno in cui arrivano i dati del conto, piu' la
+  **mediana** della spesa del conto dal giorno dopo fino a fine mese negli ultimi 12 mesi interi (meno, se la
+  storia del conto e' piu' corta). Esempio: Credem ha i dati fino al 20, la carta fino al 5; per Credem si stima
+  la spesa dal 21, per la carta dal 6. Una spesa fatta prima del solito (es. pagata il 18 invece che il 25) si
+  conta due volte: e' gia' nello speso ed e' ancora nella mediana.
+- **Fin dove arrivano i dati**: la riga *Dati fino a* sotto il mese, con il giorno di ogni conto (passa il mouse
+  sul nome per vedere da dove viene). In ordine: la fine del periodo scritta nel file (Credem, ING conto,
+  Fineco), la data dell'estrazione nel nome del file (Fineco, Crédit Agricole), la data di caricamento (carta ING,
+  ING in CSV, Trade Republic, PayPal; se il file arriva a piu' di un mese prima del caricamento, l'ultimo
+  movimento del file). Un conto fermo da piu' di 7 giorni ha un avviso: importa un estratto piu' recente. I
+  pagamenti con carta non ancora contabilizzati quando scarichi il file arrivano nel file successivo con date gia'
+  "coperte": la previsione puo' sottostimare di qualche giorno di spese con carta.
+- **Barre di saturazione**: una scheda per perimetro, i budget piu' saturi in alto e quelli delle sottocategorie
+  sotto la loro categoria. Barra piena: speso; tratteggiata e piu' chiara: previsto fino a fine mese; linea
+  tratteggiata al 100%. Due segnali diversi, con colore, icona e testo:
+  - **superato** (lo speso e' gia' oltre il budget): barra rossa e "superato";
+  - **a rischio** (sotto il budget, ma il previsto lo supera): barra ambra e "a rischio".
+- **Dettaglio**: con un clic su una barra (all'apertura il budget messo peggio) vedi budget, speso, previsto e
+  margine, il grafico della spesa cumulata giorno per giorno (speso, speso + previsto, curva tipica dei mesi
+  passati, budget, giorno dei dati di ogni conto) e la tabella conto per conto. *Vedi i movimenti* apre *Dove
+  vanno i soldi* su quella voce, quel perimetro e quel mese.
+- **Storico degli ultimi 12 mesi**: per ogni budget la percentuale spesa mese per mese, dal piu' recente; in rosso
+  i mesi oltre il budget, in ambra il mese in corso se il previsto lo supera.
+- **Gestisci i budget**: cambia l'importo da un mese in poi (i mesi prima restano valutati con l'importo di
+  allora), togli un cambio d'importo, elimina un budget con il suo storico.
+- Rinominando o unendo categorie e sottocategorie in *Regole e tassonomia* i budget seguono. Una sottocategoria con
+  un budget non si elimina senza unirla a un'altra; unendo due sottocategorie che hanno entrambe un budget nello
+  stesso perimetro resta quello della destinazione.
 
 ## Categorie e sottocategorie
 

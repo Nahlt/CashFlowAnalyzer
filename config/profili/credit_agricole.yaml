@@ -6,6 +6,8 @@ formato: csv
 separatore: ";"
 # file "Lista_Movimenti_CAI_AAAAMMGGhhmmss.csv"; gli importi hanno un apostrofo davanti ('-4,99)
 firma: ["Data Op.", "Data Val.", "Causale", "Descrizione", "Importo", "Divisa"]
+# giorno dell'estrazione nel nome del file: fin dove arrivano i movimenti (budget)
+data_nome_file: 'CAI_(?P<data>\d{8})\d{6}'
 numeri: italiano
 date: "%d/%m/%Y"
 

@@ -135,7 +135,8 @@ def ripartizione():
         st.subheader("Categorie" + (" · %s" % grafici.mese_lungo(mese) if mese else ""))
         st.caption("Trasferimenti tra conti, risparmio e addebiti riepilogativi della carta sono esclusi. In rosso le "
                    "uscite ancora senza categoria: si sistemano in **Revisione** o qui sotto, in Movimenti.")
-        opz, ordine = grafici.barre_orizzontali(voci, list(df["importo"]), l1, rosse=("Da classificare",))
+        opz, ordine = grafici.barre_orizzontali(voci, list(df["importo"]), l1, rosse=("Da classificare",),
+                                                budget=_budget_del_mese(c, f, mese, None))
         i = grafici.mostra(opz, "rip_l1_graf", max(220, 30 * len(voci) + 30), clic="y")
     if i is not None and 0 <= i < len(ordine) and ordine[i] != l1:
         st.session_state["rip_l1"], st.session_state["rip_l2"] = ordine[i], None
@@ -160,7 +161,8 @@ def ripartizione():
             if l2 not in list(sotto["voce"]):
                 l2 = st.session_state["rip_l2"] = None
             st.caption("Clic per filtrare, di nuovo per togliere")
-            opz2, ordine2 = grafici.barre_orizzontali(list(sotto["voce"]), list(sotto["importo"]), l2, etichette_sopra=True)
+            opz2, ordine2 = grafici.barre_orizzontali(list(sotto["voce"]), list(sotto["importo"]), l2, etichette_sopra=True,
+                                                      budget=_budget_del_mese(c, f, mese, l1))
             i = grafici.mostra(opz2, "rip_l2_graf_%s" % l1, max(180, 46 * len(sotto) + 20), clic="y")
     if i is not None and 0 <= i < len(ordine2):
         st.session_state["rip_l2"] = None if ordine2[i] == l2 else ordine2[i]
@@ -168,8 +170,12 @@ def ripartizione():
     with dx, st.container(key="scheda_serie"):
         st.subheader("Spesa per mese · %s" % voce)
         st.caption("Clic su un mese per vedere solo quello, di nuovo per togliere il filtro")
-        i = grafici.mostra(grafici.serie_mensile(mesi_periodo, [valori.get(m, 0) for m in mesi_periodo], mese),
-                           "rip_serie", 300, clic="x")
+        linea = _budget_per_mese(c, f, l1, l2, mesi_periodo)
+        if linea:
+            st.caption("Linea tratteggiata: il budget della voce. Qui i rimborsi contano nel mese in cui arrivano, "
+                       "nella pagina Budget nel mese della spesa che restituiscono.")
+        i = grafici.mostra(grafici.serie_mensile(mesi_periodo, [valori.get(m, 0) for m in mesi_periodo], mese,
+                                                 budget_cent=linea), "rip_serie", 300, clic="x")
     if i is not None and 0 <= i < len(mesi_periodo):
         _mese_scelto(mesi_periodo[i])
         st.rerun()
@@ -179,6 +185,40 @@ def ripartizione():
     _movimenti_della_voce(c, fm, l1, l2, eser, dove)
     if attr.natura_attiva(c):
         _natura_spesa(f, fm, mese)
+
+
+def _budget_del_mese(c, f, mese, l1):
+    """Importi dei budget del mese filtrato per le barre: delle categorie (l1 None) o delle sottocategorie di l1.
+    Solo con un perimetro intero scelto (non una scelta di conti) e un mese filtrato: sull'intero periodo il
+    confronto con un budget mensile non ha senso."""
+    from .. import budget as bd
+    if not mese or f.perimetro not in bd.PERIMETRI_BUDGET:
+        return None
+    out = {}
+    for b in bd.elenco(c):
+        if b["perimetro"] != f.perimetro:
+            continue
+        imp = bd.importo_nel_mese(b, mese)
+        if imp is None:
+            continue
+        if l1 is None and b["l2"] is None:
+            out[b["l1"]] = imp
+        elif l1 is not None and b["l1"] == l1 and b["l2"]:
+            out[b["l2"]] = imp
+    return out or None
+
+
+def _budget_per_mese(c, f, l1, l2, mesi):
+    """Importo del budget della voce scelta per ogni mese del grafico (None prima del suo inizio), o None se la
+    voce non ha un budget nel perimetro scelto."""
+    from .. import budget as bd
+    if f.perimetro not in bd.PERIMETRI_BUDGET or l1 == "Da classificare":
+        return None
+    importi = bd.budget_della_voce(c, l1, l2, f.perimetro)
+    if not importi:
+        return None
+    b = {"importi": importi}
+    return [bd.importo_nel_mese(b, m) for m in mesi]
 
 
 def _esercenti_principali(c, fm, l1, l2, mese, dove):

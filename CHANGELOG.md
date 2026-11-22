@@ -5,6 +5,40 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.21.0 – 22 novembre 2026 · budget mensili
+
+**Novita'**
+- **Pagina Budget** (Analisi movimenti): budget mensili per una categoria di spesa o una sua sottocategoria, su un
+  perimetro (Personale, Comune o Tutti). La pagina parte vuota: si aggiungono solo i budget che servono.
+  - Si guarda un mese alla volta (all'apertura il mese in corso): indicatori (superati, a rischio, in linea,
+    giorni alla fine del mese), barre di saturazione con lo speso (pieno) e il previsto a fine mese
+    (tratteggiato), dettaglio del budget scelto con la spesa cumulata giorno per giorno, storico di 12 mesi.
+  - **Due segnali diversi**: *superato* (speso oltre il budget, rosso) e *a rischio* (previsto oltre il budget,
+    ambra), sempre con icona e testo.
+  - **Previsione conto per conto**: speso fino al giorno in cui arrivano i dati del conto, piu' la mediana della
+    spesa dei giorni che restano negli ultimi 12 mesi interi.
+  - **Rimborsi**: quello di un esercente conta nel mese della spesa che restituisce (stesso esercente e categoria,
+    entro 90 giorni); quello di una persona nel giorno in cui arriva; quello senza spesa trovata non conta ed e'
+    elencato. *Da classificare* non entra in nessun budget.
+  - L'importo di un budget si cambia da un mese in poi: i mesi prima restano con l'importo di allora.
+- **Dove vanno i soldi**: la linea del budget nella spesa per mese della voce scelta e, con un mese filtrato, il
+  segno del budget sulle barre di categorie e sottocategorie.
+- **Copertura degli import**: per ogni file si salva fin dove arrivano i movimenti (fine del periodo scritta nel
+  file, data nel nome del file per Fineco e Crédit Agricole, altrimenti data di caricamento). Per gli import gia'
+  fatti si ricostruisce da sola al primo avvio.
+- Rinominando o unendo sottocategorie i budget seguono; una sottocategoria con un budget non si elimina senza
+  unirla a un'altra.
+
+**Aggiornando**
+- **Lo schema del database passa alla versione 3** (tabella dei budget, copertura degli import): dopo il primo avvio
+  la 0.20.x non apre piu' il database. **Fai un backup prima** (Impostazioni > Crea un backup cifrato) se vuoi poter tornare
+  indietro.
+- Ferma l'app, estrai lo zip sopra la cartella `CashFlowAnalyzer` e avvia. Le altre analisi e i loro numeri non
+  cambiano.
+- 285 test (erano 250).
+
+---
+
 ## 0.20.2 – 22 novembre 2026 · cartella dei dati e portachiavi con il nome CashFlowAnalyzer
 
 **Novita'**

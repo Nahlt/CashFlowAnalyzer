@@ -181,3 +181,28 @@ def fineco_xlsx(percorso, fino_al="31/10/2026"):
         ws.append(list(m))
     wb.save(percorso)
     return saldo
+
+
+def _riga_carta_credem(giorno, cent, esercente):
+    """Pagamento (cent < 0) o rimborso (cent > 0) con la carta di debito Credem, giorno 'gg/mm/aaaa'."""
+    breve = giorno[:6] + giorno[8:]
+    importo = ("-" if cent < 0 else "") + ("%d,%02d" % (abs(cent) // 100, abs(cent) % 100))
+    return ("%s;%s;%s;%s;EUR;AUT;-;43;PDINT;PAGAMENTO DEBINT PAGAMENTO CARTA DI DEBITO INTERNAZIONALE "
+            "123456******7890 -%s-12:00 MARIO           %s -ITA;-" % (giorno, giorno, importo, importo, breve, esercente))
+
+
+def credem_mesi(pagamenti, inizio="01/01/2025", fine="20/11/2026", bonifici=()):
+    """Estratto Credem di piu' mesi per i budget. pagamenti: [(giorno 'gg/mm/aaaa', centesimi, esercente)] con la
+    carta di debito (negativo = spesa, positivo = rimborso dell'esercente). bonifici: [(giorno, centesimi,
+    nome)] istantanei in entrata (positivo) o in uscita. Il periodo dell'estratto finisce a `fine`."""
+    righe = ["Conto Corrente:;000123456", "Filiale:;FILIALE REMOTA", "Saldo al:;%s" % fine,
+             "Saldo contabile:;1.000,00", "Saldo disponibile:;1.000,00", "", "Criteri utilizzati per estrazione",
+             "Data Inizio:;%s" % inizio, "Data Fine:;%s" % fine, "Tipo movimenti:;Tutti", "",
+             "Data contabile;Data valuta;Importo;Importo orig.;Divisa orig.;Canale;Categoria;Causale ABI;Causale;Descrizione:;Note"]
+    for g, cent, nome in bonifici:
+        importo = ("-" if cent < 0 else "") + ("%d,%02d" % (abs(cent) // 100, abs(cent) % 100))
+        verso = "A CREDITO" if cent > 0 else "A DEBITO"
+        righe.append("%s;%s;%s;%s;EUR;VIR;-;-;%s;BON. ISTANTANEO %s %s Rif. R%s rimborso;-"
+                     % (g, g, importo, importo, "OCIST" if cent > 0 else "DIIST", verso, nome, g.replace("/", "")))
+    righe += [_riga_carta_credem(g, c, e) for g, c, e in pagamenti]
+    return ("\r\n".join(righe) + "\r\n").encode("utf-8")
