@@ -657,8 +657,9 @@ def _posizioni(r, righe, prezzi, con_prezzi, da, giorno, attualizzata, chiuse_pr
             format="%.1f%%", help="Latente + realizzato + dividendi lordi, sul costo di tutte le quote comprate")
     dati |= {"Dal": [p["primo"] or "" for p in righe], "Note": [nota(p) for p in righe]}
     tabella = pd.DataFrame(dati)
-    # plus verdi, minus rosse: latenti delle aperte e realizzato (anche delle chiuse)
-    tabella = tabella.style.map(colore_segno, subset=[c_ for c_ in ("Plus/minus latente", "Realizzato") if c_ in tabella])
+    # guadagni verdi, perdite rosse: plus/minus latente, realizzato (anche delle chiuse) e i due rendimenti
+    tabella = tabella.style.map(colore_segno, subset=[c_ for c_ in ("Plus/minus latente", "Rendimento", "Realizzato",
+                                                                    "Rend. complessivo") if c_ in tabella])
     ev = st.dataframe(tabella, hide_index=True, width="stretch", height=min(520, 38 + 35 * len(righe)),
                       column_config=conf, on_select="rerun", selection_mode="multi-row",
                       key=chiave_tabella("pf_posizioni", [p["isin"] for p in righe]))

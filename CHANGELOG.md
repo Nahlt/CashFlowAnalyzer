@@ -5,6 +5,26 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.20.1 – 22 novembre 2026 · rendimenti colorati nel portafoglio
+
+**Novita'**
+- Nella tabella delle posizioni del Portafoglio anche **Rendimento** e **Rend. complessivo** sono verdi se positivi
+  e rossi se negativi, come plus/minus latente e realizzato.
+
+**Aggiornando**
+- **La cartella del programma si chiama ora `CashFlowAnalyzer`** (prima `spese-app`): lo zip la contiene con il
+  nuovo nome. I dati non si spostano: restano in `~/.local/share/spese-app` (Linux) e in
+  `%LOCALAPPDATA%\CashFlowAnalyzer` (Windows).
+  1. Ferma l'app (*Ferma* dall'icona, oppure `./avvia.sh --ferma` su Linux, `avvia.cmd --ferma` su Windows).
+  2. Rinomina la cartella `spese-app` in `CashFlowAnalyzer`.
+  3. Estrai lo zip nella cartella che la contiene, sopra `CashFlowAnalyzer`.
+  4. Dalla cartella `CashFlowAnalyzer` rilancia `./install.sh` (Linux) o `install.cmd` (Windows): pochi secondi,
+     le dipendenze ci sono gia'. Rifa' la voce del menu, che puntava alla cartella vecchia.
+- Lo schema del database non cambia; i numeri non cambiano.
+- 241 test (erano 240).
+
+---
+
 ## 0.20.0 – 22 novembre 2026 · portafoglio attualizzato a oggi o nel periodo, rendimento complessivo
 
 **Novita'**

@@ -281,3 +281,21 @@ def test_colore_delle_plus_e_delle_minus():
     from spese.ui.comune import NEGATIVO, POSITIVO, colore_segno
     assert colore_segno(31.76) == "color: " + POSITIVO and colore_segno(-40.0) == "color: " + NEGATIVO
     assert colore_segno(0) == colore_segno(None) == colore_segno(float("nan")) == colore_segno("") == ""
+
+
+def test_pagina_colora_guadagni_e_perdite(pagina):
+    """0.20.1: verdi o rosse plus/minus latente, rendimento, realizzato e rendimento complessivo; nessun'altra colonna."""
+    import re
+    from spese.ui.comune import NEGATIVO, POSITIVO
+    conn, apri = pagina
+    at = apri()
+    colonne = list(at.dataframe[0].value.columns)
+    titoli = list(at.dataframe[0].value["Titolo"])
+    colori = {}
+    for celle, colore in re.findall(r"([^{}]+)\{\s*color:\s*(#[0-9a-f]{6})\s*\}", at.dataframe[0].proto.arrow_data.styler.styles):
+        for riga, col in re.findall(r"_row(\d+)_col(\d+)", celle):
+            colori[(titoli[int(riga)], colonne[int(col)])] = colore
+    assert {c for _, c in colori} == {"Plus/minus latente", "Rendimento", "Realizzato", "Rend. complessivo"}
+    assert {c: v for (t, c), v in colori.items() if t == "ETF A"} == dict.fromkeys(
+        ("Plus/minus latente", "Rendimento", "Realizzato", "Rend. complessivo"), POSITIVO)
+    assert {c: v for (t, c), v in colori.items() if t == "ETF B"} == {"Realizzato": NEGATIVO, "Rend. complessivo": NEGATIVO}

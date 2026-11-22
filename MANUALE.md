@@ -377,8 +377,8 @@ plusvalenze vengono solo dai movimenti con ISIN gia' importati (oggi Trade Repub
   commissioni sono quelli del periodo.
 - **Posizioni** (stato, quote, costo medio, capitale investito, prezzo e data del prezzo, valore, plus/minus latente,
   rendimento, realizzato, dividendi, rendimento complessivo), **Vendite** con plus/minus, imposte e commissioni,
-  **Per anno**, e il **capitale investito nel tempo**. Plus/minus latente e realizzato sono verdi se in
-  guadagno, rossi se in perdita. "Prezzo vecchio" nelle note: l'ultima chiusura salvata di
+  **Per anno**, e il **capitale investito nel tempo**. Plus/minus latente, realizzato e i due rendimenti sono
+  verdi se in guadagno, rossi se in perdita. "Prezzo vecchio" nelle note: l'ultima chiusura salvata di
   una posizione aperta ha piu' di 5 giorni (simbolo da controllare o prezzi non aggiornati).
 - **Andamento nel tempo**: sotto la tabella, un grafico a linee delle posizioni selezionate (una o piu' insieme,
   fino a 8; ogni titolo tiene sempre lo stesso colore). Misure: valore (con una sola posizione anche il costo,
