@@ -14,6 +14,24 @@ BLU = "#2a78d6"
 ARANCIO = "#eb6834"
 ACQUA = "#1baf7a"
 GRIGIO = "#8a8984"
+# testo degli importi con segno nelle tabelle: guadagno verde, perdita rossa (verde come le variazioni positive
+# degli indicatori, rosso come le voci da sistemare nei grafici)
+POSITIVO = "#16873e"
+NEGATIVO = "#e34948"
+
+
+def colore_segno(v):
+    """Stile di una cella numerica: verde sopra zero, rosso sotto, nessuno per zero o cella vuota."""
+    try:
+        if v is None or v != v:                         # vuota o NaN
+            return ""
+        if v > 0:
+            return "color: %s" % POSITIVO
+        if v < 0:
+            return "color: %s" % NEGATIVO
+    except TypeError:                                   # non un numero (es. testo)
+        pass
+    return ""
 
 NATURE = {
     "uscita": "Uscita", "entrata": "Entrata", "rimborso": "Rimborso", "risparmio": "Risparmio",

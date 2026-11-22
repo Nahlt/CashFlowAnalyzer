@@ -361,17 +361,38 @@ plusvalenze vengono solo dai movimenti con ISIN gia' importati (oggi Trade Repub
 - **Costo medio ponderato**, come nel regime amministrato: gli acquisti aumentano quote e costo (prezzo piu'
   commissione); una vendita toglie il costo medio delle quote vendute e da' la plusvalenza o minusvalenza
   (ricavo meno commissione, meno costo). Le imposte sono quelle trattenute dalla banca: nessun calcolo fiscale.
-- **Posizioni aperte** (quote, costo medio, capitale investito, dividendi), **Vendite** con plus/minus, imposte e
-  commissioni, **Per anno**, e il **capitale investito nel tempo**.
-- **Andamento nel tempo**: sotto le posizioni aperte, un grafico a linee delle posizioni selezionate nella tabella
-  (una o piu' insieme, fino a 8; ogni titolo tiene sempre lo stesso colore). Misure: valore (con una sola
-  posizione anche il costo, tratteggiato), rendimento % sul costo, capitale investito.
+- **Due modi di guardare il portafoglio**, scelti in cima alla pagina (all'apertura sempre il primo):
+  - **Analisi attualizzata a oggi**: tutta la storia dei conti scelti, con l'ultimo prezzo disponibile (il periodo
+    dei filtri non si applica). Compaiono anche le posizioni vendute, con lo stato "chiusa il ...".
+  - **Analisi nel periodo selezionato**: le posizioni possedute nel periodo, con il prezzo alla fine del periodo.
+    Quelle vendute dopo la fine del periodo contano come ancora possedute; quelle vendute durante il periodo
+    compaiono come chiuse. Quelle vendute del tutto prima del periodo non si mostrano: la pagina dice quante sono
+    e l'interruttore *Includi le N posizioni chiuse prima del ...* le aggiunge.
+- **Indicatori**: capitale investito e valore di mercato contano solo le posizioni aperte (quelle senza prezzo al
+  costo). **Rendimento posizioni aperte**: plus/minus latente sul costo delle posizioni aperte. **Rendimento
+  complessivo**: plus/minus latenti + plus/minus realizzate con le vendite + dividendi lordi, sul costo di tutte le
+  quote comprate (tenute e vendute), prima delle imposte. Esempio: compri 10 quote a 100 euro, ne vendi 5 a 120
+  (+100), le 5 rimaste valgono 110 (+50): aperte +10%, complessivo (100 + 50) / 1.000 = +15%. Nell'analisi per
+  periodo il rendimento complessivo va dal primo acquisto alla fine del periodo; realizzato, dividendi, imposte e
+  commissioni sono quelli del periodo.
+- **Posizioni** (stato, quote, costo medio, capitale investito, prezzo e data del prezzo, valore, plus/minus latente,
+  rendimento, realizzato, dividendi, rendimento complessivo), **Vendite** con plus/minus, imposte e commissioni,
+  **Per anno**, e il **capitale investito nel tempo**. Plus/minus latente e realizzato sono verdi se in
+  guadagno, rossi se in perdita. "Prezzo vecchio" nelle note: l'ultima chiusura salvata di
+  una posizione aperta ha piu' di 5 giorni (simbolo da controllare o prezzi non aggiornati).
+- **Andamento nel tempo**: sotto la tabella, un grafico a linee delle posizioni selezionate (una o piu' insieme,
+  fino a 8; ogni titolo tiene sempre lo stesso colore). Misure: valore (con una sola posizione anche il costo,
+  tratteggiato), rendimento % sul costo, capitale investito. Le posizioni vendute si fermano al giorno della
+  vendita; un titolo venduto e poi ricomprato ha un buco nel tratto senza quote. Nell'analisi per periodo una
+  posizione chiusa prima del periodo si vede per intero, dall'acquisto alla vendita.
 - **Prezzi di mercato da Yahoo Finance** (facoltativi, spenti finche' non li accendi in *Impostazioni > Sezioni
   facoltative*): chiusure giornaliere dei titoli in portafoglio, per valore di mercato, plus/minus latente e
   rendimento. Escono dal PC solo i codici ISIN (per trovare il simbolo) e i simboli di borsa: mai quote, importi,
   nomi o date dei tuoi movimenti (il primo scarico parte da una data fissa, il 1/1/2000, uguale per tutti; i
   successivi dall'ultimo prezzo salvato). Ogni richiesta finisce nel registro delle richieste. Si aggiornano da
-  soli una volta al giorno aprendo la pagina, o con *Aggiorna i prezzi ora*. Il simbolo si cerca dall'ISIN
+  soli una volta al giorno aprendo la pagina, o con *Aggiorna i prezzi ora*. Se qualche titolo non si aggiorna
+  (simbolo sbagliato, Yahoo non raggiungibile) un avviso in cima alla pagina dice quali, l'aggiornamento non
+  risulta fatto e, riaprendo l'app, si riprovano solo quei titoli. Il simbolo si cerca dall'ISIN
   preferendo una borsa in euro (Xetra, Francoforte, Milano...); se e' sbagliato si corregge in *Simboli di borsa
   e prezzi*. Quotazioni in altra valuta: convertite in euro con il cambio del giorno.
 - **Controlli**: vendite di piu' quote di quelle importate (storico che inizia dopo il primo acquisto), quote

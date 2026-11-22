@@ -7,7 +7,7 @@ from .. import attributi as attr
 from ..db import leggi_impostazione
 from ..numeri import euro
 from . import grafici
-from .comune import GRIGIO, chiave_tabella, conn, etichetta_cat, filtri_sidebar, intestazione, testo
+from .comune import GRIGIO, chiave_tabella, colore_segno, conn, etichetta_cat, filtri_sidebar, intestazione, testo
 
 
 def _nessun_dato():
@@ -403,7 +403,12 @@ def _gestisci_etichette(c):
 
 
 # --- portafoglio titoli -------------------------------------------------------------------
+PF_ATTUALIZZATA = "Analisi attualizzata a oggi"
+PF_PERIODO = "Analisi nel periodo selezionato"
+
+
 def portafoglio():
+    from dataclasses import replace
     from datetime import date
 
     from .. import mercato
@@ -411,62 +416,101 @@ def portafoglio():
     c = conn()
     f = filtri_sidebar()
     con_prezzi = mercato.attivo(c)
-    intestazione("Portafoglio", f, "Costo medio ponderato · " + (
+    oggi = date.today().isoformat()
+    # all'apertura sempre attualizzata; la scelta resta finche' si resta sulla pagina
+    attualizzata = st.session_state.get("pf_modalita", PF_ATTUALIZZATA) != PF_PERIODO
+    da, a = (None, None) if attualizzata else (f.da, f.a)
+    intestazione("Portafoglio", replace(f, da=None, a=None) if attualizzata else f, "Costo medio ponderato · " + (
         "prezzi di mercato da Yahoo Finance" if con_prezzi else
         "solo dati importati (i prezzi di mercato si accendono in Impostazioni)"))
-    r = pf.calcola(c, f.conti or None, f.da, f.a)
+    st.radio("Analisi", [PF_ATTUALIZZATA, PF_PERIODO], key="pf_modalita", horizontal=True,
+             label_visibility="collapsed")
+    r = pf.calcola(c, f.conti or None, da, a)
     if not r["posizioni"] and not r["vendite"]:
         st.info("Nessun movimento con ISIN nei conti scelti (oggi li riporta Trade Republic).", icon=":material/info:")
         return
-    giorno = min(f.a or "9999", date.today().isoformat())      # prezzi e grafici non vanno oltre oggi
+    giorno = oggi if attualizzata else min(a or "9999", oggi)      # prezzi e grafici non vanno oltre oggi
+    if attualizzata:
+        st.caption("Tutta la storia dei conti scelti, dall'inizio a oggi, con l'ultimo prezzo disponibile: il "
+                   "periodo dei filtri non si applica. Le posizioni vendute compaiono come chiuse.")
+    elif a:
+        st.caption("Posizioni possedute nel periodo, con il prezzo al %s. Quelle vendute dopo il %s contano come "
+                   "ancora possedute." % (_data_breve(giorno), _data_breve(a)))
     prezzi = {}
     if con_prezzi:
         _aggiorna_prezzi(c, r)
+        _avviso_non_aggiornati(c, r)
         prezzi = mercato.prezzi(c, list(r["passi"]))
-        pf.valorizza(r["posizioni"], prezzi, giorno)
-    aperte = [p for p in r["posizioni"] if p["aperta"]]
-    valutate = [p for p in aperte if p.get("valore") is not None]
-    tot = {k: sum(a.get(k, 0) for a in r["anni"].values())
+    pf.valorizza(r["posizioni"], prezzi, giorno)
+    # periodo: le posizioni chiuse prima del periodo non si mostrano, salvo con l'interruttore
+    chiuse_prima = [] if attualizzata else pf.chiuse_prima(r["posizioni"], da)
+    includi = bool(chiuse_prima) and bool(st.session_state.get("pf_chiuse_prima"))
+    nascoste = set() if includi else {p["isin"] for p in chiuse_prima}
+    mostrate = [p for p in r["posizioni"] if p["isin"] not in nascoste]
+    aperte = [p for p in mostrate if p["aperta"]]
+    t = pf.totali(mostrate)
+    tot = {k: sum(x.get(k, 0) for x in r["anni"].values())
            for k in ("plus", "minus", "dividendi", "imposte", "commissioni", "versato", "disinvestito")}
-    investito = sum(p["costo"] for p in aperte)
-    k = st.columns(5)
-    k[0].metric("Capitale investito", euro(investito),
-                help="Costo delle %d posizioni aperte alla fine del periodo (prezzi pagati piu' commissioni)" % len(aperte))
-    if valutate:
-        valore = sum(p["valore"] for p in valutate) + sum(p["costo"] for p in aperte if p.get("valore") is None)
-        latente = [p["latente"] for p in valutate if p["latente"] is not None]
-        base = sum(p["costo"] for p in valutate if p["latente"] is not None)
-        k[1].metric("Valore di mercato", euro(valore),
-                    delta=("%s · %s" % (_pct(sum(latente) / base), euro_tondo(sum(latente)))) if latente and base else None,
-                    help="Quote x ultimo prezzo disponibile alla fine del periodo. Variazione: plus/minus latente "
-                         "rispetto al costo, prima delle imposte."
-                         + (" I titoli senza prezzo contano al costo." if len(valutate) < len(aperte) else ""))
+
+    k = st.columns(4)
+    k[0].metric("Capitale investito", euro(t["capitale"]),
+                help="Costo delle %d posizioni aperte %s (prezzi pagati piu' commissioni)"
+                     % (len(aperte), "oggi" if attualizzata else "alla fine del periodo"))
+    if con_prezzi and t["valore"] is not None:
+        k[1].metric("Valore di mercato", euro(t["valore"]),
+                    help="Quote delle posizioni aperte x ultimo prezzo disponibile %s."
+                         % ("" if attualizzata else "alla fine del periodo")
+                         + (" I titoli senza prezzo contano al costo." if t["senza_prezzo"] else ""))
+        k[2].metric("Rendimento posizioni aperte", _pct(t["rendimento_aperte"]) if t["rendimento_aperte"] is not None
+                    else "–", delta=euro_tondo(t["latente"]) if t["latente"] is not None else None,
+                    help="Plus/minus latente delle posizioni aperte (valore meno costo) sul loro costo, prima delle "
+                         "imposte.")
+        k[3].metric("Rendimento complessivo", _pct(t["rendimento_complessivo"])
+                    if t["rendimento_complessivo"] is not None else "–",
+                    delta=euro_tondo(t["complessivo"]) if t["complessivo"] is not None else None,
+                    help="Plus/minus latenti delle posizioni aperte + plus/minus realizzate con le vendite + dividendi "
+                         "lordi, sul costo di tutte le quote comprate (tenute e vendute). Prima delle imposte. Vale "
+                         "per le posizioni mostrate, aperte e chiuse, dal primo acquisto "
+                         + ("a oggi." if attualizzata else "alla fine del periodo.")
+                         + (" Esclusi %d titoli senza prezzo o con il costo incompleto." % t["esclusi_complessivo"]
+                            if t["esclusi_complessivo"] else ""))
     else:
         k[1].metric("Posizioni aperte", len(aperte))
-    k[2].metric("Realizzato nel periodo", euro(tot["plus"] + tot["minus"]),
-                help="Plusvalenze meno minusvalenze delle vendite del periodo, prima delle imposte")
-    k[3].metric("Dividendi nel periodo", euro(tot["dividendi"]), help="Lordi; le ritenute sono tra le imposte")
-    k[4].metric("Imposte e commissioni", euro(tot["imposte"] + tot["commissioni"]),
-                help="Imposte trattenute dalla banca su vendite e dividendi, piu' commissioni")
+    nel = "" if attualizzata else " nel periodo"
+    k = st.columns(4)
+    k[0].metric("Realizzato" + nel, euro(tot["plus"] + tot["minus"]),
+                help="Plusvalenze meno minusvalenze delle vendite%s, prima delle imposte" % nel)
+    k[1].metric("Dividendi" + nel, euro(tot["dividendi"]), help="Lordi; le ritenute sono tra le imposte")
+    k[2].metric("Imposte e commissioni", euro(tot["imposte"] + tot["commissioni"]),
+                help="Imposte trattenute dalla banca su vendite e dividendi, piu' commissioni"
+                     + (", su tutta la storia" if attualizzata else ", nel periodo"))
+    chiuse = len(mostrate) - len(aperte)
+    k[3].metric("Posizioni", "%d apert%s" % (len(aperte), "a" if len(aperte) == 1 else "e"),
+                help="%d chius%s mostrat%s" % (chiuse, "a" if chiuse == 1 else "e", "a" if chiuse == 1 else "e"))
 
-    avvisi = [(p, a) for p in r["posizioni"] for a in p["avvisi"]]
+    avvisi = [(p, x) for p in r["posizioni"] for x in p["avvisi"]]
     if avvisi:
         with st.expander("%d controlli da guardare (storico incompleto o costo da indicare)" % len(avvisi),
                          icon=":material/warning:"):
-            for p, a in avvisi:
-                st.markdown("- **%s** (%s): %s" % (p["titolo"], p["isin"], a))
+            for p, x in avvisi:
+                st.markdown("- **%s** (%s): %s" % (p["titolo"], p["isin"], x))
             _partenza(c, sorted({p["isin"]: p["titolo"] for p, _ in avvisi}.items()))
 
-    t1, t2, t3, t4 = st.tabs(["Posizioni aperte", "Vendite", "Per anno", "Capitale investito nel tempo"])
+    t1, t2, t3, t4 = st.tabs(["Posizioni", "Vendite", "Per anno", "Capitale investito nel tempo"])
     with t1:
-        if not aperte:
-            st.caption("Nessuna posizione aperta alla fine del periodo.")
+        if chiuse_prima:
+            st.toggle("Includi le %d posizioni chiuse prima del %s" % (len(chiuse_prima), _data_breve(da)),
+                      key="pf_chiuse_prima",
+                      help="Posizioni vendute del tutto prima dell'inizio del periodo: di partenza non si mostrano. "
+                           "Incluse, contano nel rendimento complessivo con il loro realizzato e i dividendi.")
+        if not mostrate:
+            st.caption("Nessuna posizione nel periodo.")
         else:
-            _posizioni_aperte(r, aperte, prezzi, con_prezzi, f.da, giorno)
+            _posizioni(r, mostrate, prezzi, con_prezzi, da, giorno, attualizzata, {p["isin"] for p in chiuse_prima})
     with t2:
         v = r["vendite"]
         if not v:
-            st.caption("Nessuna vendita nel periodo.")
+            st.caption("Nessuna vendita" + nel + ".")
         else:
             st.dataframe(pd.DataFrame({
                 "Data": [x["data"] for x in v], "Titolo": [x["titolo"] for x in v],
@@ -483,18 +527,18 @@ def portafoglio():
                        "costo medio delle quote vendute, prima delle imposte. Le imposte sono quelle trattenute "
                        "dalla banca.")
     with t3:
-        righe = [{"Anno": anno, "Versato": a.get("versato", 0) / 100, "Disinvestito": a.get("disinvestito", 0) / 100,
-                  "Plusvalenze": a.get("plus", 0) / 100, "Minusvalenze": a.get("minus", 0) / 100,
-                  "Netto realizzato": (a.get("plus", 0) + a.get("minus", 0)) / 100,
-                  "Dividendi": a.get("dividendi", 0) / 100, "Imposte": a.get("imposte", 0) / 100,
-                  "Commissioni": a.get("commissioni", 0) / 100} for anno, a in r["anni"].items()]
+        righe = [{"Anno": anno, "Versato": x.get("versato", 0) / 100, "Disinvestito": x.get("disinvestito", 0) / 100,
+                  "Plusvalenze": x.get("plus", 0) / 100, "Minusvalenze": x.get("minus", 0) / 100,
+                  "Netto realizzato": (x.get("plus", 0) + x.get("minus", 0)) / 100,
+                  "Dividendi": x.get("dividendi", 0) / 100, "Imposte": x.get("imposte", 0) / 100,
+                  "Commissioni": x.get("commissioni", 0) / 100} for anno, x in r["anni"].items()]
         if righe:
             st.dataframe(pd.DataFrame(righe), hide_index=True, width="stretch",
                          column_config={k_: st.column_config.NumberColumn(format="euro") for k_ in righe[0] if k_ != "Anno"})
     with t4:
-        totale = _totale_giornaliero(r["passi"], prezzi, f.da, giorno) if prezzi else []
+        totale = _totale_giornaliero(r["passi"], prezzi, da, giorno) if prezzi else []
         if totale:
-            serie = [{"nome": "Valore di mercato", "colore": grafici.CATEGORIALI[0], "punti": [(d, v / 100) for d, _, v in totale]},
+            serie = [{"nome": "Valore di mercato", "colore": grafici.CATEGORIALI[0], "punti": [(d, x / 100) for d, _, x in totale]},
                      {"nome": "Capitale investito", "colore": GRIGIO, "tratteggio": True,
                       "punti": [(d, x / 100) for d, x, _ in totale]}]
             grafici.mostra(grafici.linee_tempo(serie), "pf_capitale_valore", 360)
@@ -502,14 +546,28 @@ def portafoglio():
                        "Valore di mercato: quote x prezzo di chiusura del giorno (i titoli senza prezzo contano al "
                        "costo). Rotellina o pizzico per ingrandire un tratto.")
         else:
-            mesi = _mesi_continui(r["mesi"], f.da, giorno)
+            mesi = _mesi_continui(r["mesi"], da, giorno)
             if mesi:
-                opz = grafici.linea_mensile([m for m, _ in mesi], [v for _, v in mesi], "Capitale investito")
+                opz = grafici.linea_mensile([m for m, _ in mesi], [x for _, x in mesi], "Capitale investito")
                 grafici.mostra(opz, "pf_capitale", 340)
                 st.caption("Costo delle posizioni aperte a fine mese: cresce con gli acquisti, cala con le vendite "
                            "(della parte di costo venduta). Non e' il valore di mercato.")
     if con_prezzi:
         _simboli(c, r)
+
+
+def _avviso_non_aggiornati(c, r):
+    """Avviso fisso in cima alla pagina finche' qualche titolo in portafoglio non ha i prezzi aggiornati."""
+    from .. import mercato
+    falliti = [i for i in mercato.non_aggiornati(c) if i in r["passi"]]
+    if not falliti:
+        return
+    nomi = {p["isin"]: p["titolo"] for p in r["posizioni"]}
+    st.warning("Non e' stato possibile aggiornare i prezzi di: %s. Per %s valore e rendimenti usano l'ultimo prezzo "
+               "salvato; il motivo e' in «Simboli di borsa e prezzi», in fondo alla pagina. Si riprova da solo "
+               "riaprendo l'app, oppure subito con «Aggiorna i prezzi ora»."
+               % (", ".join("%s (%s)" % (nomi.get(i, i), i) for i in falliti),
+                  "questo titolo" if len(falliti) == 1 else "questi titoli"), icon=":material/sync_problem:")
 
 
 def euro_tondo(cent):
@@ -528,7 +586,8 @@ def _isin_da_aggiornare(r):
 
 
 def _aggiorna_prezzi(c, r, forza=False):
-    """Una volta al giorno, all'apertura della pagina (e con il pulsante): scarica i prezzi mancanti."""
+    """Una volta al giorno, all'apertura della pagina (e con il pulsante): scarica i prezzi mancanti. Se oggi un
+    tentativo e' gia' stato fatto ma qualche titolo non e' andato, si riprovano solo quelli."""
     from datetime import date
 
     from .. import mercato
@@ -537,6 +596,10 @@ def _aggiorna_prezzi(c, r, forza=False):
         return
     st.session_state["_pf_tentato"] = oggi             # una prova al giorno: senza rete non si riprova a ogni clic
     isin_dal = _isin_da_aggiornare(r)
+    if not forza:
+        isin_dal = mercato.da_scaricare(c, isin_dal)
+        if not isin_dal:
+            return
     barra = st.progress(0.0, text="Scarico i prezzi di mercato da Yahoo Finance…")
     errori = mercato.aggiorna(c, isin_dal, avanzamento=lambda i, n, sim: barra.progress(i / max(n, 1), text=(
         "Scarico i prezzi di mercato da Yahoo Finance… titolo %d di %d (%s)" % (i + 1, n, sim) if i < n else
@@ -544,37 +607,64 @@ def _aggiorna_prezzi(c, r, forza=False):
     barra.empty()
     if mercato.RETE in errori:
         st.warning(errori[mercato.RETE], icon=":material/cloud_off:")
-    elif errori:
-        st.warning("Prezzi non scaricati per %d titol%s: vedi «Simboli di borsa» in fondo alla pagina."
-                   % (len(errori), "o" if len(errori) == 1 else "i"), icon=":material/warning:")
 
 
-def _posizioni_aperte(r, aperte, prezzi, con_prezzi, da, giorno):
+def _posizioni(r, righe, prezzi, con_prezzi, da, giorno, attualizzata, chiuse_prima):
+    """Tabella delle posizioni (aperte e chiuse) e grafico dell'andamento delle righe selezionate."""
     from .. import portafoglio as pf
-    dati = {"Titolo": [p["titolo"] for p in aperte], "ISIN": [p["isin"] for p in aperte],
-            "Quote": [float(p["quote"]) for p in aperte],
-            "Costo medio": [float(p["costo_medio"]) if p["costo_medio"] is not None else None for p in aperte],
-            "Capitale investito": [p["costo"] / 100 for p in aperte]}
+    cent = lambda v: v / 100 if v is not None else None
+    vecchio = {p["isin"]: attualizzata and pf.prezzo_vecchio(p, giorno) for p in righe}
+
+    def nota(p):
+        n = []
+        if p["costo_da_indicare"]:
+            n.append("costo da indicare")
+        elif p["avvisi"]:
+            n.append("da controllare")
+        if p["realizzato"] is None:
+            n.append("vendite con costo incompleto")
+        if vecchio[p["isin"]]:
+            n.append("prezzo vecchio")
+        return "; ".join(n)
+    dati = {"Titolo": [p["titolo"] for p in righe], "ISIN": [p["isin"] for p in righe],
+            "Stato": [pf.stato(p) for p in righe],
+            "Quote": [float(p["quote"]) if p["aperta"] else None for p in righe],
+            "Costo medio": [float(p["costo_medio"]) if p["costo_medio"] is not None else None for p in righe],
+            "Capitale investito": [p["costo"] / 100 if p["aperta"] else None for p in righe]}
     conf = {"Quote": st.column_config.NumberColumn(format="%.6f"),
             "Costo medio": st.column_config.NumberColumn(format="euro"),
             "Capitale investito": st.column_config.NumberColumn(format="euro"),
-            "Dividendi": st.column_config.NumberColumn(format="euro")}
+            "Realizzato": st.column_config.NumberColumn(format="euro", help="Plus/minus delle vendite del titolo, "
+                                                        "prima delle imposte"),
+            "Dividendi": st.column_config.NumberColumn(format="euro", help="Lordi")}
     if con_prezzi:
-        dati |= {"Prezzo": [p.get("prezzo") for p in aperte],
-                 "Del": [_data_breve(p.get("data_prezzo")) for p in aperte],
-                 "Valore": [p["valore"] / 100 if p.get("valore") is not None else None for p in aperte],
-                 "Plus/minus latente": [p["latente"] / 100 if p.get("latente") is not None else None for p in aperte],
-                 "Rendimento": [p["rendimento"] * 100 if p.get("rendimento") is not None else None for p in aperte]}
+        dati |= {"Prezzo": [p.get("prezzo") for p in righe],
+                 "Del": [_data_breve(p.get("data_prezzo")) for p in righe],
+                 "Valore": [cent(p.get("valore")) for p in righe],
+                 "Plus/minus latente": [cent(p.get("latente")) for p in righe],
+                 "Rendimento": [p["rendimento"] * 100 if p.get("rendimento") is not None else None for p in righe]}
         conf |= {"Prezzo": st.column_config.NumberColumn(format="euro", help="Ultima chiusura disponibile, in euro"),
                  "Valore": st.column_config.NumberColumn(format="euro"),
                  "Plus/minus latente": st.column_config.NumberColumn(format="euro", help="Valore meno costo, prima delle imposte"),
-                 "Rendimento": st.column_config.NumberColumn(format="%.1f%%", help="Plus/minus latente sul costo")}
-    dati |= {"Dal": [p["primo"] or "" for p in aperte], "Dividendi": [p["dividendi"] / 100 for p in aperte],
-             "Note": ["costo da indicare" if p["costo_da_indicare"] else ("da controllare" if p["avvisi"] else "")
-                      for p in aperte]}
-    ev = st.dataframe(pd.DataFrame(dati), hide_index=True, width="stretch", height=min(520, 38 + 35 * len(aperte)),
+                 "Rendimento": st.column_config.NumberColumn(format="%.1f%%", help="Della parte aperta: plus/minus "
+                                                             "latente sul costo")}
+    dati |= {"Realizzato": [cent(p["realizzato"]) if p["vendite_totali"] else None for p in righe],
+             "Dividendi": [p["dividendi"] / 100 for p in righe]}
+    if con_prezzi:
+        dati["Rend. complessivo"] = [p["rendimento_complessivo"] * 100 if p.get("rendimento_complessivo") is not None
+                                     else None for p in righe]
+        conf["Rend. complessivo"] = st.column_config.NumberColumn(
+            format="%.1f%%", help="Latente + realizzato + dividendi lordi, sul costo di tutte le quote comprate")
+    dati |= {"Dal": [p["primo"] or "" for p in righe], "Note": [nota(p) for p in righe]}
+    tabella = pd.DataFrame(dati)
+    # plus verdi, minus rosse: latenti delle aperte e realizzato (anche delle chiuse)
+    tabella = tabella.style.map(colore_segno, subset=[c_ for c_ in ("Plus/minus latente", "Realizzato") if c_ in tabella])
+    ev = st.dataframe(tabella, hide_index=True, width="stretch", height=min(520, 38 + 35 * len(righe)),
                       column_config=conf, on_select="rerun", selection_mode="multi-row",
-                      key=chiave_tabella("pf_posizioni", [p["isin"] for p in aperte]))
+                      key=chiave_tabella("pf_posizioni", [p["isin"] for p in righe]))
+    if any(vecchio.values()):
+        st.caption("Prezzo vecchio: l'ultima chiusura salvata ha piu' di 5 giorni. Controlla il simbolo in «Simboli di "
+                   "borsa e prezzi» o aggiorna i prezzi.")
     scelte = list(getattr(getattr(ev, "selection", None), "rows", []) or []) or [0]
     if len(scelte) > len(grafici.CATEGORIALI):
         st.caption("Nel grafico entrano al massimo %d posizioni insieme: mostro le prime." % len(grafici.CATEGORIALI))
@@ -586,41 +676,44 @@ def _posizioni_aperte(r, aperte, prezzi, con_prezzi, da, giorno):
         colori[i] = grafici.CATEGORIALI[i] if i < len(grafici.CATEGORIALI) else liberi.pop(0)
 
     st.markdown("**Andamento nel tempo** · %s" % (
-        aperte[scelte[0]]["titolo"] if len(scelte) == 1 else "%d posizioni" % len(scelte)))
-    valutabili = [i for i in scelte if prezzi.get(aperte[i]["isin"])]
+        righe[scelte[0]]["titolo"] if len(scelte) == 1 else "%d posizioni" % len(scelte)))
+    valutabili = [i for i in scelte if prezzi.get(righe[i]["isin"])]
     misure = ["Valore", "Rendimento %", "Capitale investito"] if valutabili else ["Capitale investito"]
     if st.session_state.get("pf_misura") not in misure:
         st.session_state.pop("pf_misura", None)            # scelta di prima non disponibile per queste posizioni
     misura = st.segmented_control("Misura", misure, default=misure[0], key="pf_misura",
                                   label_visibility="collapsed") or misure[0]
+    # una posizione chiusa prima del periodo si vede per intero, dall'acquisto alla vendita
+    da_grafico = None if any(righe[i]["isin"] in chiuse_prima for i in scelte) else da
     serie = []
     for i in scelte:
-        p = aperte[i]
+        p = righe[i]
         punti = pf.andamento(r["passi"].get(p["isin"], []), prezzi.get(p["isin"]) if misura != "Capitale investito"
-                             else None, da, giorno)
+                             else None, da_grafico, giorno, interrompi=True)
         nome = p["titolo"] if len(p["titolo"]) <= 32 else p["titolo"][:31] + "…"
         if misura == "Capitale investito":
-            serie.append({"nome": nome, "colore": colori[i], "punti": [(d, x / 100) for d, _, x, _ in punti]})
+            serie.append({"nome": nome, "colore": colori[i], "punti": [(d, cent(x)) for d, _, x, _ in punti]})
         elif i not in valutabili:
             continue
         elif misura == "Valore":
-            serie.append({"nome": nome, "colore": colori[i],
-                          "punti": [(d, v / 100 if v is not None else None) for d, _, _, v in punti]})
+            serie.append({"nome": nome, "colore": colori[i], "punti": [(d, cent(v)) for d, _, _, v in punti]})
             if len(scelte) == 1:
                 serie.append({"nome": "Capitale investito", "colore": GRIGIO, "tratteggio": True,
-                              "punti": [(d, x / 100) for d, _, x, _ in punti]})
+                              "punti": [(d, cent(x)) for d, _, x, _ in punti]})
         else:
             if p["costo_da_indicare"]:
                 continue
             serie.append({"nome": nome, "colore": colori[i],
-                          "punti": [(d, (v - x) / x * 100 if v is not None and x > 0 else None) for d, _, x, v in punti]})
-    if not serie:
+                          "punti": [(d, (v - x) / x * 100 if v is not None and x else None) for d, _, x, v in punti]})
+    if not serie or not any(v is not None for s in serie for _, v in s["punti"]):
         st.caption("Nessun dato da mostrare per la scelta fatta.")
         return
     grafici.mostra(grafici.linee_tempo(serie, percento=misura == "Rendimento %", gradino=misura == "Capitale investito"),
                    "pf_andamento", 360)
     note = ["Seleziona una o piu' righe della tabella per vedere o confrontare le posizioni."]
-    mancano = [aperte[i]["titolo"] for i in scelte if i not in valutabili]
+    if any(not righe[i]["aperta"] for i in scelte):
+        note.append("Le posizioni chiuse si fermano al giorno della vendita.")
+    mancano = [righe[i]["titolo"] for i in scelte if i not in valutabili]
     if misura != "Capitale investito" and mancano:
         note.append("Senza prezzi: %s." % ", ".join(mancano))
     if misura == "Rendimento %":
@@ -659,7 +752,8 @@ def _simboli(c, r):
     noti = mercato.titoli(c)
     nomi = {p["isin"]: p["titolo"] for p in r["posizioni"]}
     elenco = sorted(r["passi"], key=lambda i: nomi.get(i, i))
-    errori = sum(1 for i in elenco if (noti.get(i) or {}).get("errore"))
+    falliti = set(mercato.non_aggiornati(c)) & set(elenco)
+    errori = sum(1 for i in elenco if (noti.get(i) or {}).get("errore") or i in falliti)
     with st.expander("Simboli di borsa e prezzi" + (" · %d da sistemare" % errori if errori else ""),
                      icon=":material/query_stats:", expanded=False):
         ultimi = {i: (ser[-1][0] if ser else None) for i, ser in mercato.prezzi(c, elenco).items()}
@@ -669,7 +763,9 @@ def _simboli(c, r):
             "Borsa": [(noti.get(i) or {}).get("borsa") or "" for i in elenco],
             "Valuta": [(noti.get(i) or {}).get("valuta") or "" for i in elenco],
             "Ultimo prezzo": [_data_breve(ultimi.get(i)) for i in elenco],
-            "Problema": [(noti.get(i) or {}).get("errore") or "" for i in elenco]}),
+            "Problema": [(noti.get(i) or {}).get("errore") or
+                         ("prezzi non aggiornati: Yahoo Finance non raggiungibile" if i in falliti else "")
+                         for i in elenco]}),
             hide_index=True, width="stretch")
         st.caption("Il simbolo si cerca da solo con l'ISIN, preferendo una borsa in euro. Se e' sbagliato o manca, "
                    "indicalo come su finance.yahoo.com (es. VWCE.DE, NVD.DE, AAPL); vuoto torna alla ricerca "
@@ -688,8 +784,13 @@ def _simboli(c, r):
             _aggiorna_prezzi(c, r, forza=True)
             st.rerun()
         ult = leggi_impostazione(c, mercato.CHIAVE_ULTIMO)
-        y.caption("Ultimo aggiornamento: %s. Si aggiorna da solo una volta al giorno aprendo questa pagina."
-                  % (_data_breve(ult) if ult else "mai"))
+        tent = leggi_impostazione(c, mercato.CHIAVE_TENTATIVO)
+        testo_ = "Prezzi aggiornati per tutti i titoli: %s." % (_data_breve(ult) if ult else "mai")
+        if falliti:
+            testo_ += " Ultimo tentativo%s: non aggiornat%s %d titol%s (vedi Problema)." % (
+                " il " + _data_breve(tent) if tent else "", "o" if len(falliti) == 1 else "i", len(falliti),
+                "o" if len(falliti) == 1 else "i")
+        y.caption(testo_ + " Si aggiorna da solo una volta al giorno aprendo questa pagina.")
 
 
 def _mesi_continui(mesi, da, a):

@@ -15,7 +15,9 @@ from decimal import Decimal
 from .db import leggi_impostazione, ora, scrivi_impostazione, transazione
 
 CHIAVE_ATTIVO = "mercato_yahoo"
-CHIAVE_ULTIMO = "mercato_aggiornato_il"
+CHIAVE_ULTIMO = "mercato_aggiornato_il"      # giorno dell'ultimo aggiornamento riuscito per tutti i titoli
+CHIAVE_TENTATIVO = "mercato_tentato_il"      # giorno dell'ultimo tentativo, riuscito o no
+CHIAVE_FALLITI = "mercato_non_aggiornati"    # [isin] non aggiornati nell'ultimo tentativo
 CHIAVE_COPERTURA = "mercato_coperto_dal"     # {isin: primo giorno per cui i prezzi sono stati chiesti e salvati}
 SEI = Decimal("0.000001")
 MOTORE = "yahoo"
@@ -90,6 +92,8 @@ def imposta_simbolo(conn, isin, simbolo):
         if copertura.pop(isin, None) is not None:
             scrivi_impostazione(conn, CHIAVE_COPERTURA, copertura)
         scrivi_impostazione(conn, CHIAVE_ULTIMO, None)
+        # da riscaricare anche se oggi c'e' gia' stato un tentativo (si riprovano solo i titoli rimasti indietro)
+        scrivi_impostazione(conn, CHIAVE_FALLITI, sorted(set(non_aggiornati(conn)) | {isin}))
 
 
 def titoli(conn):
@@ -202,6 +206,20 @@ def da_aggiornare(conn):
     return attivo(conn) and leggi_impostazione(conn, CHIAVE_ULTIMO) != date.today().isoformat()
 
 
+def non_aggiornati(conn):
+    """ISIN rimasti senza aggiornamento nell'ultimo tentativo (errore del titolo o rete caduta)."""
+    return list(leggi_impostazione(conn, CHIAVE_FALLITI, []) or [])
+
+
+def da_scaricare(conn, isin_dal):
+    """Titoli da scaricare oggi: tutti, oppure, se oggi c'e' gia' stato un tentativo non riuscito per qualcuno, solo
+    quelli rimasti indietro (gli altri sono gia' aggiornati)."""
+    if leggi_impostazione(conn, CHIAVE_TENTATIVO) != date.today().isoformat():
+        return dict(isin_dal)
+    falliti = set(non_aggiornati(conn))
+    return {i: d for i, d in isin_dal.items() if i in falliti}
+
+
 def aggiorna(conn, isin_dal, http=None, avanzamento=None):
     """Scarica i prezzi mancanti per {isin: primo giorno che serve (date)}. Restituisce {isin: errore} per i titoli
     non riusciti. Il primo giorno serve solo per non salvare prezzi inutili: la richiesta parte comunque da INIZIO.
@@ -214,6 +232,7 @@ def aggiorna(conn, isin_dal, http=None, avanzamento=None):
     errori = {}
     copertura = leggi_impostazione(conn, CHIAVE_COPERTURA, {}) or {}
     elenco = sorted(isin_dal.items())
+    fermato = None                                      # indice del titolo a cui ci si e' fermati senza rete
     for n, (isin, serve_dal) in enumerate(elenco):
         t = noti.get(isin) or {}
         if avanzamento:
@@ -276,14 +295,22 @@ def aggiorna(conn, isin_dal, http=None, avanzamento=None):
             msg = str(e) or e.__class__.__name__
             if di_rete(e):                              # ...ma senza rete (o con Yahoo che rifiuta) ci si ferma
                 errori[RETE] = "Yahoo Finance non raggiungibile (%s): riprova piu' tardi." % motivo_rete(e)
+                fermato = n
                 break
             errori[isin] = msg
             conn.execute("INSERT INTO titoli_mercato(isin, errore) VALUES (?,?) ON CONFLICT(isin) DO UPDATE SET "
                          "errore = excluded.errore", (isin, msg[:300]))
     if avanzamento:
         avanzamento(len(elenco), len(elenco), "")
-    if RETE not in errori and (not errori or len(errori) < len(isin_dal)):
-        scrivi_impostazione(conn, CHIAVE_ULTIMO, date.today().isoformat())
+    # "aggiornato oggi" solo se tutti i titoli sono andati: altrimenti si ricordano quelli rimasti indietro, che si
+    # riprovano da soli al tentativo successivo (gli altri no: sono gia' aggiornati)
+    falliti = sorted({i for i in errori if i != RETE} | ({i for i, _ in elenco[fermato:]} if fermato is not None else set()))
+    oggi = date.today().isoformat()
+    with transazione(conn):
+        scrivi_impostazione(conn, CHIAVE_TENTATIVO, oggi)
+        scrivi_impostazione(conn, CHIAVE_FALLITI, falliti)
+        if not falliti:
+            scrivi_impostazione(conn, CHIAVE_ULTIMO, oggi)
     return errori
 
 

@@ -112,7 +112,8 @@ def calcola(conn, conti=None, da=None, a=None):
     nomi = {}
     pos = defaultdict(lambda: {"quote": ZERO, "costo": ZERO, "primo": None, "dividendi": 0, "rit_dividendi": 0,
                                "commissioni": 0, "senza_costo": ZERO, "avvisi": [], "avvisi_migrazione": [],
-                               "partenza_libera": None})
+                               "partenza_libera": None, "realizzato": ZERO, "costo_venduto": ZERO,
+                               "vendite_incomplete": False, "vendite": 0})
     vendite, anni = [], defaultdict(lambda: defaultdict(int))
     mesi = {}                       # mese -> capitale investito netto (costo delle posizioni aperte) a fine mese
     storia = defaultdict(list)      # (conto, isin) -> [(data, quote)] per il controllo dei dividendi
@@ -180,6 +181,11 @@ def calcola(conn, conti=None, da=None, a=None):
                                    "di partenza)" % (e["data"], _fmt(vendute), _fmt(disponibili)))
             p["quote"] = max(ZERO, disponibili - vendute)
             p["costo"] -= costo_v
+            # risultato delle vendite su tutta la storia fino alla fine del periodo (rendimento complessivo)
+            p["vendite"] += 1
+            p["costo_venduto"] += costo_v
+            p["realizzato"] += plus
+            p["vendite_incomplete"] = p["vendite_incomplete"] or incompleto
             if p["quote"] <= TOLLERANZA:
                 p["quote"], p["costo"], p["senza_costo"], p["avvisi_migrazione"] = ZERO, ZERO, ZERO, []
             p["commissioni"] += -fee
@@ -236,19 +242,19 @@ def calcola(conn, conti=None, da=None, a=None):
     per_titolo = {}
     for (_, isin), p in pos.items():
         t = per_titolo.setdefault(isin, {"quote": ZERO, "costo": ZERO, "primo": None, "dividendi": 0, "rit_dividendi": 0,
-                                         "commissioni": 0, "senza_costo": ZERO, "avvisi": []})
+                                         "commissioni": 0, "senza_costo": ZERO, "avvisi": [], "realizzato": ZERO,
+                                         "costo_venduto": ZERO, "vendite_incomplete": False, "vendite": 0})
         aperta = p["quote"] > TOLLERANZA
         t["quote"] += p["quote"] if aperta else ZERO
         t["costo"] += p["costo"] if aperta else ZERO
         t["senza_costo"] += p["senza_costo"] if aperta else ZERO
         t["primo"] = min(x for x in (t["primo"], p["primo"]) if x) if (t["primo"] or p["primo"]) else None
-        for campo in ("dividendi", "rit_dividendi", "commissioni"):
+        for campo in ("dividendi", "rit_dividendi", "commissioni", "realizzato", "costo_venduto", "vendite"):
             t[campo] += p[campo]
+        t["vendite_incomplete"] = t["vendite_incomplete"] or p["vendite_incomplete"]
         t["avvisi"] += p["avvisi"] + p["avvisi_migrazione"]
     posizioni = []
     for isin, p in per_titolo.items():
-        if p["quote"] <= TOLLERANZA and not p["avvisi"]:
-            continue
         aperta = p["quote"] > TOLLERANZA
         posizioni.append({
             "isin": isin, "titolo": nomi.get(isin, isin), "quote": p["quote"] if aperta else ZERO,
@@ -256,10 +262,18 @@ def calcola(conn, conti=None, da=None, a=None):
             "costo_medio": (p["costo"] / p["quote"] / 100) if aperta and p["quote"] > p["senza_costo"] else None,
             "primo": p["primo"], "dividendi": p["dividendi"], "rit_dividendi": p["rit_dividendi"],
             "commissioni": p["commissioni"], "costo_da_indicare": p["senza_costo"] > TOLLERANZA,
-            "aperta": aperta, "avvisi": sorted(p["avvisi"])})
+            "aperta": aperta, "avvisi": sorted(p["avvisi"]),
+            # tutta la storia fino alla fine del periodo: plus/minus delle vendite (None se una vendita ha il costo
+            # incompleto), costo delle quote vendute, numero di vendite, giorno in cui la posizione si e' chiusa
+            "realizzato": None if p["vendite_incomplete"] else _cent(p["realizzato"]),
+            "costo_venduto": _cent(p["costo_venduto"]), "vendite_totali": p["vendite"],
+            "chiusa_il": None if aperta else _chiusura(passi.get(isin))})
     for v in vendite:
         v["titolo"] = nomi.get(v["isin"], v["isin"])
+    # prima le aperte (per capitale investito), poi le chiuse dalla piu' recente
     posizioni.sort(key=lambda x: (not x["aperta"], -x["costo"]))
+    chiuse = sorted((p for p in posizioni if not p["aperta"]), key=lambda x: x["chiusa_il"] or "", reverse=True)
+    posizioni = [p for p in posizioni if p["aperta"]] + chiuse
     return {"posizioni": posizioni, "vendite": vendite,
             "anni": {k: dict(v) for k, v in sorted(anni.items())},
             "mesi": sorted((m, _cent(v)) for m, v in mesi.items()),
@@ -276,9 +290,23 @@ def _valore_cent(quote, prezzo):
     return _cent(Decimal(str(quote)) * Decimal(str(prezzo)) * 100)
 
 
+def _chiusura(passi):
+    """Giorno in cui la posizione e' scesa a zero quote l'ultima volta (None se e' aperta o non ci sono passi). Un
+    titolo che non ha mai avuto quote (solo una vendita, storico incompleto) si chiude al suo ultimo evento."""
+    if not passi or passi[-1][1] > TOLLERANZA:
+        return None
+    chiusa, prima = None, ZERO
+    for d, q, _ in passi:
+        if q <= TOLLERANZA and prima > TOLLERANZA:
+            chiusa = d
+        prima = q
+    return chiusa or passi[-1][0]
+
+
 def valorizza(posizioni, prezzi_isin, giorno):
     """Aggiunge a ogni posizione aperta prezzo, data del prezzo, valore, plus/minus latente e rendimento, con
-    l'ultimo prezzo non oltre `giorno`. prezzi_isin: {isin: [(data, prezzo €)]}."""
+    l'ultimo prezzo non oltre `giorno`. prezzi_isin: {isin: [(data, prezzo €)]}. A tutte, aperte e chiuse, aggiunge il
+    rendimento complessivo (vedi `complessivo`)."""
     from .mercato import prezzo_al
     for p in posizioni:
         pr = prezzo_al(prezzi_isin.get(p["isin"]), giorno) if p["aperta"] else None
@@ -287,14 +315,85 @@ def valorizza(posizioni, prezzi_isin, giorno):
         affidabile = pr and not p["costo_da_indicare"] and p["costo"] > 0
         p["latente"] = p["valore"] - p["costo"] if affidabile else None
         p["rendimento"] = p["latente"] / p["costo"] if affidabile else None
+        p["complessivo"], p["base_complessivo"] = complessivo(p)
+        p["rendimento_complessivo"] = (p["complessivo"] / p["base_complessivo"]
+                                       if p["complessivo"] is not None and p["base_complessivo"] > 0 else None)
     return posizioni
 
 
-def andamento(passi, prezzi=None, da=None, a=None):
+def complessivo(p):
+    """Rendimento complessivo di un titolo in centesimi, con la sua base: (plus/minus latente della parte aperta +
+    plus/minus realizzate + dividendi lordi, costo delle quote tenute + costo delle quote vendute). Tutto prima delle
+    imposte. (None, 0) se non si puo' calcolare: parte aperta senza prezzo o senza costo, vendite con il costo
+    incompleto. Esempio: 10 quote comprate a 100 €, 5 vendute a 120 € (+100 €), le 5 rimaste valgono 110 € (+50 €):
+    (15000, 100000), cioe' +15%."""
+    realizzato = p.get("realizzato", 0)
+    if realizzato is None:
+        return None, 0
+    if p["aperta"]:
+        if p.get("latente") is None:
+            return None, 0
+        aperta, base_aperta = p["latente"], p["costo"]
+    else:
+        aperta, base_aperta = 0, 0
+    return aperta + realizzato + p.get("dividendi", 0), base_aperta + p.get("costo_venduto", 0)
+
+
+def totali(posizioni):
+    """Indicatori delle posizioni mostrate. Capitale e valore solo delle aperte (quelle senza prezzo contano al
+    costo); rendimento delle aperte sulle posizioni con un prezzo; rendimento complessivo su tutte quelle per cui si
+    puo' calcolare (aperte e chiuse). Importi in centesimi, rendimenti come frazione (0,15 = +15%)."""
+    aperte = [p for p in posizioni if p["aperta"]]
+    con_latente = [p for p in aperte if p.get("latente") is not None]
+    con_compl = [p for p in posizioni if p.get("complessivo") is not None]
+    latente = sum(p["latente"] for p in con_latente)
+    base_latente = sum(p["costo"] for p in con_latente)
+    compl = sum(p["complessivo"] for p in con_compl)
+    base_compl = sum(p["base_complessivo"] for p in con_compl)
+    valutate = [p for p in aperte if p.get("valore") is not None]
+    return {
+        "capitale": sum(p["costo"] for p in aperte),
+        "valore": (sum(p["valore"] for p in valutate) + sum(p["costo"] for p in aperte if p.get("valore") is None))
+        if valutate else None,
+        "senza_prezzo": len(aperte) - len(valutate),
+        "latente": latente if con_latente else None,
+        "rendimento_aperte": latente / base_latente if base_latente > 0 else None,
+        "complessivo": compl if con_compl else None,
+        "rendimento_complessivo": compl / base_compl if base_compl > 0 else None,
+        "esclusi_complessivo": len(posizioni) - len(con_compl)}
+
+
+def chiuse_prima(posizioni, da):
+    """Posizioni vendute del tutto prima dell'inizio del periodo (nell'analisi per periodo non si mostrano, salvo
+    richiesta). Quelle vendute dopo la fine del periodo non sono tra queste: alla fine del periodo erano aperte."""
+    if not da:
+        return []
+    return [p for p in posizioni if not p["aperta"] and (p.get("chiusa_il") or "") < da]
+
+
+def stato(p):
+    """Testo della colonna Stato: aperta, venduta in parte, chiusa il gg/mm/aaaa."""
+    if p["aperta"]:
+        return "venduta in parte" if p.get("vendite_totali") else "aperta"
+    d = p.get("chiusa_il")
+    return "chiusa il %s/%s/%s" % (d[8:10], d[5:7], d[:4]) if d else "chiusa"
+
+
+def prezzo_vecchio(p, giorno, giorni=5):
+    """La posizione aperta ha un prezzo piu' vecchio di `giorni` giorni rispetto a `giorno` (iso)?"""
+    d = p.get("data_prezzo")
+    return bool(p["aperta"] and d and d < _giorni_prima(giorno, giorni))
+
+
+def andamento(passi, prezzi=None, da=None, a=None, interrompi=False):
     """Serie giornaliera di una posizione: [(data, quote, costo_cent, valore_cent o None)].
 
     Con i prezzi: un punto per ogni giorno di borsa (la posizione e' quella dopo gli eventi del giorno). Senza: un
-    punto per ogni evento. Si parte dal primo evento o da `da`, e si arriva ad `a` (o all'ultimo prezzo)."""
+    punto per ogni evento. Si parte dal primo evento o da `da`, e si arriva ad `a` (o all'ultimo prezzo).
+
+    interrompi (grafico di una posizione): la linea si ferma alla vendita di tutte le quote invece di proseguire a
+    zero. Il giorno della chiusura vale le quote tenute fino a quel giorno al prezzo del giorno; se il titolo si
+    ricompra, il tratto senza quote e' un buco (un punto con costo e valore None)."""
     if not passi:
         return []
     giorni = [d for d, _ in prezzi] if prezzi else [d for d, _, _ in passi]
@@ -304,6 +403,7 @@ def andamento(passi, prezzi=None, da=None, a=None):
         giorni = sorted(set(giorni) | ({inizio} if inizio > passi[0][0] else set()) | {fine})
     valori = dict(prezzi or [])
     out, i, stato, ultimo_prezzo = [], 0, None, None
+    chiusa = False                  # con interrompi: gia' messo il punto del giorno della vendita
     for d, v in sorted(valori.items()):
         if d < inizio:
             ultimo_prezzo = v
@@ -315,8 +415,21 @@ def andamento(passi, prezzi=None, da=None, a=None):
             continue
         ultimo_prezzo = valori.get(g, ultimo_prezzo)
         q, costo = stato[1], stato[2]
+        if interrompi and q <= TOLLERANZA:
+            if out and out[-1][2] is not None:
+                if not chiusa:      # giorno della vendita: le quote tenute fino a ieri, al prezzo di oggi
+                    pq, pc = out[-1][1], out[-1][2]
+                    out.append((g, pq, pc, _valore_cent(pq, ultimo_prezzo)
+                                if prezzi and ultimo_prezzo is not None else None))
+                    chiusa = True
+                else:               # tratto senza quote: un punto vuoto (buco nella linea)
+                    out.append((g, ZERO, None, None))
+            continue
+        chiusa = False
         valore = _valore_cent(q, ultimo_prezzo) if prezzi and ultimo_prezzo is not None else None
         out.append((g, q, costo, valore))
+    while out and out[-1][2] is None:                   # niente punti vuoti in coda
+        out.pop()
     return out
 
 

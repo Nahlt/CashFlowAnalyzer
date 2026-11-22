@@ -5,6 +5,48 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.20.0 – 22 novembre 2026 · portafoglio attualizzato a oggi o nel periodo, rendimento complessivo
+
+**Novita'**
+- **Portafoglio: due modi di analisi**, scelti in cima alla pagina.
+  - **Analisi attualizzata a oggi** (all'apertura, sempre): tutta la storia dei conti scelti con l'ultimo prezzo
+    disponibile; il periodo dei filtri non si applica. Prima il portafoglio si valutava alla fine del periodo
+    scelto, che di solito coincide con l'ultimo estratto importato (o con la fine del mese scorso): i prezzi
+    sembravano vecchi.
+  - **Analisi nel periodo selezionato**: posizioni possedute nel periodo, prezzo alla fine del periodo (come
+    prima). Le posizioni vendute del tutto prima del periodo non si mostrano: la pagina dice quante sono e
+    l'interruttore *Includi le N posizioni chiuse prima del ...* le aggiunge. Quelle vendute dopo la fine del
+    periodo contano come ancora possedute.
+- **Posizioni chiuse in tabella**: la scheda *Posizioni aperte* diventa *Posizioni*, con la colonna **Stato**
+  ("aperta", "venduta in parte", "chiusa il gg/mm/aaaa"): prima le aperte, poi le chiuse dalla piu' recente. Colonne
+  nuove **Realizzato** (plus/minus delle vendite del titolo) e **Rend. complessivo**.
+- **Rendimento delle posizioni aperte e rendimento complessivo**. Il complessivo somma plus/minus latenti, plus/minus
+  realizzate e dividendi lordi, sul costo di tutte le quote comprate, prima delle imposte. Esempio: 10 quote
+  comprate a 100 euro, 5 vendute a 120 (+100), le 5 rimaste valgono 110 (+50): aperte +10%, complessivo +15%.
+  Nell'analisi per periodo va dal primo acquisto alla fine del periodo. Indicatori su due righe: capitale
+  investito, valore di mercato, i due rendimenti; realizzato, dividendi, imposte e commissioni, posizioni.
+- **Plus verdi e minus rosse** nella tabella delle posizioni: plus/minus latente delle aperte e realizzato,
+  anche delle posizioni chiuse.
+- **Grafici**: le posizioni vendute si fermano al giorno della vendita (prima proseguivano a zero fino alla fine);
+  un titolo venduto e ricomprato ha un buco nel tratto senza quote.
+- **Prezzo vecchio**: nell'analisi attualizzata una posizione aperta con l'ultima chiusura di piu' di 5 giorni fa
+  lo segnala nelle note.
+
+**Correzioni**
+- **Prezzi non aggiornati per qualche titolo**: l'app segnava comunque "aggiornato oggi" e non riprovava fino al
+  giorno dopo. Ora l'aggiornamento risulta fatto solo se sono andati tutti i titoli; un avviso in cima alla pagina
+  dice quali non sono stati aggiornati (anche con Yahoo non raggiungibile) e, riaprendo l'app, si riprovano solo
+  quelli. Un simbolo corretto a mano si riscarica subito.
+
+**Aggiornando**
+- Estrai sopra la cartella e riavvia. Lo schema del database non cambia (si puo' tornare alla 0.19.2); due
+  impostazioni nuove si creano da sole.
+- Costo medio e plusvalenze non cambiano. Cambiano valore e rendimenti nell'analisi attualizzata, che ora usa i
+  prezzi di oggi.
+- 240 test (erano 229).
+
+---
+
 ## 0.19.2 – 20 novembre 2026 · bonifici con i familiari anche sui conti personali
 
 **Novita'**
