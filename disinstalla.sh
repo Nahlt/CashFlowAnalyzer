@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 # Disinstalla l'app.
 #   ./disinstalla.sh               toglie programma installato (ambiente .venv), icona del menu e chiave di Claude.
-#                                  I DATI RESTANO in ~/.local/share/spese-app.
+#                                  I DATI RESTANO in ~/.local/share/CashFlowAnalyzer (spese-app fino alla 0.20.1).
 #   ./disinstalla.sh --anche-dati  cancella anche database, backup e log (chiede conferma scritta).
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 APP="$PWD"
-DATI="${SPESE_DATI:-$HOME/.local/share/spese-app}"
+# cartella dei dati: la stessa dell'app (spese/percorsi.py). Quella vecchia (spese-app, fino alla 0.20.1) si
+# sposta da sola al primo avvio: se non e' ancora successo, i dati sono li'
+BASE="${XDG_DATA_HOME:-$HOME/.local/share}"
+if [ -n "${SPESE_DATI:-}" ]; then
+  DATI="$SPESE_DATI"
+elif [ ! -f "$BASE/CashFlowAnalyzer/spese.db" ] && [ -f "$BASE/spese-app/spese.db" ]; then
+  DATI="$BASE/spese-app"
+else
+  DATI="$BASE/CashFlowAnalyzer"
+fi
 DESK="$HOME/.local/share/applications/cashflow-analyzer.desktop"
 DESK_VECCHIO="$HOME/.local/share/applications/spese-famiglia.desktop"   # nome fino alla 0.9
 
@@ -37,13 +46,16 @@ rm -f "$DATI/icona.pid"
 
 # 2. Chiave API di Claude nel portachiavi (serve il Python dell'app, quindi prima di togliere .venv)
 if [ -x .venv/bin/python ] && [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
-  .venv/bin/python - <<'PY' || echo "Chiave di Claude: portachiavi non raggiungibile, eventualmente toglila da 'Password e chiavi' (voce spese-app)."
+  .venv/bin/python - <<'PY' || echo "Chiave di Claude: portachiavi non raggiungibile, eventualmente toglila da 'Password e chiavi' (voce CashFlowAnalyzer o spese-app)."
 import keyring, keyring.errors
-try:
-    keyring.delete_password("spese-app", "anthropic")
-    print("Chiave di Claude tolta dal portachiavi.")
-except keyring.errors.PasswordDeleteError:
-    print("Nessuna chiave di Claude nel portachiavi.")
+tolte = 0
+for nome in ("CashFlowAnalyzer", "spese-app"):     # spese-app: nome fino alla 0.20.1
+    try:
+        keyring.delete_password(nome, "anthropic")
+        tolte += 1
+    except keyring.errors.PasswordDeleteError:
+        pass
+print("Chiave di Claude tolta dal portachiavi." if tolte else "Nessuna chiave di Claude nel portachiavi.")
 PY
 fi
 

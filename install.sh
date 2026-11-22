@@ -114,4 +114,9 @@ chmod +x tray.py
 echo
 echo "Installazione completata."
 echo "Avvio: menu > Ufficio > CashFlow Analyzer, oppure $APP/avvia.sh"
-echo "I dati (cifrati) stanno in ${SPESE_DATI:-$HOME/.local/share/spese-app}"
+# la cartella dei dati la decide l'app (spese/percorsi.py); senza SPESE_DATI quella vecchia (spese-app) si
+# sposta in CashFlowAnalyzer al primo avvio
+echo "I dati (cifrati) stanno in ${SPESE_DATI:-${XDG_DATA_HOME:-$HOME/.local/share}/CashFlowAnalyzer}"
+if [ -z "${SPESE_DATI:-}" ] && [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/spese-app" ]; then
+  echo "(la cartella dei dati delle versioni precedenti, spese-app, si sposta li' da sola al primo avvio)"
+fi

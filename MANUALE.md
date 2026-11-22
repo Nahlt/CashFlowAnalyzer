@@ -60,7 +60,7 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
   se il desktop non la offre passa da sola a XApp o AppIndicator. Se non compare:
   `sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-xapp-1.0`. Si puo' forzare il tipo di icona con
   `SPESE_ICONA=xapp ./avvia.sh` (oppure `gtk`, `appindicator`); i messaggi stanno in
-  `~/.local/share/spese-app/icona.log`.
+  `~/.local/share/CashFlowAnalyzer/icona.log`.
 - Al primo avvio scegli la passphrase del database (minimo 8 caratteri).
   **Non e' recuperabile**: senza passphrase i dati non si leggono. Conservala in un gestore di password.
 - Dopo l'accesso ricaricare la pagina o aprire un'altra scheda non chiede la passphrase: il browser tiene un
@@ -445,7 +445,7 @@ ordina la tabella.
 
 | Cosa | Dove |
 | --- | --- |
-| Database cifrato | Linux: `~/.local/share/spese-app/spese.db` (cartella con permessi 700). Windows: `%LOCALAPPDATA%\CashFlowAnalyzer\spese.db` (nel tuo profilo utente, non sincronizzata con OneDrive) |
+| Database cifrato | Linux: `~/.local/share/CashFlowAnalyzer/spese.db` (cartella con permessi 700; fino alla 0.20.1 `~/.local/share/spese-app`, spostata da sola al primo avvio). Windows: `%LOCALAPPDATA%\CashFlowAnalyzer\spese.db` (nel tuo profilo utente, non sincronizzata con OneDrive) |
 | Backup cifrati | stessa cartella, `backup_AAAAMMGG_HHMMSS.db`, stessa passphrase |
 | Log del server | stessa cartella, `server.log` (solo messaggi del server) |
 | Chiave API di Claude | portachiavi di sistema (Linux) o Gestione credenziali (Windows) |

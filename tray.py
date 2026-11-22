@@ -28,7 +28,10 @@ APP = Path(__file__).resolve().parent
 AVVIA = str(APP / "avvia.sh")
 PORTA = os.environ.get("SPESE_PORTA", "8501")
 URL = "http://127.0.0.1:%s" % PORTA
-DATI = Path(os.environ.get("SPESE_DATI") or Path.home() / ".local/share/spese-app")
+sys.path.insert(0, str(APP))
+from spese.percorsi import cartella_dati  # noqa: E402  (solo libreria standard: va bene con il Python di sistema)
+
+DATI = cartella_dati()                      # la stessa cartella dell'app (anche con XDG_DATA_HOME)
 ICONA = str(APP / "assets" / "icona.png")
 NOME = "CashFlow Analyzer"
 

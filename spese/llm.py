@@ -478,19 +478,43 @@ def _portachiavi(funzione, *args, timeout=4):
     return esito.get("v")
 
 
+PORTACHIAVI = "CashFlowAnalyzer"            # nome della voce nel portachiavi
+PORTACHIAVI_VECCHIO = "spese-app"           # fino alla 0.20.1
+
+
 def chiave_api():
     import os
     try:
-        k = _portachiavi("get_password", "spese-app", "anthropic")
+        k = _portachiavi("get_password", PORTACHIAVI, "anthropic")
         if k:
+            return k
+        k = _portachiavi("get_password", PORTACHIAVI_VECCHIO, "anthropic")
+        if k:
+            _sposta_chiave(k)
             return k
     except Exception:
         pass
     return os.environ.get("ANTHROPIC_API_KEY")
 
 
+def _sposta_chiave(k):
+    """Chiave salvata con il nome delle versioni fino alla 0.20.1: si scrive con il nome nuovo e, solo se si rilegge
+    uguale, si toglie la vecchia. Se qualcosa non va resta dov'era (e si riprova al prossimo uso)."""
+    try:
+        _portachiavi("set_password", PORTACHIAVI, "anthropic", k)
+        if _portachiavi("get_password", PORTACHIAVI, "anthropic") == k:
+            _portachiavi("delete_password", PORTACHIAVI_VECCHIO, "anthropic")
+    except Exception:
+        pass
+
+
 def salva_chiave_api(valore):
-    _portachiavi("set_password", "spese-app", "anthropic", valore)
+    _portachiavi("set_password", PORTACHIAVI, "anthropic", valore)
+    try:                                    # una chiave vecchia rimasta non deve tornare a galla
+        if _portachiavi("get_password", PORTACHIAVI_VECCHIO, "anthropic"):
+            _portachiavi("delete_password", PORTACHIAVI_VECCHIO, "anthropic")
+    except Exception:
+        pass
 
 
 def lotti_claude(conn, dimensione=50, scelte=None, solo=None):

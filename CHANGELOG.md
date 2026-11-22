@@ -5,6 +5,36 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.20.2 – 22 novembre 2026 · cartella dei dati e portachiavi con il nome CashFlowAnalyzer
+
+**Novita'**
+- **Linux: la cartella dei dati diventa `~/.local/share/CashFlowAnalyzer`** (prima `~/.local/share/spese-app`),
+  come su Windows (`%LOCALAPPDATA%\CashFlowAnalyzer`, che non cambia). Al primo avvio la cartella vecchia si
+  rinomina da sola: database, backup e log la seguono, senza copie.
+  - Se server o icona la stanno ancora usando, si sposta all'avvio successivo.
+  - Se esistono tutte e due, si usa quella con il database e non si cancella nulla.
+  - Con `SPESE_DATI` non si sposta nulla.
+- **Chiave di Claude**: nel portachiavi la voce si chiama ora `CashFlowAnalyzer` (prima `spese-app`). Al primo
+  uso la chiave si scrive con il nome nuovo e quella vecchia si toglie solo se la nuova si rilegge uguale;
+  se il portachiavi non risponde resta dov'era e si riprova la volta dopo.
+
+**Correzioni**
+- L'icona nell'area di notifica (Linux) usa la stessa cartella dei dati dell'app: prima aveva un percorso suo e
+  ignorava `XDG_DATA_HOME`.
+- `disinstalla.sh` e `disinstalla.cmd` tolgono la chiave di Claude con tutti e due i nomi; `disinstalla.sh`
+  trova i dati anche nella cartella vecchia, se non e' ancora stata spostata.
+
+**Aggiornando**
+- Ferma l'app, estrai lo zip sopra la cartella `CashFlowAnalyzer` e avvia. Se arrivi dalla 0.20.0 o prima, segui
+  prima i passi della 0.20.1 (cartella del programma rinominata e `install` rilanciato).
+- Consigliato un backup prima del primo avvio. Lo schema del database non cambia; i numeri non cambiano.
+- Il README spiega i passi per chi aggiorna da una versione precedente alla 0.20 (rilanciare l'installazione).
+- Per tornare alla 0.20.1 su Linux bisogna rinominare a mano la cartella dei dati in `spese-app` e reinserire
+  la chiave di Claude in Impostazioni.
+- 250 test (erano 241).
+
+---
+
 ## 0.20.1 – 22 novembre 2026 · rendimenti colorati nel portafoglio
 
 **Novita'**

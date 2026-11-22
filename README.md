@@ -46,8 +46,20 @@ cd CashFlowAnalyzer-X.Y.Z
 **Windows**: doppio clic su `install.cmd`, poi avvio dal menu Start (**CashFlow Analyzer**) o con `avvia.cmd`.
 
 Al primo avvio si sceglie la passphrase che cifra il database: non e' recuperabile. I dati stanno in
-`~/.local/share/spese-app` su Linux e in `%LOCALAPPDATA%\CashFlowAnalyzer` su Windows (o nella cartella
+`~/.local/share/CashFlowAnalyzer` su Linux e in `%LOCALAPPDATA%\CashFlowAnalyzer` su Windows (o nella cartella
 indicata da `SPESE_DATI`).
+
+**Aggiornando da una versione precedente alla 0.20, rilancia l'installazione** (`./install.sh` su Linux,
+`install.cmd` su Windows) dalla cartella della nuova versione. Dalla 0.20.1 la cartella del programma si chiama
+`CashFlowAnalyzer` (prima `spese-app`): la voce del menu punta ancora alla cartella vecchia finche' l'installazione
+non la rifa'. Ci vogliono pochi secondi, le dipendenze ci sono gia'.
+1. Ferma l'app (*Ferma* dall'icona, oppure `./avvia.sh --ferma` / `avvia.cmd --ferma`).
+2. Rinomina la cartella `spese-app` in `CashFlowAnalyzer` ed estrai sopra la nuova versione.
+3. Dalla cartella `CashFlowAnalyzer` lancia `./install.sh` o `install.cmd`, poi avvia dal menu.
+
+I dati non vanno spostati a mano: su Linux la cartella `~/.local/share/spese-app` diventa da sola
+`~/.local/share/CashFlowAnalyzer` al primo avvio (0.20.2), e la chiave di Claude passa da sola alla voce
+`CashFlowAnalyzer` del portachiavi. Per le versioni successive basta estrarre sopra la cartella e riavviare.
 
 Il manuale completo, con il primo utilizzo e tutte le funzioni, e' in [MANUALE.md](MANUALE.md).
 

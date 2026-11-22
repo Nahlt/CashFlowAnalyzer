@@ -17,11 +17,14 @@ if (Test-Path -LiteralPath $VPY) {
     & $VPY (Join-Path $APP "avvia.py") --ferma
     & $VPY -c @"
 import keyring, keyring.errors
-try:
-    keyring.delete_password('spese-app', 'anthropic')
-    print('Chiave di Claude tolta dalla Gestione credenziali.')
-except keyring.errors.PasswordDeleteError:
-    print('Nessuna chiave di Claude nella Gestione credenziali.')
+tolte = 0
+for nome in ('CashFlowAnalyzer', 'spese-app'):  # spese-app: nome fino alla 0.20.1
+    try:
+        keyring.delete_password(nome, 'anthropic')
+        tolte += 1
+    except keyring.errors.PasswordDeleteError:
+        pass
+print('Chiave di Claude tolta dalla Gestione credenziali.' if tolte else 'Nessuna chiave di Claude nella Gestione credenziali.')
 "@
 }
 
