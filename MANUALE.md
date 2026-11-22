@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.21.0 – Manuale
+# CashFlow Analyzer 0.21.1 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -448,7 +448,9 @@ barra laterale qui non si usano: si sceglie il **mese** in cima alla pagina (all
   - **a rischio** (sotto il budget, ma il previsto lo supera): barra ambra e "a rischio".
 - **Dettaglio**: con un clic su una barra (all'apertura il budget messo peggio) vedi budget, speso, previsto e
   margine, il grafico della spesa cumulata giorno per giorno (speso, speso + previsto, curva tipica dei mesi
-  passati, budget, giorno dei dati di ogni conto) e la tabella conto per conto. *Vedi i movimenti* apre *Dove
+  passati, budget) e la tabella conto per conto. Una linea punteggiata segna il giorno fin dove arrivano i dati,
+  una per giorno anche quando piu' conti finiscono insieme ("dati fino al 20 · 3 conti"); passando il mouse su
+  quel giorno il riquadro dice quali conti. *Vedi i movimenti* apre *Dove
   vanno i soldi* su quella voce, quel perimetro e quel mese.
 - **Storico degli ultimi 12 mesi**: per ogni budget la percentuale spesa mese per mese, dal piu' recente; in rosso
   i mesi oltre il budget, in ambra il mese in corso se il previsto lo supera.

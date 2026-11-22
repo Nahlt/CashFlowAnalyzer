@@ -379,26 +379,40 @@ def barre_budget(righe):
     return o
 
 
+def _testo_segno(giorno, nomi):
+    return "dati fino al %d" % giorno + (" · %d conti" % len(nomi) if len(nomi) > 1 else " · %s" % nomi[0] if nomi else "")
+
+
 def cumulato_budget(giorni, reale, stimato, tipico, importo_cent, segni=()):
     """Spesa cumulata del mese giorno per giorno: speso (linea piena), speso + previsto (tratteggiata), curva
-    tipica dei mesi passati (grigia), budget (linea rossa). segni: [(giorno, testo)] fin dove arrivano i dati
-    di ciascun conto. Valori in centesimi."""
+    tipica dei mesi passati (grigia), budget (linea rossa). segni: [(giorno, [nomi dei conti])] fin dove arrivano
+    i dati dei conti: una linea per giorno con un'etichetta corta orizzontale in cima (su due altezze alterne,
+    cosi' due giorni vicini non si sovrappongono); i nomi dei conti nel riquadro di quel giorno. Valori in
+    centesimi."""
     e = lambda v: None if v is None else round(v / 100, 2)
-    o = _base()
+    o = _base(griglia={"top": 70} if segni else None)
     o["xAxis"] = {"type": "category", "data": [str(d) for d in range(1, giorni + 1)], "boundaryGap": False,
                   "axisTick": {"show": False}}
     o["yAxis"] = _asse_valori()
-    o["tooltip"] = {"trigger": "axis", "valueFormatter": EURO, "axisPointer": {"type": "line"}}
+    conti_del_giorno = {str(g): nomi for g, nomi in segni}
+    o["tooltip"] = {"trigger": "axis", "axisPointer": {"type": "line"}, "formatter": JsCode(
+        "function(p){ var C = %s; var f = function(v){ return Number(v).toLocaleString('it-IT', {minimumFractionDigits: 2, "
+        "maximumFractionDigits: 2, useGrouping: 'always'}) + ' €'; }; var h = '<b>Giorno ' + p[0].name + '</b><br>';"
+        "p.forEach(function(s){ if (s.value == null) return; h += s.marker + s.seriesName + ': <b>' + f(s.value) + "
+        "'</b><br>'; }); var c = C[p[0].name]; if (c) { h += '<div style=\"font-size:11px;opacity:.75;margin-top:4px\">"
+        "Dati fino a qui: ' + c.join(', ') + '</div>'; } return h; }" % json.dumps(conti_del_giorno, ensure_ascii=False))}
     o["series"] = []
     if tipico:
         o["series"].append({"type": "line", "name": "Curva tipica", "data": [e(v) for v in tipico], "symbol": "none",
                             "lineStyle": {"width": 2, "color": "#b4b2a9"}, "itemStyle": {"color": "#b4b2a9"}})
     o["series"].append({"type": "line", "name": "Speso", "data": [e(v) for v in reale], "symbol": "none",
                         "lineStyle": {"width": 2.5, "color": BLU}, "itemStyle": {"color": BLU},
-                        "markLine": {"silent": True, "symbol": "none", "label": {"position": "insideEndTop"},
+                        "markLine": {"silent": True, "symbol": "none",
                                      "lineStyle": {"color": GRIGIO, "type": "dotted"},
-                                     "data": [{"xAxis": str(g), "label": {"formatter": t, "color": GRIGIO}}
-                                              for g, t in segni]}})
+                                     "data": [{"xAxis": str(g), "label": {
+                                         "formatter": _testo_segno(g, nomi), "position": "end", "color": GRIGIO,
+                                         "fontSize": 11, "distance": 4 if i % 2 == 0 else 18}}
+                                         for i, (g, nomi) in enumerate(segni)]}})
     if stimato:
         o["series"].append({"type": "line", "name": "Speso + previsto", "data": [e(v) for v in stimato],
                             "symbol": "none", "lineStyle": {"width": 2.5, "type": "dashed", "color": AMBRA},

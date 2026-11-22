@@ -5,6 +5,22 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.21.1 – 22 novembre 2026 · segni dei conti nel grafico del budget
+
+**Correzioni**
+- Budget, grafico della spesa cumulata: quando piu' conti hanno i dati fino allo stesso giorno i loro nomi si
+  sovrapponevano. Ora c'e' una sola linea per giorno con un'etichetta corta e orizzontale in cima ("dati fino al
+  20 · 3 conti", o il nome del conto se e' uno solo), su due altezze alterne per i giorni vicini; passando il
+  mouse su quel giorno il riquadro elenca i conti.
+
+**Aggiornando**
+- Ferma l'app, estrai lo zip sopra la cartella `CashFlowAnalyzer` e avvia. Se arrivi dalla 0.20.x valgono le
+  note della 0.21.0 (backup prima del primo avvio: lo schema del database passa alla versione 3). Dalla 0.21.0
+  lo schema non cambia; i numeri non cambiano.
+- 286 test (erano 285).
+
+---
+
 ## 0.21.0 – 22 novembre 2026 · budget mensili
 
 **Novita'**

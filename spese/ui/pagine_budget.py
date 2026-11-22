@@ -301,10 +301,7 @@ def _dettaglio(c, r, scelto, mese):
             st.warning("A rischio: la previsione a fine mese supera il budget di %s." % euro(x["sopra"]),
                        icon=ICONE_STATO[bd.A_RISCHIO])
         nomi = {y["id"]: y["nome"] for y in c.execute("SELECT id, nome FROM conti")}
-        segni = []
-        for cid, d in sorted(cal["conti"].items(), key=lambda kv: kv[1]["giorno"]):
-            if d["giorno"] < cal["giorni"] and d["giorno"] > 0:
-                segni.append((d["giorno"], nomi.get(cid, "")))
+        segni = segni_copertura(cal, nomi)
         grafici.mostra(grafici.cumulato_budget(cal["giorni"], cal["reale"], cal["stimato"], cal["tipico"],
                                                x["importo"], segni), "bud_cumulato", 300)
         if cal["previsione"] and cal["conti"]:
@@ -321,6 +318,17 @@ def _dettaglio(c, r, scelto, mese):
                 column_config={"Speso": st.column_config.NumberColumn(format="euro"),
                                "Previsto per il resto": st.column_config.NumberColumn(format="euro"),
                                "Dati fino al giorno": st.column_config.TextColumn()})
+
+
+def segni_copertura(cal, nomi):
+    """Giorni del mese fin dove arrivano i dati dei conti, per il grafico cumulato: [(giorno, [nomi dei conti])],
+    un segno per giorno anche quando piu' conti finiscono lo stesso giorno (le etichette non si sovrappongono).
+    Fuori i conti coperti per tutto il mese o fermi a prima del mese."""
+    per_giorno = {}
+    for cid, d in cal["conti"].items():
+        if 0 < d["giorno"] < cal["giorni"]:
+            per_giorno.setdefault(d["giorno"], []).append(nomi.get(cid, ""))
+    return [(g, sorted(per_giorno[g])) for g in sorted(per_giorno)]
 
 
 def _vai_alla_ripartizione(c, x, mese):
