@@ -85,18 +85,6 @@ Il manuale completo, con il primo utilizzo e tutte le funzioni, e' in [MANUALE.m
 
 L'azione *Test* di GitHub ripete test, installazione, avvio e arresto su Linux e Windows a ogni push.
 
-## Pubblicare una versione
-
-1. Aggiorna `VERSIONE` in `spese/__init__.py` e aggiungi la sezione `## X.Y.Z – ...` in `CHANGELOG.md`.
-2. Unisci le modifiche in `main`, poi crea e pubblica il tag:
-   ```bash
-   git tag v0.14.0
-   git push origin v0.14.0
-   ```
-   In alternativa, su GitHub: *Releases* > *Draft a new release* > nuovo tag `v0.14.0` > *Publish*.
-3. L'azione *Release* esegue i test su Linux e Windows e allega alla release `CashFlowAnalyzer-X.Y.Z.zip`, il
-   `.tar.gz` (stesso contenuto, per Linux e Windows) e `SHA256SUMS.txt`.
-
 ## Licenza
 
 Copyright (C) 2026 Nahlt.
