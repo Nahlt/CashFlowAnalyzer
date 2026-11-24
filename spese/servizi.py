@@ -405,3 +405,82 @@ def elimina_budget(conn, cat, perimetro):
     with transazione(conn):
         return conn.execute("DELETE FROM budget WHERE l1 = ? AND coalesce(l2, '') = ? AND perimetro = ?",
                             (l1, l2 or "", perimetro)).rowcount
+
+
+# ---------------------------------------------------------------------------
+# Formati di import dell'utente e causali aggiunte (0.22.0). Nessun ricalcolo: valgono per i prossimi import.
+# ---------------------------------------------------------------------------
+def salva_formato(conn, profilo, sostituisce=None):
+    """Salva un formato nuovo (non si modifica: le modifiche diventano una nuova versione). Con `sostituisce` il
+    formato precedente viene ritirato nella stessa transazione. Restituisce l'id."""
+    import json
+    from . import formati
+    errori = formati.valida(profilo)
+    if errori:
+        raise ValueError("; ".join(errori))
+    p = {k: v for k, v in profilo.items() if k not in ("id", "nome", "utente", "stato", "sostituisce",
+                                                       "causali_aggiunte")}
+    with transazione(conn):
+        fid = formati.nuovo_id(conn)
+        conn.execute("INSERT INTO formati_import(id, nome, profilo, stato, sostituisce, creato_il) "
+                     "VALUES (?,?,?,?,?,?)", (fid, profilo["nome"].strip(), json.dumps(p, ensure_ascii=False),
+                                              "attivo", sostituisce, ora()))
+        if sostituisce:
+            conn.execute("UPDATE formati_import SET stato = 'ritirato', ritirato_il = ? WHERE id = ? "
+                         "AND stato = 'attivo'", (ora(), sostituisce))
+    formati.carica(conn)
+    return fid
+
+
+def ritira_formato(conn, formato_id):
+    """Il formato non riconosce piu' i file nuovi; resta per gli import gia' fatti."""
+    from . import formati
+    conn.execute("UPDATE formati_import SET stato = 'ritirato', ritirato_il = ? WHERE id = ? AND stato = 'attivo'",
+                 (ora(), formato_id))
+    formati.carica(conn)
+
+
+def riattiva_formato(conn, formato_id):
+    """Un formato ritirato torna a riconoscere i file (es. ritirato per sbaglio)."""
+    from . import formati
+    conn.execute("UPDATE formati_import SET stato = 'attivo', ritirato_il = NULL WHERE id = ?", (formato_id,))
+    formati.carica(conn)
+
+
+def elimina_formato(conn, formato_id):
+    """Solo un formato che nessun import usa: il ricalcolo e l'annullamento rileggono il formato degli import."""
+    from . import formati
+    imp, _ = formati.uso(conn, formato_id)
+    if imp:
+        raise ValueError("il formato e' usato da %d import: annullali prima di eliminarlo, oppure ritiralo" % imp)
+    with transazione(conn):
+        conn.execute("UPDATE conti SET profilo = NULL WHERE profilo = ?", (formato_id,))
+        conn.execute("DELETE FROM causali_aggiunte WHERE profilo = ?", (formato_id,))
+        conn.execute("DELETE FROM formati_import WHERE id = ?", (formato_id,))
+    formati.carica(conn)
+
+
+def aggiungi_causale(conn, profilo_id, causale, tipo):
+    """Tipo per una causale che il formato non conosce. Non cambia una causale che il formato gia' traduce."""
+    from . import formati
+    p = cfg.profili().get(profilo_id)
+    if p is None:
+        raise ValueError("formato sconosciuto: %s" % profilo_id)
+    if not cfg.accetta_causali(p):
+        raise ValueError("il formato %s non prende il tipo da una causale" % p.get("nome", profilo_id))
+    causale = (causale or "").strip()
+    originali = {k for k in (p.get("tipi") or {}) if k not in (p.get("causali_aggiunte") or [])}
+    if not causale or causale == "*" or causale in originali:
+        raise ValueError("la causale \"%s\" e' gia' tradotta dal formato" % causale)
+    if tipo not in cfg.tipi_movimento()["tipi"]:
+        raise ValueError("tipo di movimento sconosciuto: %s" % tipo)
+    conn.execute("INSERT INTO causali_aggiunte(profilo, causale, tipo, aggiunta_il) VALUES (?,?,?,?) "
+                 "ON CONFLICT(profilo, causale) DO UPDATE SET tipo = excluded.tipo, aggiunta_il = excluded.aggiunta_il",
+                 (profilo_id, causale, tipo, ora()))
+    formati.carica(conn)
+
+
+def togli_causale(conn, profilo_id, causale):
+    from . import formati
+    conn.execute("DELETE FROM causali_aggiunte WHERE profilo = ? AND causale = ?", (profilo_id, causale))
+    formati.carica(conn)

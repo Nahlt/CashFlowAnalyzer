@@ -196,14 +196,58 @@ def intermediari() -> dict:
 
 
 @lru_cache(maxsize=None)
-def profili() -> dict:
+def profili_app() -> dict:
+    """Profili dei formati bancari dell'app (config/profili/*.yaml): non cambiano mentre l'app gira."""
     out = {}
     for p in sorted(PROFILI.glob("*.yaml")):
         d = yaml.safe_load(p.read_text(encoding="utf-8"))
-        for e in d.get("estrazione", {}).values():
-            pass
         out[d["id"]] = d
     return out
+
+
+# formati dell'utente e causali aggiunte, letti dal database (formati.carica) all'apertura e dopo ogni modifica
+_UTENTE = {"formati": {}, "aggiunte": {}}
+_UNITI = []
+
+
+def imposta_formati_utente(formati: dict, aggiunte: dict):
+    """formati: {id: profilo} dei formati dell'utente (attivi e ritirati, con 'stato'); aggiunte: {id profilo:
+    {causale: tipo}}. Li chiama formati.carica: l'elenco dei profili si ricompone alla prossima richiesta."""
+    _UTENTE["formati"], _UTENTE["aggiunte"] = dict(formati), {k: dict(v) for k, v in aggiunte.items()}
+    _UNITI.clear()
+
+
+def accetta_causali(profilo) -> bool:
+    """Un formato accetta causali aggiunte se il tipo viene da una colonna (non un tipo unico per tutte le righe) e
+    se lo legge il lettore generale (PayPal ha un lettore suo)."""
+    return bool(profilo.get("codice")) and not profilo.get("tipo_fisso") and not profilo.get("lettore")
+
+
+def _con_aggiunte(profilo, aggiunte):
+    """Copia del profilo con le causali aggiunte dall'utente: solo quelle che il profilo non traduce gia'."""
+    if not aggiunte or not accetta_causali(profilo):
+        return profilo
+    p = dict(profilo)
+    tipi = dict(p.get("tipi") or {})
+    nuove = {k: v for k, v in aggiunte.items() if k not in tipi}
+    if not nuove:
+        return profilo
+    p["tipi"] = {**nuove, **tipi}
+    p["causali_aggiunte"] = sorted(nuove)
+    return p
+
+
+def profili() -> dict:
+    """Tutti i profili: prima quelli dell'app, poi i formati dell'utente (con 'utente': True e 'stato'), ciascuno
+    con le causali aggiunte. I ritirati restano qui per gli import gia' fatti, ma non riconoscono file nuovi."""
+    if not _UNITI:
+        aggiunte = _UTENTE["aggiunte"]
+        out = {k: _con_aggiunte(p, aggiunte.get(k)) for k, p in profili_app().items()}
+        for k, p in _UTENTE["formati"].items():
+            if k not in out:
+                out[k] = _con_aggiunte(p, aggiunte.get(k))
+        _UNITI.append(out)
+    return _UNITI[0]
 
 
 # natura di un movimento secondo la sezione della sua categoria (le uscite positive diventano rimborsi nel ricalcolo)

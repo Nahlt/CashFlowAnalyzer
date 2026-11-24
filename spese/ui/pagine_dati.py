@@ -15,6 +15,7 @@ from ..llm import MODELLI_CLAUDE
 from ..lettore import FileNonRiconosciuto
 from ..numeri import euro
 from ..ricalcolo import riepilogo
+from . import pagine_formati as pf
 from .comune import (NATURE, chiave_tabella, conn, esegui_ricalcolo, etichetta_cat, filtri_sidebar, opzioni_categorie,
                      testo)
 
@@ -36,14 +37,21 @@ def importa():
                    "dalle descrizioni (Credem li mette davanti all'esercente) e bloccano l'invio a Claude. "
                    "Se li aggiungi dopo, l'app ripulisce anche i movimenti gia' importati.",
                    icon=":material/person_alert:")
+    pf.esito()
+    if pf.attiva("importa"):
+        # procedura guidata per un file che nessun formato riconosce: al salvataggio si torna all'elenco dei file,
+        # che restano caricati (il caricatore e' sopra) e ora vengono riconosciuti
+        pf.procedura(c)
+        return
     visti = set()
     for f in files or []:
         with st.container(border=True):
             dati = f.getvalue()
             try:
                 fl, suggerito, gia = imp.anteprima(c, f.name, dati)
-            except FileNonRiconosciuto as e:
-                st.error("**%s**: %s. Formati gestiti: Credem, Credit Agricole, Fineco (Excel), ING conto (Excel o CSV), ING carta di credito, Trade Republic, PayPal (report attivita' in CSV)." % (f.name, e))
+            except FileNonRiconosciuto:
+                import hashlib
+                pf.file_non_riconosciuto(f.name, dati, hashlib.sha256(dati).hexdigest()[:16])
                 continue
             except Exception as e:
                 st.error("**%s**: errore di lettura (%s)" % (f.name, e))
@@ -260,6 +268,17 @@ def _scegli_categoria(etichetta, key, proposta=None, sezioni=("uscite", "entrate
 NON_DECISO = "t.mov_id NOT IN (SELECT mov_id FROM decisioni)"
 
 
+def _causali_sconosciute(c):
+    """Collegamento a Formati di import se ci sono movimenti 'altro' con una causale che il formato non conosce."""
+    n = sum(x[1] for k, p in cfg.profili().items() if cfg.accetta_causali(p)
+            for x in pf.formati.causali_senza_tipo(c, k))
+    pagina = (st.session_state.get("_pagine") or {}).get("formati")
+    if n and pagina:
+        st.info("%d movimenti hanno una causale che il formato di import non conosce (tipo «Altro»). Dai un tipo "
+                "alla causale in Formati di import: varra' per i prossimi import." % n, icon=":material/dataset:")
+        st.page_link(pagina, label="Formati di import · causali senza tipo", icon=":material/arrow_forward:")
+
+
 def revisione():
     st.title("Revisione")
     st.caption("Tutti i conti e i perimetri. Ogni decisione si applica subito e ricalcola le analisi.")
@@ -410,6 +429,7 @@ def revisione():
         if not _addebiti_paypal(c):
             st.success("Nessun addebito PayPal da ricondurre al report PayPal.", icon=":material/done_all:")
     with t3:
+        _causali_sconosciute(c)
         altri = pd.DataFrame(an.altri_da_rivedere(c, MOTIVO_PAYPAL))
         if altri.empty:
             st.success("Nessun altro movimento da rivedere.", icon=":material/done_all:")

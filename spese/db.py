@@ -203,6 +203,28 @@ CREATE TABLE IF NOT EXISTS budget (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_budget ON budget(l1, coalesce(l2, ''), perimetro, dal_mese);
 
+-- formati di import configurati dall'utente (0.22.0): il profilo (stesso dizionario dei YAML in config/profili) in
+-- JSON. Un formato non si modifica: si ritira (non riconosce piu' i file nuovi, resta per gli import fatti) e se ne
+-- crea una nuova versione (sostituisce = id del formato precedente)
+CREATE TABLE IF NOT EXISTS formati_import (
+    id TEXT PRIMARY KEY,                -- utente_<n>
+    nome TEXT NOT NULL,
+    profilo TEXT NOT NULL,              -- JSON
+    stato TEXT NOT NULL DEFAULT 'attivo' CHECK (stato IN ('attivo','ritirato')),
+    sostituisce TEXT,
+    creato_il TEXT, ritirato_il TEXT
+);
+
+-- tipi di movimento per causali che un formato (dell'app o dell'utente) non conosce: valgono per i prossimi import.
+-- Non cambiano una causale che il formato gia' traduce (quella del formato vince)
+CREATE TABLE IF NOT EXISTS causali_aggiunte (
+    profilo TEXT NOT NULL,
+    causale TEXT NOT NULL,
+    tipo TEXT NOT NULL,
+    aggiunta_il TEXT,
+    PRIMARY KEY (profilo, causale)
+);
+
 -- livello derivato: ricostruito a ogni ricalcolo
 CREATE TABLE IF NOT EXISTS analisi (
     id INTEGER PRIMARY KEY,
@@ -229,9 +251,9 @@ CREATE TABLE IF NOT EXISTS contenitori (
 
 # Versione dello schema, salvata nel database (PRAGMA user_version). Cresce a ogni modifica che richiede una
 # migrazione: 2 = prezzi e cambi come testo decimale, un pagamento PayPal ricondotto a un solo addebito (0.16.2);
-# 3 = budget mensili e copertura degli import (0.21.0).
+# 3 = budget mensili e copertura degli import (0.21.0); 4 = formati di import dell'utente e causali aggiunte (0.22.0).
 # Un database con una versione piu' alta viene da un programma piu' recente: non si apre, per non rovinarlo.
-VERSIONE_SCHEMA = 3
+VERSIONE_SCHEMA = 4
 
 
 class PassphraseErrata(Exception):
@@ -279,6 +301,9 @@ def apri(percorso, passphrase: str):
     _migra(conn)
     if versione != VERSIONE_SCHEMA:
         conn.execute("PRAGMA user_version = %d" % VERSIONE_SCHEMA)
+    # formati di import dell'utente e causali aggiunte: entrano nell'elenco dei profili usato da lettore e ricalcolo
+    from . import formati
+    formati.carica(conn)
     if nuovo:
         try:
             os.chmod(percorso, 0o600)

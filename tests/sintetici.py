@@ -206,3 +206,79 @@ def credem_mesi(pagamenti, inizio="01/01/2025", fine="20/11/2026", bonifici=()):
                      % (g, g, importo, importo, "OCIST" if cent > 0 else "DIIST", verso, nome, g.replace("/", "")))
     righe += [_riga_carta_credem(g, c, e) for g, c, e in pagamenti]
     return ("\r\n".join(righe) + "\r\n").encode("utf-8")
+
+
+# ---------------------------------------------------------------------------
+# 0.22.0 - formati di banche che l'app non conosce (per i formati configurati dall'utente)
+# ---------------------------------------------------------------------------
+IBAN_BIANCHI = iban_valido("IT", "X0542811101000000123456")
+
+ESEMPIO_RIGHE = [
+    ("03/10/2026", "03/10/2026", "45,90", "", "PAGAMENTO POS", "POS 02/10 SUPERMERCATO ROSSI MILANO"),
+    ("05/10/2026", "05/10/2026", "", "1.850,00", "ACCREDITO STIPENDIO", "STIPENDIO OTTOBRE DA AZIENDA ESEMPIO SRL"),
+    ("06/10/2026", "06/10/2026", "62,40", "", "ADDEBITO SDD", "SDD ENERGIA ESEMPIO MANDATO 0001"),
+    ("08/10/2026", "08/10/2026", "12,30", "", "PAGAMENTO POS", "POS 07/10 PANIFICIO DEL CORSO"),
+    ("10/10/2026", "10/10/2026", "250,00", "", "BONIFICO",
+     "BONIFICO A FAVORE DI MARIO BIANCHI IBAN %s" % IBAN_BIANCHI),
+    ("12/10/2026", "12/10/2026", "2,00", "", "COMMISSIONI", "COMMISSIONE BONIFICO"),
+    ("15/10/2026", "15/10/2026", "38,75", "", "PAGAMENTO POS", "POS 14/10 FARMACIA CENTRALE"),
+    ("18/10/2026", "18/10/2026", "", "120,00", "BONIFICO", "BONIFICO DA LUCA VERDI RIMBORSO CENA"),
+    ("21/10/2026", "21/10/2026", "54,10", "", "PAGAMENTO POS", "POS 20/10 CARBURANTI VIA ROMA"),
+    ("25/10/2026", "25/10/2026", "9,99", "", "ADDEBITO SDD", "SDD STREAMING ESEMPIO"),
+    ("28/10/2026", "28/10/2026", "100,00", "", "PRELIEVO", "PRELIEVO ATM 28/10"),
+    ("31/10/2026", "31/10/2026", "4,50", "", "CANONE", "CANONE MENSILE CONTO"),
+]
+
+
+def banca_esempio_csv(sep=";", righe=None, mese="10/2026"):
+    """Estratto di una banca inventata: titolo, conto, periodo e saldo in testa, una riga vuota, l'intestazione
+    alla riga 6 (Dare/Avere, Causale), 12 movimenti e una riga di totale. Codifica Windows (la a accentata)."""
+    righe = righe or ESEMPIO_RIGHE
+    gg = {"10/2026": "31", "11/2026": "30"}.get(mese, "28")
+    testa = ["Banca Esempio Società per azioni – Elenco movimenti".replace("–", "-"),
+             sep.join(["Conto n.", "12345/67"]), sep.join(["Periodo", "dal 01/%s al %s/%s" % (mese, gg, mese)]),
+             sep.join(["Saldo contabile al %s/%s" % (gg, mese), "2.345,67"]), "",
+             sep.join(["Data", "Valuta", "Dare", "Avere", "Causale", "Descrizione"])]
+    corpo = [sep.join(r) for r in righe]
+    dare = sum(int(r[2].replace(".", "").replace(",", "")) for r in righe if r[2])
+    avere = sum(int(r[3].replace(".", "").replace(",", "")) for r in righe if r[3])
+    tot = sep.join(["Totale", "", "%d,%02d" % divmod(dare, 100), "%d,%02d" % divmod(avere, 100), "", ""])
+    return ("\r\n".join(testa + corpo + [tot]) + "\r\n").encode("cp1252")
+
+
+def carta_esempio_csv():
+    """Carta di una banca inventata: separatore virgola, punto decimale, date ISO, spese scritte in positivo e
+    rimborsi in negativo, nessuna causale."""
+    righe = ["Date,Description,Amount",
+             "2026-10-02,AMAZON MARKETPLACE,23.99",
+             "2026-10-05,RISTORANTE DA MARIO ROMA,48.50",
+             "2026-10-09,AMAZON MARKETPLACE,-23.99",
+             "2026-10-15,LIBRERIA CENTRALE,1234.50"]
+    return ("\n".join(righe) + "\n").encode("utf-8")
+
+
+def virgole_csv():
+    """Separatore ';' ma descrizioni piene di virgole: il separatore indovinato e' la virgola (sbagliato)."""
+    righe = ["Giorno;Movimento;Euro"]
+    for g in range(1, 9):
+        righe.append("%02d/10/2026;SPESA A, B, C, D, E, F, G, H;-%d,00" % (g, g))
+    return ("\n".join(righe) + "\n").encode("utf-8")
+
+
+def banca_esempio_xlsx(percorso):
+    """Excel con un primo foglio di sole informazioni e i movimenti nel secondo; date e importi gia' tipizzati,
+    una colonna d'importo con il segno."""
+    import openpyxl
+    wb = openpyxl.Workbook()
+    info = wb.active
+    info.title = "Informazioni"
+    info.append(["Documento generato dalla banca"])
+    ws = wb.create_sheet("Movimenti")
+    ws.append(["Elenco movimenti"])
+    ws.append([])
+    ws.append(["Data operazione", "Tipo operazione", "Dettaglio", "Importo"])
+    ws.append([datetime(2026, 10, 3), "Pagamento carta", "OPERAZIONE PRESSO BAR CENTRALE", -3.5])
+    ws.append([datetime(2026, 10, 4), "Bonifico ricevuto", "Ordinante: GIULIA BIANCHI Causale: regalo", 50.0])
+    ws.append([datetime(2026, 10, 6), "Pagamento carta", "OPERAZIONE PRESSO EDICOLA", -2.2])
+    ws.append([datetime(2026, 10, 7), "Commissioni", "COMMISSIONI MENSILI", -1.0])
+    wb.save(percorso)

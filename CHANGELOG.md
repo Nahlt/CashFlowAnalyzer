@@ -5,6 +5,50 @@ Questo file non fa parte del pacchetto: viene consegnato a parte a ogni nuova ve
 
 ---
 
+## 0.22.0 – 24 novembre 2026 · formati di import configurabili dall'interfaccia
+
+**Novita'**
+- **Configura questo formato**: per un file che nessun formato riconosce, in Importa si apre una procedura guidata
+  in sei passi (intestazione, colonne, formati, tipi di movimento, dettagli dalla descrizione, conto e anteprima).
+  A ogni passo l'app propone una risposta, che si conferma o si corregge, e rilegge il file mostrando quanti
+  movimenti escono e quante righe sono scartate. Al salvataggio il file si importa come gli altri e i file
+  successivi con le stesse colonne si riconoscono da soli.
+  - Proposte automatiche: riga d'intestazione (anche dopo titolo, dati del conto e righe vuote), separatore e
+    codifica dei CSV, foglio degli Excel, colonne (data contabile, valuta, data dell'operazione, importo con il
+    segno oppure uscite ed entrate), formato delle date, separatore dei decimali, tipo di ogni causale dal suo nome,
+    significato delle righe in testa al file (numero di conto, IBAN, periodo, saldo).
+  - Date leggibili in due modi (giorno/mese o mese/giorno) e importi ambigui: la scelta resta all'utente.
+  - Segno invertito per le carte che scrivono le spese in positivo; tipo per le uscite e per le entrate quando il
+    file non ha una causale.
+  - **Dettagli dalla descrizione**: esercente, controparte, IBAN (solo se la cifra di controllo torna), data e ora
+    dell'operazione si estraggono dalla colonna scelta con le regole che l'app conosce, anche piu' d'una in ordine;
+    si vede in quanti movimenti trovano qualcosa e con quali esempi. Senza regola, l'esercente e' tutta la
+    descrizione.
+  - Periodo e saldo in testa al file valgono anche il mese dopo (la data nell'etichetta cambia): servono a
+    copertura dei budget e quadratura dei saldi.
+- **Configurazione > Formati di import**: i tuoi formati con stato e uso. Un formato non si modifica:
+  **Introduci modifiche come nuova versione** (la procedura parte dalle scelte del formato e il precedente viene
+  ritirato), **Ritira** (non riconosce piu' i file nuovi, resta per gli import fatti), **Elimina** (solo senza
+  import). Si puo' anche creare un formato da un file d'esempio.
+- **Causali senza tipo**, anche per i formati dell'app (es. Credem): le causali che il formato non conosce, viste
+  nei tuoi import, si possono tradurre in un tipo che vale dai prossimi import. Non si cambia una causale che il
+  formato gia' traduce. In Revisione un collegamento porta li' quando ci sono movimenti con una causale sconosciuta.
+
+**Correzioni**
+- Lettura dei CSV: se il separatore indovinato non fa riconoscere il file, l'app riprova con il separatore e la
+  codifica scritti nei formati (prima erano ignorati). Gli Excel si riconoscono anche quando i movimenti non sono
+  nel primo foglio.
+
+**Aggiornando**
+- **Lo schema del database passa alla versione 4** (formati di import e causali aggiunte): dopo il primo avvio la
+  0.21.x non apre piu' il database. **Fai un backup prima** (Impostazioni > Crea un backup cifrato) se vuoi poter
+  tornare indietro.
+- Ferma l'app, estrai lo zip sopra la cartella `CashFlowAnalyzer` e avvia. Nessun numero cambia: i formati
+  dell'app leggono i file come prima.
+- 327 test (erano 286).
+
+---
+
 ## 0.21.1 – 22 novembre 2026 · segni dei conti nel grafico del budget
 
 **Correzioni**

@@ -1,4 +1,4 @@
-# CashFlow Analyzer 0.21.1 – Manuale
+# CashFlow Analyzer 0.22.0 – Manuale
 
 Di Nahlt, con licenza GNU GPL v3.
 
@@ -93,6 +93,8 @@ poi sblocca i file del programma. Opzioni da riga di comando: `install.cmd -Si` 
    conto di altro tipo l'app avvisa e importa solo con una conferma. Se le righe della carta sono comunque
    finite in un conto sbagliato, l'addebito mensile non conta (le spese contano gia' nel conto) e in Revisione
    il motivo dice come rimediare: annullare l'import e reimportare il file in un conto di tipo Carta.
+   Se nessun formato riconosce il file (una banca che l'app non conosce), **Configura questo formato** apre una
+   procedura guidata: vedi *Formati di import*.
 3. **Conti e copertura**: registra l'IBAN dei conti, anche quelli che non importi (conto deposito,
    conto di un familiare). L'IBAN si puo' scrivere con gli spazi: viene salvato senza spazi e in maiuscolo,
    dopo un controllo di paese, lunghezza e cifra di controllo; se non torna, nulla viene salvato.
@@ -359,6 +361,56 @@ abbinate. La spesa del report pagata da un addebito sul conto o sulla carta cont
 dell'addebito. Le scelte si rivedono e
 si tolgono in *Addebiti PayPal ricondotti a mano*. Sono gestiti il report in italiano e quello in inglese.
 
+## Formati di import
+
+Per una banca che l'app non conosce si configura il formato dall'interfaccia, a partire da un file d'esempio
+(CSV o Excel `.xlsx`; i vecchi `.xls` vanno prima salvati come `.xlsx`). In **Importa**, sotto il file non
+riconosciuto, premi **Configura questo formato**; oppure in **Configurazione > Formati di import** apri *Nuovo
+formato da un file d'esempio*. La procedura ha sei passi. A ogni passo l'app propone una risposta (segnata con
+*proposto*) che confermi o correggi, e rilegge il file: sotto vedi quanti movimenti escono e quante righe sono
+scartate, con il motivo.
+
+1. **Intestazione**: la riga con i nomi delle colonne, scelta nell'elenco con l'anteprima delle prime 30 righe
+   del file. Per i CSV scegli anche separatore e codifica (se le lettere accentate si vedono male, cambia
+   codifica); per gli Excel il foglio. Se la proposta e' sbagliata il contatore lo dice (nessun movimento letto)
+   e non si va avanti finche' non scegli la riga giusta. Non sono gestiti i file senza riga d'intestazione; se
+   l'intestazione e' su due righe, scegli quella con i nomi piu' specifici (es. *Dare* e *Avere*).
+2. **Colonne**: data contabile, data valuta, data dell'operazione, importo (una colonna con il segno, oppure
+   uscite ed entrate in due colonne), descrizione e causale. Accanto a ogni colonna vedi il suo primo valore.
+3. **Formati**: formato delle date e separatore dei decimali, con quanti valori ciascuna scelta legge. Se le date
+   si possono leggere in due modi (es. 03/04/2026: 3 aprile o 4 marzo) la scelta e' tua. Per gli estratti delle
+   carte che scrivono le spese in positivo, **Inverti il segno**.
+4. **Tipi di movimento**: per ogni causale del file il tipo (pagamento con carta, bonifico, addebito diretto,
+   stipendio, commissione...), proposto dal nome della causale. Il tipo decide come conta il movimento. Una
+   causale lasciata senza tipo resta *Altro* e va in Revisione. Se il file non ha una causale, scegli un tipo per
+   le uscite e uno per le entrate.
+5. **Dettagli dalla descrizione**: per esercente, controparte, IBAN, data e ora dell'operazione scegli la colonna
+   da cui estrarli. L'app prova le regole che conosce (es. *Dopo «POS gg/mm»*, *Dopo «A FAVORE DI»*, *IBAN con
+   la cifra di controllo*), propone quelle che trovano qualcosa e mostra in quanti movimenti e con quali esempi.
+   Si possono scegliere piu' regole: vale la prima che trova qualcosa. Dove nessuna regola trova l'esercente si
+   usa tutta la descrizione.
+6. **Conto e anteprima**: nome del formato, banca, tipo di conto e il significato delle righe in testa al file
+   (numero di conto, IBAN, periodo, saldo). Con il periodo l'app sa fin dove arriva il file (copertura per i
+   budget); con il saldo controlla la quadratura. Sotto, tutti i movimenti come verranno importati. **Salva il
+   formato**: dalla pagina Importa il file si importa subito come gli altri, e i file successivi con le stesse
+   colonne si riconoscono da soli.
+
+I formati dell'app vengono provati prima dei tuoi: un formato tuo non cambia la lettura di Credem, ING, Fineco
+e degli altri.
+
+**Un formato non si modifica.** In *Formati di import*:
+- **Introduci modifiche come nuova versione**: carichi un file d'esempio e la procedura parte dalle scelte del
+  formato; al salvataggio il formato precedente viene ritirato.
+- **Ritira**: il formato non riconosce piu' i file nuovi ma resta per gli import gia' fatti (si puo' riattivare).
+- **Elimina**: solo un formato che nessun import usa. Per correggere un formato configurato male: annulla i suoi
+  import, eliminalo, crealo di nuovo e reimporta i file.
+
+**Causali senza tipo.** Nella stessa pagina, per ogni formato (anche quelli dell'app, come Credem) trovi le causali
+che il formato non conosce, viste nei tuoi import: quei movimenti sono *Altro* e vanno in Revisione (che porta
+qui con un collegamento). Il tipo che scegli vale **per i prossimi import**: i movimenti gia' importati restano
+come sono (per cambiarli si annulla l'import e si reimporta il file). Non si puo' cambiare una causale che il
+formato gia' traduce; se una versione futura dell'app aggiunge la stessa causale, vale quella dell'app.
+
 ## Portafoglio titoli
 
 Pagina **Portafoglio** sotto Analisi disponibilità (sezione facoltativa: *Impostazioni > Sezioni facoltative*). Costo e
@@ -503,6 +555,7 @@ ordina la tabella.
 | Cosa | Dove |
 | --- | --- |
 | Database cifrato | Linux: `~/.local/share/CashFlowAnalyzer/spese.db` (cartella con permessi 700; fino alla 0.20.1 `~/.local/share/spese-app`, spostata da sola al primo avvio). Windows: `%LOCALAPPDATA%\CashFlowAnalyzer\spese.db` (nel tuo profilo utente, non sincronizzata con OneDrive) |
+| Formati di import tuoi e causali aggiunte | nel database cifrato (quindi anche nei backup) |
 | Backup cifrati | stessa cartella, `backup_AAAAMMGG_HHMMSS.db`, stessa passphrase |
 | Log del server | stessa cartella, `server.log` (solo messaggi del server) |
 | Chiave API di Claude | portachiavi di sistema (Linux) o Gestione credenziali (Windows) |
@@ -546,7 +599,7 @@ la cartella del programma. Ollama, se l'hai installato, si toglie a parte.
 | `avvia.py` | Avviatore per Linux e Windows (`avvia.sh`, `avvia.cmd` e il menu lo richiamano) |
 | `install.sh`, `install.cmd` + `install.ps1` | Installazione su Linux e su Windows (con il controllo di Python) |
 | `tray.py`, `icona_windows.py` | Icona nell'area di notifica su Linux (GTK) e su Windows |
-| `spese/` | Lettura dei formati, import, catena di categorizzazione, ricalcolo, privacy, modelli |
+| `spese/` | Lettura dei formati (anche quelli configurati da te, con le regole di estrazione in `estrattori.py`), import, catena di categorizzazione, ricalcolo, privacy, modelli |
 | `spese/ui/` | Pagine dell'interfaccia e grafici (ECharts) |
 | `config/profili/` | Un file YAML per formato bancario: firma, colonne (anche uscite ed entrate separate), codici, righe di saldo, formati di numeri e date |
 | `config/tipi_movimento.yaml` | Tipi standard di movimento e loro natura (entrata, uscita, risparmio, trasferimento...) |

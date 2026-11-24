@@ -9,6 +9,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sintetici  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _formati_utente_vuoti():
+    """I formati dell'utente stanno in memoria (configurazione) dopo l'apertura del database: ogni test parte e
+    finisce senza quelli di un test precedente."""
+    from spese import configurazione
+    configurazione.imposta_formati_utente({}, {})
+    yield
+    configurazione.imposta_formati_utente({}, {})
+
+
 @pytest.fixture()
 def conn(tmp_path, monkeypatch):
     monkeypatch.setenv("SPESE_DATI", str(tmp_path / "dati"))

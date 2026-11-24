@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import configurazione as cfg
+from . import estrattori
 from .chiavi import chiave, separa_intermediario, togli_nomi
 from .iban import verifica as verifica_iban
 from .numeri import FormatoNonValido, a_centesimi, a_data, testo_decimal
@@ -35,24 +36,25 @@ def _vuoto(v):
     return v is None or (isinstance(v, str) and not v.strip())
 
 
-def leggi_grezzo(percorso: Path, dati: bytes = None):
-    """Restituisce (righe, formato). CSV: testo; Excel: valori tipizzati."""
-    dati = dati if dati is not None else Path(percorso).read_bytes()
-    nome = str(percorso).lower()
-    if nome.endswith((".xlsx", ".xlsm")):
-        import openpyxl
-        wb = openpyxl.load_workbook(io.BytesIO(dati), read_only=True, data_only=True)
-        righe = [list(r) for r in wb.worksheets[0].iter_rows(values_only=True)]
-        return righe, "xlsx", dati
-    for enc in ("utf-8-sig", "cp1252", "latin-1"):
+SEPARATORI = (";", "\t", ",", "|")
+CODIFICHE = ("utf-8-sig", "cp1252", "latin-1")
+
+
+def decodifica(dati: bytes, codifica=None):
+    """(testo, codifica). Senza codifica si prova UTF-8, poi Windows (cp1252), poi Latin-1 (legge tutto)."""
+    for enc in ((codifica,) if codifica else CODIFICHE):
         try:
-            testo = dati.decode(enc)
-            break
-        except UnicodeDecodeError:
+            return dati.decode(enc), enc
+        except (UnicodeDecodeError, LookupError):
             continue
+    return dati.decode("latin-1", errors="replace"), "latin-1"
+
+
+def indovina_separatore(testo):
+    """Il separatore che da' piu' righe con lo stesso numero (>1) di colonne, tra le prime RIGHE_TESTA."""
     prime = testo.splitlines()[:RIGHE_TESTA]
     migliore, punti = ",", -1
-    for sep in (";", "\t", ",", "|"):
+    for sep in SEPARATORI:
         conti = [len(next(csv.reader([r], delimiter=sep))) for r in prime if r.strip()]
         conti = [c for c in conti if c > 1]
         if conti:
@@ -60,41 +62,189 @@ def leggi_grezzo(percorso: Path, dati: bytes = None):
             p = moda * conti.count(moda)
             if p > punti:
                 migliore, punti = sep, p
-    righe = list(csv.reader(io.StringIO(testo), delimiter=migliore))
+    return migliore
+
+
+def e_excel(percorso) -> bool:
+    return str(percorso).lower().endswith((".xlsx", ".xlsm"))
+
+
+def fogli_excel(dati: bytes) -> list:
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(dati), read_only=True, data_only=True)
+    return list(wb.sheetnames)
+
+
+def leggi_grezzo(percorso: Path, dati: bytes = None, separatore=None, codifica=None, foglio=0):
+    """Restituisce (righe, formato, dati). CSV: testo; Excel: valori tipizzati. Separatore e codifica dei CSV e
+    foglio degli Excel si indovinano se non indicati."""
+    dati = dati if dati is not None else Path(percorso).read_bytes()
+    if e_excel(percorso):
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(dati), read_only=True, data_only=True)
+        ws = wb.worksheets[foglio] if 0 <= (foglio or 0) < len(wb.worksheets) else wb.worksheets[0]
+        righe = [list(r) for r in ws.iter_rows(values_only=True)]
+        return righe, "xlsx", dati
+    testo, _ = decodifica(dati, codifica)
+    righe = list(csv.reader(io.StringIO(testo), delimiter=separatore or indovina_separatore(testo)))
     return righe, "csv", dati
 
 
-def riconosci(righe):
-    """Trova profilo e riga di intestazione dalla firma delle colonne."""
-    for p in cfg.profili().values():
-        firma = set(p["firma"])
-        for i, r in enumerate(righe[:RIGHE_TESTA]):
-            celle = {str(c).strip() for c in r if not _vuoto(c)}
-            if firma <= celle:
-                return p, i
+def attivi(profili=None):
+    """Profili che riconoscono i file: tutti tranne i formati dell'utente ritirati."""
+    return [p for p in (profili if profili is not None else cfg.profili().values()) if p.get("stato") != "ritirato"]
+
+
+def riga_intestazione(profilo, righe):
+    """Indice della riga con tutte le colonne della firma del profilo, oppure None."""
+    firma = set(profilo["firma"])
+    for i, r in enumerate(righe[:RIGHE_TESTA]):
+        celle = {str(c).strip() for c in r if not _vuoto(c)}
+        if firma <= celle:
+            return i
+    return None
+
+
+def riconosci(righe, profili=None):
+    """Trova profilo e riga di intestazione dalla firma delle colonne: prima i profili dell'app, poi i formati
+    dell'utente (in quest'ordine in cfg.profili)."""
+    for p in attivi(profili):
+        h = riga_intestazione(p, righe)
+        if h is not None:
+            return p, h
     raise FileNonRiconosciuto("nessun profilo riconosce le colonne di questo file")
+
+
+def _riconosci_file(percorso, dati):
+    """(profilo, riga d'intestazione, righe). Prima con separatore, codifica e foglio indovinati; se nessun
+    profilo riconosce il file, con il separatore e la codifica scritti nei profili dei CSV, o con gli altri fogli
+    dell'Excel. Un formato dell'utente si rilegge con separatore e codifica scelti nella sua configurazione."""
+    righe, formato, dati = leggi_grezzo(Path(percorso), dati)
+    profilo = h = None
+    try:
+        profilo, h = riconosci(righe)
+    except FileNonRiconosciuto:
+        if formato == "xlsx":
+            for i in range(1, len(fogli_excel(dati))):
+                righe = leggi_grezzo(Path(percorso), dati, foglio=i)[0]
+                try:
+                    profilo, h = riconosci(righe)
+                    break
+                except FileNonRiconosciuto:
+                    continue
+        else:
+            provati = set()
+            for p in attivi():
+                coppia = (p.get("separatore"), p.get("codifica"))
+                if p.get("formato", "csv") != "csv" or coppia in provati or coppia == (None, None):
+                    continue
+                provati.add(coppia)
+                righe = leggi_grezzo(Path(percorso), dati, separatore=coppia[0], codifica=coppia[1])[0]
+                candidati = [q for q in attivi() if (q.get("separatore"), q.get("codifica")) == coppia]
+                try:
+                    profilo, h = riconosci(righe, candidati)
+                    break
+                except FileNonRiconosciuto:
+                    continue
+        if profilo is None:
+            raise
+    if profilo.get("utente") and formato == "csv" and (profilo.get("separatore") or profilo.get("codifica")):
+        righe2 = leggi_grezzo(Path(percorso), dati, separatore=profilo.get("separatore"),
+                              codifica=profilo.get("codifica"))[0]
+        h2 = riga_intestazione(profilo, righe2)
+        if h2 is not None:
+            righe, h = righe2, h2
+    return profilo, h, righe, dati
+
+
+def coppia_testa(r, date_come_testo=True):
+    """(etichetta, valore) di una riga sopra l'intestazione: 'Saldo al | 1.234,56', 'Conto: 123' o una cella
+    sola (etichetta None). None per una riga vuota. date_come_testo: le date dell'Excel come gg/mm/aaaa (formati
+    dell'utente); i profili dell'app leggono le celle come prima (str)."""
+    celle = [(_testo_cella(c) if date_come_testo else str(c).strip()) for c in r if not _vuoto(c)]
+    if not celle:
+        return None
+    if len(celle) >= 2:
+        return celle[0].rstrip(":").strip(), " ".join(celle[1:])
+    if ":" in celle[0]:
+        e, v = [x.strip() for x in celle[0].split(":", 1)]
+        return e, v
+    return None, celle[0]
+
+
+def _testo_cella(c):
+    """Testo di una cella; le date dell'Excel come gg/mm/aaaa (come le scrivono le banche nei CSV)."""
+    from datetime import date, datetime
+    if isinstance(c, datetime):
+        return c.strftime("%d/%m/%Y")
+    if isinstance(c, date):
+        return c.strftime("%d/%m/%Y")
+    return str(c).strip()
+
+
+DATA_IN_TESTO = r"\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{2}-\d{2}"
+
+
+def data_testo(s):
+    """Una data scritta in un testo, riportata a gg/mm/aaaa (come la vogliono copertura e saldi), oppure None."""
+    from datetime import datetime
+    s = (s or "").strip()
+    for fmt in ("%d/%m/%Y", "%d/%m/%y", "%d-%m-%Y", "%d.%m.%Y", "%d-%m-%y", "%d.%m.%y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(s, fmt).strftime("%d/%m/%Y")
+        except ValueError:
+            continue
+    return None
+
+
+def _regole_metadati(profilo, etichetta, valore, out):
+    """Regole `metadati_regole` dei formati dell'utente: l'etichetta si riconosce con un'espressione (che puo'
+    contenere la data, es. 'Saldo contabile al 31/10/2026'); date e importi si riportano ai formati che usano
+    copertura e saldi (gg/mm/aaaa, numeri all'italiana)."""
+    for regola in profilo.get("metadati_regole") or []:
+        bersaglio = etichetta if etichetta is not None else valore
+        x = re.fullmatch(regola["etichetta"], bersaglio or "")
+        if not x:
+            continue
+        campo = regola["campo"]
+        if campo == "periodo":
+            date_trovate = [d for d in (data_testo(t) for t in re.findall(DATA_IN_TESTO, valore or "")) if d]
+            if date_trovate:
+                out["periodo_da"], out["periodo_a"] = date_trovate[0], date_trovate[-1]
+        elif campo in ("saldo_alla_data", "saldo_iniziale", "saldo_finale"):
+            try:
+                cent = a_centesimi(re.sub(r"[^\d,.\-+]", "", valore or ""), profilo.get("numeri") or "italiano")
+            except FormatoNonValido:
+                cent = None
+            if cent is not None:
+                out[campo] = ("%+.2f" % (cent / 100)).replace(".", ",")
+                if "data" in x.groupdict() and x.group("data") and data_testo(x.group("data")):
+                    out["data_saldo"] = data_testo(x.group("data"))
+        elif campo == "data_saldo":
+            d = re.search(DATA_IN_TESTO, valore or "")
+            if d and data_testo(d.group(0)):
+                out["data_saldo"] = data_testo(d.group(0))
+        elif valore:
+            out[campo] = valore
 
 
 def _metadati(profilo, testa):
     out = {}
     mappa = profilo.get("metadati", {})
+    utente = bool(profilo.get("utente"))
     for r in testa:
-        celle = [str(c).strip() for c in r if not _vuoto(c)]
-        if not celle:
+        coppia = coppia_testa(r, utente)
+        if not coppia:
             continue
-        testo = " ".join(celle)
-        if len(celle) >= 2:
-            etichetta, valore = celle[0].rstrip(":").strip(), " ".join(celle[1:])
-        elif ":" in celle[0]:
-            etichetta, valore = [x.strip() for x in celle[0].split(":", 1)]
-        else:
-            etichetta, valore = None, celle[0]
+        etichetta, valore = coppia
+        testo = " ".join((_testo_cella(c) if utente else str(c).strip()) for c in r if not _vuoto(c))
         if etichetta and etichetta in mappa:
             out[mappa[etichetta]] = valore
         if profilo.get("periodo"):
             m = re.search(profilo["periodo"], testo)
             if m:
                 out["periodo_da"], out["periodo_a"] = m.group("da"), m.group("a")
+        _regole_metadati(profilo, etichetta, valore, out)
     return out
 
 
@@ -176,9 +326,18 @@ def _ricomponi_nome(nome, parole):
     return " ".join(out)
 
 
-def leggi(percorso, titolari=(), dati: bytes = None) -> FileLetto:
-    righe, formato, dati = leggi_grezzo(Path(percorso), dati)
-    profilo, h = riconosci(righe)
+def leggi(percorso, titolari=(), dati: bytes = None, profilo=None, riga_intestazione_scelta=None) -> FileLetto:
+    """Legge un file con il profilo che lo riconosce. Con `profilo` (es. un formato in prova nella procedura
+    guidata) si usa quello, con separatore, codifica e foglio scritti nel profilo e la riga d'intestazione indicata
+    (o trovata con la firma)."""
+    if profilo is None:
+        profilo, h, righe, dati = _riconosci_file(percorso, dati)
+    else:
+        righe, _, dati = leggi_grezzo(Path(percorso), dati, separatore=profilo.get("separatore"),
+                                      codifica=profilo.get("codifica"), foglio=profilo.get("foglio") or 0)
+        h = riga_intestazione_scelta if riga_intestazione_scelta is not None else riga_intestazione(profilo, righe)
+        if h is None or h >= len(righe):
+            raise FileNonRiconosciuto("il formato non riconosce le colonne di questo file")
     intest = [("" if c is None else str(c).strip()) for c in righe[h]]
     idx = {n: i for i, n in enumerate(intest) if n}
     fl = FileLetto(profilo, righe, h, intest, _metadati(profilo, righe[:h]),
@@ -230,6 +389,12 @@ def leggi(percorso, titolari=(), dati: bytes = None) -> FileLetto:
         if e is not None:
             return abs(e)
         return u
+
+    def importo_con_segno(r):
+        """Importo della riga; i formati con `inverti_segno` (carte che scrivono le spese in positivo) lo
+        rovesciano."""
+        v = importo(r)
+        return -v if v is not None and profilo.get("inverti_segno") else v
     for n, r in enumerate(righe[h + 1:], start=h + 2):
         piene = sum(1 for c in r if not _vuoto(c))
         if piene == 0:
@@ -271,7 +436,7 @@ def leggi(percorso, titolari=(), dati: bytes = None) -> FileLetto:
             m["data_contabile"] = data(r, "data_contabile")[0]
             m["data_valuta"] = data(r, "data_valuta")[0]
             m["data_registrazione"] = data(r, "data_registrazione")[0]
-            m["importo_cent"] = importo(r)
+            m["importo_cent"] = importo_con_segno(r)
             if isinstance(tipo, dict):
                 # stessa causale con significato diverso secondo il segno (es. INTERESSI/COMPETENZE)
                 tipo = tipo.get("uscita" if (m["importo_cent"] or 0) < 0 else "entrata", "altro")
@@ -336,6 +501,21 @@ def leggi(percorso, titolari=(), dati: bytes = None) -> FileLetto:
                         pass
                 if "ora" in g and not ora_op:
                     ora_op = g["ora"]
+            if profilo.get("estrattori"):
+                # formati dell'utente: informazioni estratte con le regole note (spese/estrattori.py)
+                valori = {nome: ("" if i >= len(r) or _vuoto(r[i]) else _testo_cella(r[i])) for nome, i in idx.items()}
+                g = estrattori.estrai(profilo["estrattori"], tipo, valori, m["data_contabile"])
+                esercente = g.get("esercente") or esercente
+                if g.get("controparte") and not m["controparte_nome"]:
+                    m["controparte_nome"] = g["controparte"]
+                if g.get("iban") and not m["controparte_iban"]:
+                    m["controparte_iban"] = g["iban"]
+                if g.get("data_op") and not d_op:
+                    d_op = g["data_op"]
+                if g.get("ora") and not ora_op:
+                    ora_op = g["ora"]
+            if not esercente and descr and tipo in (profilo.get("esercente_da_descrizione") or []):
+                esercente = descr               # nessuna regola trova l'esercente: tutta la descrizione
             if esercente and tipo in profilo.get("titolari_davanti_esercente", []):
                 esercente = togli_nomi(esercente, titolari)
             if esercente:

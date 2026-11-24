@@ -184,7 +184,7 @@ elif sessioni.stato(st.context.cookies.get(COOKIE), DURATA) == "valida":
     _riapri(st.context.cookies.get(COOKIE))
 
 from spese.ui import (pagine_analisi, pagine_budget, pagine_classificazione, pagine_dati,  # noqa: E402
-                      pagine_disponibilita, pagine_impostazioni)
+                      pagine_disponibilita, pagine_formati, pagine_impostazioni)
 
 # (gruppo, funzione, titolo, icona, indirizzo)
 PAGINE = [
@@ -200,6 +200,7 @@ PAGINE = [
     ("Dati", pagine_dati.movimenti, "Movimenti", ":material/list:", "movimenti"),
     ("Classificazione", pagine_classificazione.automatica, "Classificazione automatica", ":material/smart_toy:", "automatica"),
     ("Configurazione", pagine_impostazioni.conti, "Conti e copertura", ":material/account_balance:", "conti"),
+    ("Configurazione", pagine_formati.formati_import, "Formati di import", ":material/dataset:", "formati"),
     ("Configurazione", pagine_classificazione.regole, "Regole e tassonomia", ":material/tune:", "regole"),
     ("Configurazione", pagine_impostazioni.impostazioni, "Impostazioni", ":material/settings:", "impostazioni"),
 ]

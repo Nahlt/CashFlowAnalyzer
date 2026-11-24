@@ -58,7 +58,7 @@ def test_schema_3_con_budget_e_copertura(tmp_path, monkeypatch):
     c.execute("PRAGMA user_version = 2")
     c.close()
     c = db.apri(percorsi.file_database(), "pp")
-    assert c.execute("PRAGMA user_version").fetchone()[0] == 3 == db.VERSIONE_SCHEMA
+    assert c.execute("PRAGMA user_version").fetchone()[0] == db.VERSIONE_SCHEMA
     colonne = {r[1] for r in c.execute("PRAGMA table_info(import_file)")}
     assert {"coperto_al", "coperto_da"} <= colonne
     assert c.execute("SELECT count(*) FROM budget").fetchone()[0] == 0
